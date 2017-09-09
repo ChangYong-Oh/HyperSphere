@@ -1,15 +1,14 @@
 import torch
 from torch.autograd import Variable
-import torch.nn as nn
 
+from HyperSphere.GP.models.gp import GP
 from HyperSphere.GP.likelihoods.modules.gaussian import GaussianLikelihood
 from HyperSphere.GP.means.modules.constant import ConstantMean
-from HyperSphere.GP.kernels.modules.squared_exponential import SquaredExponentialKernel
 
 
-class GPRegression(nn.Module):
+class GPRegression(GP):
 
-	def __init__(self, kernel=SquaredExponentialKernel(ndim=5), mean=ConstantMean()):
+	def __init__(self, kernel, mean=ConstantMean()):
 		super(GPRegression, self).__init__()
 		self.kernel = kernel
 		self.mean = mean
@@ -17,5 +16,7 @@ class GPRegression(nn.Module):
 
 
 if __name__ == '__main__':
-	GP = GPRegression()
+	from HyperSphere.GP.kernels.modules.squared_exponential import SquaredExponentialKernel
+	GP = GPRegression(kernel=SquaredExponentialKernel(5))
 	print(list(GP.parameters()))
+	print(GP.param_to_vec())

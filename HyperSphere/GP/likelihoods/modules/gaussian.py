@@ -10,14 +10,14 @@ class GaussianLikelihood(Module):
 
 	def __init__(self):
 		super(GaussianLikelihood, self).__init__()
-		self.noise_var = Parameter(torch.FloatTensor(1))
-		self.reset_parameters(1)
+		self.log_noise_var = Parameter(torch.FloatTensor(1))
+		self.reset_parameters()
 
-	def reset_parameters(self, noise_var):
-		self.noise_var.data.fill_(noise_var)
+	def reset_parameters(self):
+		self.log_noise_var.data.normal_(std=2.0).exp_()
 
 	def forward(self, input):
-		return gaussian.GaussianLikelihood.apply(input, self.noise_var)
+		return gaussian.GaussianLikelihood.apply(input, self.log_noise_var)
 
 	def __repr__(self):
 		return self.__class__.__name__

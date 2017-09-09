@@ -8,7 +8,7 @@ class ConstantMean(Function):
 	def forward(ctx, input, const_mean):
 		ctx.save_for_backward(input, const_mean)
 
-		return const_mean.repeat(input.size(0))
+		return const_mean.repeat(input.size(0), 1)
 
 	@staticmethod
 	def backward(ctx, grad_output):
