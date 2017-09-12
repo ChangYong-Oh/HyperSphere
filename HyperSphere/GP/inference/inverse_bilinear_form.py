@@ -11,7 +11,9 @@ class InverseBilinearForm(Function):
 
 		ctx.save_for_backward(vec_left, matrix, vec_right)
 
-		return torch.mm(vec_left.t(), matrix.inverse()).mm(vec_right)
+		#TODO inverse() is unstable
+		vec_right_sol, _ = torch.gesv(vec_right, matrix)
+		return torch.mm(vec_left.t(), vec_right_sol)
 
 	@staticmethod
 	def backward(ctx, grad_output):
@@ -23,13 +25,14 @@ class InverseBilinearForm(Function):
 		vec_left, matrix, vec_right = ctx.saved_variables
 		grad_vec_left = grad_matrix = grad_vec_right = None
 
-		inverse_matrix = matrix.inverse()
+		vec_left_sol, _ = torch.gesv(vec_left, matrix)
+		vec_right_sol, _ = torch.gesv(vec_right, matrix)
 		if ctx.needs_input_grad[0]:
-			grad_vec_left = grad_output * torch.mm(inverse_matrix, vec_right)
+			grad_vec_left = grad_output * vec_right_sol
 		if ctx.needs_input_grad[1]:
-			grad_matrix = grad_output * -torch.mm(inverse_matrix, vec_left).mm(vec_right.t()).mm(inverse_matrix)
+			grad_matrix = grad_output * -torch.mm(vec_left_sol, vec_right_sol.t())
 		if ctx.needs_input_grad[2]:
-			grad_vec_right = grad_output * torch.mm(inverse_matrix, vec_left)
+			grad_vec_right = grad_output * vec_left_sol
 
 		return grad_vec_left, grad_matrix, grad_vec_right
 

@@ -9,16 +9,8 @@ class LogDeterminant(Function):
 	@staticmethod
 	def forward(ctx, matrix):
 		ctx.save_for_backward(matrix)
-		output = matrix[:1, :1].clone()
-		if matrix.is_cuda:
-			matrix = matrix.cpu()
-		if isinstance(matrix, Variable):
-			matrix = matrix.data
-		_, log_det = np.linalg.slogdet(matrix.numpy())
-
-		output[0, 0] = float(log_det)
-
-		return output
+		# To make Cholesky decomposition consider upper and lower parts together
+		return 2.0 * torch.sum(torch.log(0.5 * torch.diag(torch.potrf(matrix, False)) + 0.5 * torch.diag(torch.potrf(matrix, True))), 0, True).view(1, 1)
 
 	@staticmethod
 	def backward(ctx, grad_output):
@@ -37,10 +29,12 @@ class LogDeterminant(Function):
 
 
 if __name__ == '__main__':
-	ndim = 5
+	ndim = 2
 	A = torch.randn(ndim, ndim)
-	matrix = Variable(A.mm(A.t()) + torch.eye(ndim), requires_grad=True)
+	matrix = Variable(A.mm(A.t()) + 2.0 * torch.eye(ndim), requires_grad=True)
+
+	eps = 1e-4
 
 	# gradcheck doesn't have to pass all the time.
-	test = gradcheck(LogDeterminant.apply, (matrix, ), eps=1e-4, atol=1e-3, rtol=1e-2)
+	test = gradcheck(LogDeterminant.apply, (matrix, ), eps=eps, atol=1e-3, rtol=1e-2)
 	print(test)
