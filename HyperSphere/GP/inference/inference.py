@@ -35,9 +35,11 @@ class Inference(nn.Module):
 		pred_var = kernel_on_identical - (shared_part.t() * k_pred_train).sum(1, keepdim=True)
 		return pred_mean, pred_var
 
-	def negative_log_likelihood(self):
+	def negative_log_likelihood(self, hyper=None):
+		if hyper is not None:
+			self.model.vec_to_param(hyper)
 		K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
-		return 0.5 * InverseBilinearForm.apply(self.train_y, K_noise, self.train_y) + 0.5 * LogDeterminant.apply(K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
+		return 0.5 * InverseBilinearForm.apply(self.train_y - self.model.mean(self.train_x), K_noise, self.train_y - self.model.mean(self.train_x)) + 0.5 * LogDeterminant.apply(K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 
 	def learning(self, n_restarts=10):
 		vec_list = []
@@ -64,7 +66,7 @@ class Inference(nn.Module):
 		return vec_list[best_ind[0]].unsqueeze(0)
 		# self.model.vec_to_param(vec_list[best_ind[0]])
 
-	def sampling(self, n_sample=5, n_burnin=100, n_thin=10):
+	def sampling(self, n_sample=10, n_burnin=100, n_thin=100):
 		likelihood_param_data = list(self.model.likelihood.parameters())[0].data
 		def logp(hyper):
 			if self.model.out_of_bounds(hyper):
@@ -74,7 +76,7 @@ class Inference(nn.Module):
 			likelihood = -self.negative_log_likelihood().data.squeeze()[0]
 			return prior + likelihood
 		start = self.model.param_to_vec()
-		print(list(self.model.named_parameters()))
+
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
 		sampler = smp.Slice(logp=logp, start={'hyper': (start.cpu() if start.is_cuda else start).numpy()})
@@ -88,12 +90,12 @@ if __name__ == '__main__':
 	from HyperSphere.GP.kernels.modules.squared_exponential import SquaredExponentialKernel
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	import matplotlib.pyplot as plt
-	ndata = 10
+	ndata = 20
 	ndim = 1
 	model_for_generating = GPRegression(kernel=SquaredExponentialKernel(ndim))
 	train_x = Variable(torch.FloatTensor(ndata, ndim).uniform_(-2, 2))
 	chol_L = torch.potrf((model_for_generating.kernel(train_x) + torch.diag(model_for_generating.likelihood(train_x))).data, upper=False)
-	train_y = torch.sin(2 * math.pi * torch.sum(train_x**2, 1, keepdim=True)**0.5) + model_for_generating.mean(train_x) + Variable(torch.mm(chol_L, torch.randn(ndata, 1)))
+	train_y = torch.sin(2 * math.pi * torch.sum(train_x, 1, keepdim=True)) + model_for_generating.mean(train_x) + Variable(torch.mm(chol_L, torch.randn(ndata, 1)))
 	train_data = (train_x, train_y)
 	generated_nll = Inference(train_data, model_for_generating).negative_log_likelihood().data[0, 0]
 

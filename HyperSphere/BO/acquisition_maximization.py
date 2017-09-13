@@ -43,9 +43,14 @@ if __name__ == '__main__':
 
 	ndata = 10
 	ndim = 1
+	model_for_generating = GPRegression(kernel=SquaredExponentialKernel(ndim))
 	train_x = Variable(torch.FloatTensor(ndata, ndim).uniform_(-2, 2))
-	train_y = torch.sin(4 * math.pi * torch.sum(train_x, 1, keepdim=True))
+	chol_L = torch.potrf(
+		(model_for_generating.kernel(train_x) + torch.diag(model_for_generating.likelihood(train_x))).data, upper=False)
+	train_y = torch.sin(2 * math.pi * torch.sum(train_x, 1, keepdim=True)) + model_for_generating.mean(
+		train_x) + Variable(torch.mm(chol_L, torch.randn(ndata, 1)))
 	train_data = (train_x, train_y)
+	param_original = model_for_generating.param_to_vec()
 	reference = torch.min(train_y.data)
 
 	model_for_learning = GPRegression(kernel=SquaredExponentialKernel(ndim))
@@ -65,9 +70,10 @@ if __name__ == '__main__':
 
 	if ndim == 1:
 		pred_x = torch.linspace(-2.5, 2.5, 100).view(-1, 1)
-		fig, axes = plt.subplots(nrows=2, ncols=2, sharex=True, sharey='row')
+		fig, axes = plt.subplots(nrows=2, ncols=3, sharex=True, sharey='row')
 
-		pred_mean, pred_var = inference.predict(Variable(pred_x), param_samples_learning[0])
+		pred_mean, pred_var = inference.predict(Variable(pred_x), param_original)
+		nll = inference.negative_log_likelihood(param_original).data.squeeze()[0]
 		pred_std = torch.sqrt(pred_var)
 		pred_mean = pred_mean.data
 		pred_var = pred_var.data
@@ -75,27 +81,21 @@ if __name__ == '__main__':
 		axes[0, 0].plot(train_x.data.numpy().flatten(), train_y.data.numpy().flatten(), '+')
 		axes[0, 0].plot(pred_x.numpy().flatten(), pred_mean.numpy().flatten(), 'b')
 		axes[0, 0].fill_between(pred_x.numpy().flatten(), (pred_mean - pred_std).numpy().flatten(),
-		                     (pred_mean + pred_std).numpy().flatten(), facecolor='green', alpha=0.2)
+		                        (pred_mean + pred_std).numpy().flatten(), facecolor='green', alpha=0.2)
 		axes[0, 0].fill_between(pred_x.numpy().flatten(), (pred_mean - 1.96 * pred_std).numpy().flatten(),
-		                     (pred_mean + 1.96 * pred_std).numpy().flatten(), facecolor='green', alpha=0.2)
+		                        (pred_mean + 1.96 * pred_std).numpy().flatten(), facecolor='green', alpha=0.2)
 		axes[0, 0].axhline(reference, ls='--', alpha=0.5)
-		axes[0, 0].set_title('Optimized')
-		acq = acquisition(Variable(pred_x), inference, param_samples_learning, acquisition_function=expected_improvement, reference=reference).data
-		print(acquisition)
+		axes[0, 0].set_title('Original\n%.4E' % nll)
+		acq = acquisition(Variable(pred_x), inference, param_original.unsqueeze(0),
+		                  acquisition_function=expected_improvement, reference=reference).data
 		axes[1, 0].fill_between(pred_x.numpy().flatten(), 0, acq.numpy().flatten())
 
-		pred_mean = 0
-		pred_var = 0
-		pred_std = 0
-		for s in range(param_samples_sampling.size()[0]):
-			pred_mean_sample, pred_var_sample = inference.predict(Variable(pred_x), param_samples_sampling[s])
-			pred_std_sample = torch.sqrt(pred_var_sample)
-			pred_mean += pred_mean_sample.data
-			pred_var += pred_var_sample.data
-			pred_std += pred_std_sample.data
-		pred_mean /= param_samples_sampling.size()[0]
-		pred_var /= param_samples_sampling.size()[0]
-		pred_std /= param_samples_sampling.size()[0]
+		pred_mean, pred_var = inference.predict(Variable(pred_x), param_samples_learning[0])
+		nll = inference.negative_log_likelihood(param_samples_learning[0]).data.squeeze()[0]
+		pred_std = torch.sqrt(pred_var)
+		pred_mean = pred_mean.data
+		pred_var = pred_var.data
+		pred_std = pred_std.data
 		axes[0, 1].plot(train_x.data.numpy().flatten(), train_y.data.numpy().flatten(), '+')
 		axes[0, 1].plot(pred_x.numpy().flatten(), pred_mean.numpy().flatten(), 'b')
 		axes[0, 1].fill_between(pred_x.numpy().flatten(), (pred_mean - pred_std).numpy().flatten(),
@@ -103,8 +103,33 @@ if __name__ == '__main__':
 		axes[0, 1].fill_between(pred_x.numpy().flatten(), (pred_mean - 1.96 * pred_std).numpy().flatten(),
 		                     (pred_mean + 1.96 * pred_std).numpy().flatten(), facecolor='green', alpha=0.2)
 		axes[0, 1].axhline(reference, ls='--', alpha=0.5)
-		axes[0, 1].set_title('Sampled')
-		acq = acquisition(Variable(pred_x), inference, param_samples_sampling, acquisition_function=expected_improvement, reference=reference).data
+		axes[0, 1].set_title('Optimized')
+		acq = acquisition(Variable(pred_x), inference, param_samples_learning, acquisition_function=expected_improvement, reference=reference).data
 		axes[1, 1].fill_between(pred_x.numpy().flatten(), 0, acq.numpy().flatten())
+
+		pred_mean = 0
+		pred_var = 0
+		nll = 0
+		pred_std = 0
+		for s in range(param_samples_sampling.size()[0]):
+			pred_mean_sample, pred_var_sample = inference.predict(Variable(pred_x), param_samples_sampling[s])
+			pred_std_sample = torch.sqrt(pred_var_sample)
+			pred_mean += pred_mean_sample.data
+			pred_var += pred_var_sample.data
+			nll += inference.negative_log_likelihood(param_samples_sampling[s]).data.squeeze()[0]
+			pred_std += pred_std_sample.data
+		pred_mean /= param_samples_sampling.size()[0]
+		pred_var /= param_samples_sampling.size()[0]
+		pred_std /= param_samples_sampling.size()[0]
+		axes[0, 2].plot(train_x.data.numpy().flatten(), train_y.data.numpy().flatten(), '+')
+		axes[0, 2].plot(pred_x.numpy().flatten(), pred_mean.numpy().flatten(), 'b')
+		axes[0, 2].fill_between(pred_x.numpy().flatten(), (pred_mean - pred_std).numpy().flatten(),
+		                     (pred_mean + pred_std).numpy().flatten(), facecolor='green', alpha=0.2)
+		axes[0, 2].fill_between(pred_x.numpy().flatten(), (pred_mean - 1.96 * pred_std).numpy().flatten(),
+		                     (pred_mean + 1.96 * pred_std).numpy().flatten(), facecolor='green', alpha=0.2)
+		axes[0, 2].axhline(reference, ls='--', alpha=0.5)
+		axes[0, 2].set_title('Sampled')
+		acq = acquisition(Variable(pred_x), inference, param_samples_sampling, acquisition_function=expected_improvement, reference=reference).data
+		axes[1, 2].fill_between(pred_x.numpy().flatten(), 0, acq.numpy().flatten())
 
 		plt.show()
