@@ -18,8 +18,14 @@ class SquaredExponentialKernel(Module):
 		self.reset_parameters()
 
 	def reset_parameters(self):
-		self.log_amp.data.normal_(std=2.0)
-		self.log_ls.data.normal_(std=2.0)
+		self.log_amp.data.normal_()
+		self.log_ls.data = torch.FloatTensor(self.ndim).uniform_(0, 2).log().type_as(self.log_ls.data)
+
+	def out_of_bounds(self, vec=None):
+		if vec is None:
+			return (self.log_ls.data > math.log(10)).any() or (self.log_ls.data < math.log(0.0001)).any()
+		else:
+			return (vec[1:] > math.log(10)).any() or (vec < math.log(0.0001)).any()
 
 	def n_params(self):
 		return 1 + self.ndim
@@ -32,7 +38,7 @@ class SquaredExponentialKernel(Module):
 		self.log_ls.data = vec[1:]
 
 	def prior(self, vec):
-		return smp.normal(vec[0:1], mu=0.0, sig=2.0) + smp.normal(vec[1:], mu=0.0, sig=2.0)
+		return smp.normal(vec[0:1]) + smp.normal(vec[1:], mu=0.0, sig=2.0)
 
 	def forward(self, input1, input2=None):
 		stabilizer = 0

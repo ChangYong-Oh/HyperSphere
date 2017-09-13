@@ -52,12 +52,12 @@ if __name__ == '__main__':
 	n1 = 3
 	n2 = 4
 	ndim = 5
-	input_grad = True
+	input_grad = False
 	param_grad = not input_grad
 	input1 = Variable(torch.randn(n1, ndim), requires_grad=input_grad)
 	input2 = Variable(torch.randn(n2, ndim), requires_grad=input_grad)
 	log_amp = Variable(torch.randn(1), requires_grad=param_grad)
 	log_ls = Variable(torch.randn(ndim), requires_grad=param_grad)
 	# gradcheck doesn't have to pass all the time.
-	test = gradcheck(SquaredExponentialKernel.apply, (input1, input2, log_amp, log_ls), eps=1e-4, atol=1e-3, rtol=1e-2)
+	test = gradcheck(SquaredExponentialKernel.apply, (input1, input2, log_amp, log_ls), eps=1e-5, atol=1e-3, rtol=1e-2)
 	print(test)

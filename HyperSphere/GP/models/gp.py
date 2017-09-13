@@ -10,6 +10,20 @@ class GP(nn.Module):
 		for m in self.children():
 			m.reset_parameters()
 
+	def out_of_bounds(self, vec=None):
+		if vec is None:
+			for m in self.children():
+				if m.out_of_bounds():
+					return True
+			return False
+		else:
+			ind = 0
+			for m in self.children():
+				jump = m.n_params()
+				if m.out_of_bounds(vec[ind:ind + jump]):
+					return True
+			return False
+
 	def n_param(self):
 		cnt = 0
 		for param in self.parameters():

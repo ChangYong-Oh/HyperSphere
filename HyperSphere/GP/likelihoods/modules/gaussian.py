@@ -15,7 +15,13 @@ class GaussianLikelihood(Module):
 		self.reset_parameters()
 
 	def reset_parameters(self):
-		self.log_noise_var.data.normal_(std=2.0)
+		self.log_noise_var.data.normal_(std=1.0)
+
+	def out_of_bounds(self, vec=None):
+		if vec is None:
+			return (self.log_noise_var.data > math.log(1000)).any()
+		else:
+			return (vec > math.log(1000)).any()
 
 	def n_params(self):
 		return 1

@@ -15,7 +15,13 @@ class ConstantMean(Module):
 		self.reset_parameters()
 
 	def reset_parameters(self):
-		self.const_mean.data.normal_(std=2.0)
+		self.const_mean.data.normal_(std=10.0) # approximation to uniform
+
+	def out_of_bounds(self, vec=None):
+		if vec is None:
+			return False
+		else:
+			return False
 
 	def n_params(self):
 		return 1
@@ -27,7 +33,7 @@ class ConstantMean(Module):
 		self.const_mean.data = vec
 
 	def prior(self, vec):
-		return smp.normal(vec, mu=0.0, sig=2.0)
+		return 0
 
 	def forward(self, input):
 		return constant.ConstantMean.apply(input, self.const_mean)

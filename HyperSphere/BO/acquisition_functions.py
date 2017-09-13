@@ -2,10 +2,7 @@ import math
 
 import torch
 
-
-def norm_cdf(x, mu=0.0, var=1.0):
-	z = (x - mu) / var ** 0.5
-	return 1.0 / (1.0 + torch.exp(-math.pi ** 0.5 * (-0.0004406 * z ** 5 + 0.0418198 * z ** 3 + 0.9 * z)))
+from HyperSphere.BO.normal_cdf import norm_cdf
 
 
 def norm_pdf(x, mu=0.0, var=1.0):
@@ -13,8 +10,22 @@ def norm_pdf(x, mu=0.0, var=1.0):
 
 
 def expected_improvement(mean, var, reference):
-	std = torch.sqrt(var + 1e-6)
+	std = torch.sqrt(var)
 	standardized = (-mean + reference) / std
-	return std * norm_pdf(standardized) + (-mean + reference) * norm_cdf(standardized)
+	return var * norm_pdf(standardized) + (-mean + reference) * norm_cdf(standardized)
 
 
+if __name__ == '__main__':
+	import matplotlib.pyplot as plt
+	from scipy.stats import norm
+	x = torch.linspace(2, 3, 200)
+	y1 = norm_cdf(x)
+	y2 = norm.cdf(x.numpy())
+	plt.plot(x.numpy(), y1.numpy(), label='approximate')
+	plt.plot(x.numpy(), y2, ':', label='exact')
+	z1 = norm_pdf(x)
+	z2 = norm.pdf(x.numpy())
+	plt.plot(x.numpy(), z1.numpy(), label='approximate')
+	plt.plot(x.numpy(), z2, ':', label='exact')
+	plt.legend()
+	plt.show()

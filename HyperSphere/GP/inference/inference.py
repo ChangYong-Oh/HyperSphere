@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import sampyl as smp
 
 import torch
@@ -50,7 +51,7 @@ class Inference(nn.Module):
 			# This block can be modified to use other optimization method
 			n_step = 100
 			optimizer = optim.Adam(self.model.parameters(), lr=0.01)
-			for s in range(n_step):
+			for _ in range(n_step):
 				optimizer.zero_grad()
 				loss = self.negative_log_likelihood()
 				loss.backward(retain_graph=True)
@@ -66,12 +67,14 @@ class Inference(nn.Module):
 	def sampling(self, n_sample=5, n_burnin=100, n_thin=10):
 		likelihood_param_data = list(self.model.likelihood.parameters())[0].data
 		def logp(hyper):
+			if self.model.out_of_bounds(hyper):
+				return -np.inf
 			prior = self.model.prior(hyper)
 			self.model.vec_to_param(torch.from_numpy(hyper).type_as(likelihood_param_data))
 			likelihood = -self.negative_log_likelihood().data.squeeze()[0]
 			return prior + likelihood
 		start = self.model.param_to_vec()
-
+		print(list(self.model.named_parameters()))
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
 		sampler = smp.Slice(logp=logp, start={'hyper': (start.cpu() if start.is_cuda else start).numpy()})
@@ -85,7 +88,7 @@ if __name__ == '__main__':
 	from HyperSphere.GP.kernels.modules.squared_exponential import SquaredExponentialKernel
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	import matplotlib.pyplot as plt
-	ndata = 50
+	ndata = 10
 	ndim = 1
 	model_for_generating = GPRegression(kernel=SquaredExponentialKernel(ndim))
 	train_x = Variable(torch.FloatTensor(ndata, ndim).uniform_(-2, 2))
@@ -98,8 +101,16 @@ if __name__ == '__main__':
 	inference = Inference(train_data, model_for_learning)
 	param_original = model_for_generating.param_to_vec()
 	inference.reset_parameters()
+	model_for_learning.kernel.log_amp.data[:] = np.log(torch.std(train_y.data))
+	model_for_learning.kernel.log_ls.data[:] = 0.0
+	model_for_learning.mean.const_mean.data[:] = torch.mean(train_y.data)
+	model_for_learning.likelihood.log_noise_var.data[:] = np.log(0.001)
 	param_samples_learning = inference.learning(n_restarts=10)
 	inference.reset_parameters()
+	model_for_learning.kernel.log_amp.data[:] = np.log(torch.std(train_y.data))
+	model_for_learning.kernel.log_ls.data[:] = 0.0
+	model_for_learning.mean.const_mean.data[:] = torch.mean(train_y.data)
+	model_for_learning.likelihood.log_noise_var.data[:] = np.log(0.001)
 	param_samples_sampling = inference.sampling()
 
 	if ndim == 1:
