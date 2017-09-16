@@ -1,13 +1,10 @@
-import math
-import sampyl as smp
-
 import torch
 from torch.nn.parameter import Parameter
-from torch.nn.modules.module import Module
+from HyperSphere.GP.means.modules.mean import Mean
 from HyperSphere.GP.means.functions import constant
 
 
-class ConstantMean(Module):
+class ConstantMean(Mean):
 
 	def __init__(self):
 		super(ConstantMean, self).__init__()

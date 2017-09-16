@@ -1,8 +1,8 @@
 import torch
-import torch.nn as nn
+from HyperSphere.GP.modules.gp_modules import GPModule
 
 
-class GP(nn.Module):
+class GP(GPModule):
 	def __init__(self, **kwargs):
 		super(GP, self).__init__()
 
@@ -41,6 +41,16 @@ class GP(nn.Module):
 		for m in self.children():
 			jump = m.n_params()
 			m.vec_to_param(vec[ind:ind+jump])
+			ind += jump
+
+	def elastic_vec_to_param(self, vec, func):
+		ind = 0
+		for name, m in self.named_children():
+			jump = m.n_params()
+			if name == 'kernel':
+				m.elastic_vec_to_param(vec[ind:ind + jump], func)
+			else:
+				m.vec_to_param(vec[ind:ind + jump])
 			ind += jump
 
 	def prior(self, vec):

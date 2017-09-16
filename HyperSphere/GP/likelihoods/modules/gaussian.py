@@ -3,11 +3,11 @@ import sampyl as smp
 
 import torch
 from torch.nn.parameter import Parameter
-from torch.nn.modules.module import Module
+from HyperSphere.GP.likelihoods.modules.likelihood import Likelihood
 from HyperSphere.GP.likelihoods.functions import gaussian
 
 
-class GaussianLikelihood(Module):
+class GaussianLikelihood(Likelihood):
 
 	def __init__(self):
 		super(GaussianLikelihood, self).__init__()
