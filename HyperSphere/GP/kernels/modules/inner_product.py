@@ -14,14 +14,14 @@ class InnerProductKernel(Kernel):
 		super(InnerProductKernel, self).__init__(ndim)
 		self.diag = diagonal
 		if diagonal:
-			self.sigma_chol_L = Parameter(torch.FloatTensor(ndim))
+			self.sigma_sqrt = Parameter(torch.FloatTensor(ndim))
 		else:
-			self.sigma_chol_L = Parameter(torch.FloatTensor(ndim * (ndim + 1) / 2))
+			self.sigma_sqrt = Parameter(torch.FloatTensor(ndim, ndim))
 		self.reset_parameters()
 
 	def reset_parameters(self):
 		super(InnerProductKernel, self).reset_parameters()
-		self.sigma_chol_L.data.normal_()
+		self.sigma_sqrt.data.normal_()
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
@@ -42,21 +42,13 @@ class InnerProductKernel(Kernel):
 	def prior(self, vec):
 		return super(InnerProductKernel, self).prior(vec[:1]) + smp.normal(vec[1:])
 
-	def chol_L_vec_to_tril(self):
-		tril_row_list = []
-		ind = 0
-		for r in range(self.ndim):
-			tril_row_list.append(torch.cat([self.sigma_chol_L[ind:ind+r+1], Variable(self.sigma_chol_L.data.new(self.ndim - r - 1).zero_())]))
-			ind += r+1
-		return torch.stack(tril_row_list, 0)
-
 	def forward(self, input1, input2=None):
 		stabilizer = 0
 		if input2 is None:
 			input2 = input1
 			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.log_amp.data[0]))))
-		gram_mat = inner_product.SquaredExponentialKernel.apply(input1, input2, self.log_amp, self.sigma_chol_L if self.diag else self.chol_L_vec_to_tril())
+		gram_mat = inner_product.InnerProductKernel.apply(input1, input2, self.log_amp, self.sigma_sqrt)
 		return gram_mat + stabilizer
 
 	def __repr__(self):
-		return self.__class__.__name__ + ' (' + 'dim=' + str(self.ndim) + ', diag=' + ('True' if self.sigma_chol_L.dim()==1 else 'False') + ')'
+		return self.__class__.__name__ + ' (' + 'dim=' + str(self.ndim) + ', diag=' + ('True' if self.sigma_sqrt.dim()==1 else 'False') + ')'

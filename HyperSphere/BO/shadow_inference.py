@@ -1,13 +1,4 @@
-import math
-import numpy as np
-import sampyl as smp
-
 import torch
-from torch.autograd import Variable
-import torch.nn as nn
-import torch.optim as optim
-from HyperSphere.GP.inference.inverse_bilinear_form import InverseBilinearForm
-from HyperSphere.GP.inference.log_determinant import LogDeterminant
 from HyperSphere.GP.inference.inference import Inference
 
 
@@ -20,7 +11,10 @@ class ShadowInference(Inference):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)
 
-		shadow = None
+		shadow = pred_x.repeat(2, 1)
+		shadow[0, 0] = pred_x[0, 0] * 0
+		shadow[1, 0] = 2 - pred_x[0, 0]
+
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 		k_pred_shadow = self.model.kernel(pred_x, shadow)
 
@@ -35,10 +29,17 @@ class ShadowInference(Inference):
 		pred_var = kernel_on_identical - (shared_part.t() * k_pred_train).sum(1, keepdim=True)
 
 		K_Ainv_B, _ = torch.gesv(K_train_shadow, K_train_noise)
-		shadow_adjust_mat = K_shadow_noise - K_Ainv_B.t().mm(K_train_shadow)
-		shadow_adjust_vec = k_pred_train.mm(K_Ainv_B) - k_pred_shadow
-		shadow_adjust_sol, _ = torch.gesv(shadow_adjust_vec.t(), shadow_adjust_mat)
+		var_adjust_mat = K_shadow_noise - K_Ainv_B.t().mm(K_train_shadow)
+		var_adjust_vec = k_pred_train.mm(K_Ainv_B) - k_pred_shadow
+		var_adjust_sol, _ = torch.gesv(var_adjust_vec.t(), var_adjust_mat)
 
-		pred_var_shadow_adjustment = shadow_adjust_vec.mm(shadow_adjust_sol)
+		pred_var_adjustment = var_adjust_vec.mm(var_adjust_sol)
 
-		return pred_mean, pred_var - pred_var_shadow_adjustment
+		mean_adjust_mat = var_adjust_mat[0:1, 0:1]
+		mean_adjust_vec = k_pred_train.mm(K_Ainv_B[:, 0:1]) - k_pred_shadow[:, 0:1]
+		mean_adjust_sol, _ = torch.gesv(mean_adjust_vec.t(), mean_adjust_mat)
+
+		ind = torch.max(self.train_x[:, 0] == 0)
+		pred_mean_adjustment = mean_adjust_sol.mm(torch.cat([adjusted_y, self.train_y[ind:ind+1, 0:1] - self.model.mean(shadow[0:1])], 0))
+
+		return pred_mean - pred_mean_adjustment, pred_var - pred_var_adjustment
