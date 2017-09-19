@@ -38,6 +38,8 @@ def suggest(inference, param_samples, acquisition_function=expected_improvement,
 
 
 def acquisition(x, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
+	if param_samples.dim() == 1:
+		param_samples = param_samples.unsqueeze(0).clone()
 	acquisition_sample_list = []
 	for s in range(param_samples.size(0)):
 		pred_mean_sample, pred_var_sample = inference.predict(x, param_samples[s])

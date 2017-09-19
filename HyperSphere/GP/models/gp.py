@@ -8,7 +8,8 @@ class GP(GPModule):
 
 	def reset_parameters(self):
 		for m in self.children():
-			m.reset_parameters()
+			if hasattr(m, 'reset_parameters'):
+				m.reset_parameters()
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:

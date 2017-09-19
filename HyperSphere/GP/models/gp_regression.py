@@ -18,5 +18,4 @@ class GPRegression(GP):
 if __name__ == '__main__':
 	from HyperSphere.GP.kernels.modules.squared_exponential import SquaredExponentialKernel
 	GP = GPRegression(kernel=SquaredExponentialKernel(5))
-	print(list(GP.parameters()))
-	print(GP.param_to_vec())
+	print(list(GP.named_parameters()))

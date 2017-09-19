@@ -17,10 +17,10 @@ class Inference(nn.Module):
 		self.model = model
 		self.train_x = train_data[0]
 		self.train_y = train_data[1]
+		assert self.model.kernel.input_map(torch.ones(1, self.train_x.size(1))).numel() == model.kernel.ndim
 
 	def reset_parameters(self):
-		for m in self.model.children():
-			m.reset_parameters()
+		self.model.reset_parameters()
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
@@ -39,7 +39,7 @@ class Inference(nn.Module):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)
 		K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
-		adjusted_y =self.train_y - self.model.mean(self.train_x)
+		adjusted_y = self.train_y - self.model.mean(self.train_x)
 		return 0.5 * InverseBilinearForm.apply(adjusted_y, K_noise, adjusted_y) + 0.5 * LogDeterminant.apply(K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 
 	def learning(self, n_restarts=10):

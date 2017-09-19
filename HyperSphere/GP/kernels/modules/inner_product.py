@@ -10,8 +10,8 @@ from HyperSphere.GP.kernels.functions import inner_product
 
 class InnerProductKernel(Kernel):
 
-	def __init__(self, ndim, diagonal=True):
-		super(InnerProductKernel, self).__init__(ndim)
+	def __init__(self, ndim, input_map=lambda x: x, diagonal=True):
+		super(InnerProductKernel, self).__init__(ndim, input_map)
 		self.diag = diagonal
 		if diagonal:
 			self.sigma_sqrt = Parameter(torch.FloatTensor(ndim))
@@ -37,7 +37,7 @@ class InnerProductKernel(Kernel):
 
 	def vec_to_param(self, vec):
 		self.log_amp.data = vec[0:1]
-		self.sigma_chol.data = vec[1:]
+		self.sigma_sqrt.data = vec[1:]
 
 	def prior(self, vec):
 		return super(InnerProductKernel, self).prior(vec[:1]) + smp.normal(vec[1:])
@@ -47,7 +47,7 @@ class InnerProductKernel(Kernel):
 		if input2 is None:
 			input2 = input1
 			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.log_amp.data[0]))))
-		gram_mat = inner_product.InnerProductKernel.apply(input1, input2, self.log_amp, self.sigma_sqrt)
+		gram_mat = inner_product.InnerProductKernel.apply(self.input_map(input1), self.input_map(input2), self.log_amp, self.sigma_sqrt if self.diag else self.sigma_sqrt.view(self.ndim, self.ndim))
 		return gram_mat + stabilizer
 
 	def __repr__(self):

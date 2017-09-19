@@ -8,8 +8,8 @@ from HyperSphere.GP.kernels.functions import matern52
 
 class Matern52(Stationary):
 
-	def __init__(self, ndim):
-		super(Matern52, self).__init__(ndim)
+	def __init__(self, ndim, input_map=lambda x: x):
+		super(Matern52, self).__init__(ndim, input_map)
 		self.reset_parameters()
 
 	def reset_parameters(self):
@@ -20,7 +20,7 @@ class Matern52(Stationary):
 		if input2 is None:
 			input2 = input1
 			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.log_amp.data[0]))))
-		gram_mat = matern52.Matern52.apply(input1, input2, self.log_amp, self.log_ls)
+		gram_mat = matern52.Matern52.apply(self.input_map(input1), self.input_map(input2), self.log_amp, self.log_ls)
 		return gram_mat + stabilizer
 
 	def __repr__(self):
