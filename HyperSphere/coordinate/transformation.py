@@ -8,7 +8,8 @@ def rect2spherical(x):
 	reverse_ind = torch.arange(n_dim-1, -1, -1).type(torch.LongTensor)
 	x_sq_accum = torch.sqrt(torch.cumsum((x**2)[:, reverse_ind], dim=1)[:, reverse_ind])
 	rphi = torch.cat((x_sq_accum[:, [0]], x[:, 0:n_dim-1]), dim=1)
-	rphi[:, 1:n_dim-1] = torch.acos(x[:, 0:n_dim-2]/x_sq_accum[:, 0:n_dim-2])
+	if n_dim > 2:
+		rphi[:, 1:n_dim-1] = torch.acos(x[:, 0:n_dim-2]/x_sq_accum[:, 0:n_dim-2])
 	rphi[:, -1] = math.pi - 2 * torch.atan((x[:, -2] + x_sq_accum[:, -2]) / x[:, -1])
 	return rphi
 
