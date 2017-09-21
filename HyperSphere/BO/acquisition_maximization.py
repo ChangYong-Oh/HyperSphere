@@ -13,8 +13,9 @@ from HyperSphere.BO.acquisition_functions import expected_improvement
 
 def suggest(inference, param_samples, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
 	x = Variable(torch.FloatTensor(1, inference.train_x.size(1)), requires_grad=True)
-	lower_bnd = bounds[0]
-	upper_bnd = bounds[1]
+	if bounds is not None:
+		lower_bnd = bounds[0]
+		upper_bnd = bounds[1]
 
 	###--------------------------------------------------###
 	# This block can be modified to use other optimization method

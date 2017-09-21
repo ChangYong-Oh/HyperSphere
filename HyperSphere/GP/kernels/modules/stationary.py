@@ -19,10 +19,10 @@ class Stationary(Kernel):
 	def out_of_bounds(self, vec=None):
 		if vec is None:
 			if not super(Stationary, self).out_of_bounds(self.log_amp):
-				return (self.log_ls.data > math.log(10)).any() or (self.log_ls.data < math.log(0.0001)).any()
+				return (self.log_ls.data > math.log(4)).any() or (self.log_ls.data < math.log(0.0001)).any()
 		else:
 			if not super(Stationary, self).out_of_bounds(vec[:1]):
-				return (vec[1:] > math.log(10)).any() or (vec < math.log(0.0001)).any()
+				return (vec[1:] > math.log(4)).any() or (vec < math.log(0.0001)).any()
 		return True
 
 	def n_params(self):

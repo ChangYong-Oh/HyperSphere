@@ -17,7 +17,6 @@ class InnerProductKernel(Kernel):
 			self.sigma_sqrt = Parameter(torch.FloatTensor(ndim))
 		else:
 			self.sigma_sqrt = Parameter(torch.FloatTensor(ndim, ndim))
-		self.reset_parameters()
 
 	def reset_parameters(self):
 		super(InnerProductKernel, self).reset_parameters()

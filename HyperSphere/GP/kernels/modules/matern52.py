@@ -10,7 +10,6 @@ class Matern52(Stationary):
 
 	def __init__(self, ndim, input_map=lambda x: x):
 		super(Matern52, self).__init__(ndim, input_map)
-		self.reset_parameters()
 
 	def reset_parameters(self):
 		super(Matern52, self).reset_parameters()

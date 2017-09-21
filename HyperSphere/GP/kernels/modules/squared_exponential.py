@@ -10,7 +10,6 @@ class SquaredExponentialKernel(Stationary):
 
 	def __init__(self, ndim, input_map=lambda x: x):
 		super(SquaredExponentialKernel, self).__init__(ndim, input_map)
-		self.reset_parameters()
 
 	def reset_parameters(self):
 		super(SquaredExponentialKernel, self).reset_parameters()

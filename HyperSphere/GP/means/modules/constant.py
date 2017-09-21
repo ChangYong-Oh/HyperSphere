@@ -9,7 +9,6 @@ class ConstantMean(Mean):
 	def __init__(self):
 		super(ConstantMean, self).__init__()
 		self.const_mean = Parameter(torch.FloatTensor(1))
-		self.reset_parameters()
 
 	def reset_parameters(self):
 		self.const_mean.data.normal_(std=10.0) # approximation to uniform

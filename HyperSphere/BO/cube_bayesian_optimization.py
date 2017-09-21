@@ -28,6 +28,10 @@ def cube_BO(func, n_eval=200):
 
 	kernel = Matern52(ndim=ndim)
 	model = GPRegression(kernel=kernel)
+	model.kernel.log_amp.data = torch.std(output).log().data + 1e-4
+	model.kernel.log_ls.data.fill_(0)
+	model.mean.const_mean.data.fill_(torch.mean(output.data))
+	model.likelihood.log_noise_var.data.fill_(-3)
 
 	time_list = [time.time()] * 2
 	elapes_list = [0, 0]
@@ -35,7 +39,7 @@ def cube_BO(func, n_eval=200):
 	inference = Inference((rectangle_input, output), model)
 	inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
-	for e in range(n_eval):
+	for e in range(output.numel(), n_eval):
 		inference = Inference((rectangle_input, output), model)
 		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
