@@ -1,10 +1,9 @@
-import math
+import progressbar
 
 import numpy as np
 
 import torch
 from torch.autograd import Variable
-import torch.autograd as autograd
 import torch.optim as optim
 
 from HyperSphere.GP.inference.inference import Inference
@@ -17,13 +16,15 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		lower_bnd = bounds[0]
 		upper_bnd = bounds[1]
 
-	###--------------------------------------------------###
-	# This block can be modified to use other optimization method
+	bar = progressbar.ProgressBar(max_value=x0.size(0))
+	bar.update(0)
 	n_step = 100
 	local_optima = []
 	optima_value = []
 	for i in range(x0.size(0)):
 		x.data = x0[i].view(1, -1)
+		###--------------------------------------------------###
+		# This block can be modified to use other optimization method
 		optimizer = optim.Adam([x], lr=0.01)
 		for _ in range(n_step):
 			optimizer.zero_grad()
@@ -35,6 +36,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 				x.data[x.data > upper_bnd] = upper_bnd[x.data > upper_bnd]
 				break
 		###--------------------------------------------------###
+		bar.update(i+1)
 		local_optima.append(x.data.clone())
 		optima_value.append(-acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
 	return local_optima[np.argmin(optima_value)]
