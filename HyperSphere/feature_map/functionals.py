@@ -6,7 +6,7 @@ import torch
 def rphi_periodize(rphi, radius=1.0):
 	return torch.cat([torch.abs(torch.sin(rphi[:, [0]]/radius * math.pi * 0.5)), torch.cos(rphi[:, 1:] * math.pi), torch.sin(rphi[:, -1:] * 2 * math.pi)], 1)
 
-rphi_periodize.dim_change = 1
+rphi_periodize.dim_change = lambda x: x+1
 
 
 def rphi_periodize_lp(rphi, radius=1.0, p=3):

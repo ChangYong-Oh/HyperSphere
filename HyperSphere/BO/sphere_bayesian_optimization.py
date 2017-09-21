@@ -17,18 +17,18 @@ from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimiz
 
 
 def sphere_BO(func, n_eval=200):
-	n_spray = 10
+	n_spray = 0
 	n_random = 10
 
 	ndim = func.dim
-	search_cube_half_sidelength = 1
-	search_rphi_radius = 1
+	search_rphi_radius = 1.0
 
 	rphi_sidelength = Variable(torch.ones(ndim) * math.pi)
 	rphi_sidelength.data[0] = search_rphi_radius
 	rphi_sidelength.data[-1] *= 2
 
-	rectangle_input = Variable(torch.ger(torch.FloatTensor([0, min(search_rphi_radius / ndim ** 0.5, search_cube_half_sidelength)]), torch.ones(ndim)))
+	rectangle_input = Variable(torch.zeros(2, ndim))
+	rectangle_input.data[1, -2] = search_rphi_radius / 2.0
 	output = Variable(torch.zeros(rectangle_input.size(0), 1))
 
 	for i in range(rectangle_input.size(0)):
