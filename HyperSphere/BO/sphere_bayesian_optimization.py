@@ -21,26 +21,26 @@ def sphere_BO(func, n_eval=200):
 	n_random = 10
 
 	ndim = func.dim
-	search_rphi_radius = 1.0
+	search_rphi_radius = ndim ** 0.5
 
 	rphi_sidelength = Variable(torch.ones(ndim) * math.pi)
 	rphi_sidelength.data[0] = search_rphi_radius
 	rphi_sidelength.data[-1] *= 2
 
-	rectangle_input = Variable(torch.zeros(2, ndim))
-	rectangle_input.data[1, -2] = -search_rphi_radius / 2.0
-	rphi_input = rect2spherical(rectangle_input)
+	x_input = Variable(torch.zeros(2, ndim))
+	x_input.data[1, -2] = search_rphi_radius / 2.0
+	rphi_input = rect2spherical(x_input)
 	rphi_input[rphi_input != rphi_input] = 0
 	phi_input = rphi_input / search_rphi_radius
 	phi_input[:, 0] = torch.asin(phi_input[:, 0]) * 2 / math.pi
 
-	output = Variable(torch.zeros(rectangle_input.size(0), 1))
-	for i in range(rectangle_input.size(0)):
-		output[i] = func(rectangle_input[i])
+	output = Variable(torch.zeros(x_input.size(0), 1))
+	for i in range(x_input.size(0)):
+		output[i] = func(x_input[i])
 
 	kernel_input_map = phi_periodize_one
 
-	kernel = Matern52(ndim=ndim + kernel_input_map.dim_change, input_map=kernel_input_map)
+	kernel = Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map)
 	model = GPRegression(kernel=kernel)
 	model_param_init(model, output)
 

@@ -38,7 +38,7 @@ rphi_periodize_one.dim_change = rphi_periodize.dim_change
 def phi_periodize(phi):
 	return torch.cat([torch.abs(torch.sin(phi[:, [0]] * math.pi * 0.5)), torch.cos(phi[:, 1:] * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)
 
-phi_periodize.dim_change = 1
+phi_periodize.dim_change = lambda x: x+1
 
 
 def phi_periodize_lp(phi, p=3):
@@ -55,11 +55,11 @@ def phi_periodize_sin(phi):
 phi_periodize_sin.dim_change = phi_periodize.dim_change
 
 
-def phi_periodize_one(phi, inflection=0.5):
+def phi_periodize_one(phi, inflection=0.1):
 	r = torch.abs(torch.sin(phi[:, 0] * math.pi * 0.5))
 	multiplier = r.clone() * 0 + 1
 	ind_small = r < inflection
-	multiplier[ind_small] = torch.sin(r[ind_small] * math.pi * 0.25 / inflection)
+	multiplier[ind_small] = torch.sin(r[ind_small] * math.pi * 0.5 / inflection)
 	return phi_periodize(phi) * multiplier.view(-1, 1)
 
 
