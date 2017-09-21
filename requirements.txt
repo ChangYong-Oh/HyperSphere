@@ -21,7 +21,7 @@ pytest==3.1.2
 python-dateutil==2.6.0
 pytz==2017.2
 PyYAML==3.12
--e git+https://github.com/mcleonard/sampyl
+-e git+https://github.com/mcleonard/sampyl#egg_sampyl
 scipy==0.19.1
 si-prefix==0.4.post10
 six==1.10.0
