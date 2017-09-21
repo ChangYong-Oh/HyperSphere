@@ -17,7 +17,7 @@ from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimiz
 
 
 def sphere_BO(func, n_eval=200):
-	n_spray = 0
+	n_spray = 10
 	n_random = 10
 
 	ndim = func.dim
@@ -28,15 +28,15 @@ def sphere_BO(func, n_eval=200):
 	rphi_sidelength.data[-1] *= 2
 
 	rectangle_input = Variable(torch.zeros(2, ndim))
-	rectangle_input.data[1, -2] = search_rphi_radius / 2.0
-	output = Variable(torch.zeros(rectangle_input.size(0), 1))
-
-	for i in range(rectangle_input.size(0)):
-		output[i] = func(rectangle_input[i])
+	rectangle_input.data[1, -2] = -search_rphi_radius / 2.0
 	rphi_input = rect2spherical(rectangle_input)
 	rphi_input[rphi_input != rphi_input] = 0
 	phi_input = rphi_input / search_rphi_radius
 	phi_input[:, 0] = torch.asin(phi_input[:, 0]) * 2 / math.pi
+
+	output = Variable(torch.zeros(rectangle_input.size(0), 1))
+	for i in range(rectangle_input.size(0)):
+		output[i] = func(rectangle_input[i])
 
 	kernel_input_map = phi_periodize_one
 

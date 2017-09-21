@@ -10,7 +10,11 @@ def rect2spherical(x):
 	rphi = torch.cat((x_sq_accum[:, [0]], x[:, 0:n_dim-1]), dim=1)
 	if n_dim > 2:
 		rphi[:, 1:n_dim-1] = torch.acos(x[:, 0:n_dim-2]/x_sq_accum[:, 0:n_dim-2])
-	rphi[:, -1] = math.pi - 2 * torch.atan((x[:, -2] + x_sq_accum[:, -2]) / x[:, -1])
+	rphi[:, -1] = torch.acos(x[:, -2] / x_sq_accum[:, -2])
+	if hasattr(x, 'data'):
+		rphi.data[:, -1][x.data[:, -1] < 0] = 2 * math.pi - rphi.data[:, -1][x.data[:, -1] < 0]
+	else:
+		rphi[:, -1][x[:, -1] < 0] = 2 * math.pi - rphi[:, -1][x[:, -1] < 0]
 	return rphi
 
 
