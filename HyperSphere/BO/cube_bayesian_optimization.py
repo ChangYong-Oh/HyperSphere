@@ -1,9 +1,7 @@
 import time
 
-import numpy as np
 from torch.autograd import Variable
 
-from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.inference.inference import Inference
@@ -42,7 +40,7 @@ def cube_BO(func, n_eval=200):
 		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
 		_, min_ind = torch.min(output.data, 0)
-		x0_spray = rectangle_input.data[min_ind].view(1, -1).repeat(n_spray, 1) + rectangle_input.data.new(n_spray, ndim).normal_() * 0.2 * (upper_bnd - lower_bnd)
+		x0_spray = rectangle_input.data[min_ind].view(1, -1).repeat(n_spray, 1) + rectangle_input.data.new(n_spray, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
 		x0_random = rectangle_input.data.new(n_random, ndim).uniform_() * (upper_bnd - lower_bnd) + lower_bnd
 		x0 = torch.cat([x0_spray, x0_random], 0)
 		x0[x0 < lower_bnd] = lower_bnd.view(1, -1).repeat(n_spray + n_random, 1)[x0 < lower_bnd]
