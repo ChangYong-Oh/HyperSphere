@@ -3,9 +3,18 @@ import torch
 
 
 def branin(x):
+	"""
+	
+	:param x: range : [-1, 1] 
+	:return: 
+	"""
 	flat = x.dim() == 1
 	if flat:
 		x = x.view(1, -1)
+	if hasattr(x, 'data'):
+		x.data = x.data * 7.5 + torch.FloatTensor([2.5, 7.5]).type_as(x.data)
+	else:
+		x = x * 7.5 + torch.FloatTensor([2.5, 7.5]).type_as(x)
 	a = 1
 	b = 5.1/(4 * math.pi**2)
 	c = 5.0 / math.pi

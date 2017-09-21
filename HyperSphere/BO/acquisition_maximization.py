@@ -11,26 +11,28 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.acquisition_functions import expected_improvement
 
 
-def suggest(inference, param_samples, acquisition_function=expected_improvement, **kwargs):
-	assert isinstance(inference, Inference)
-
+def suggest(inference, param_samples, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
 	x = Variable(torch.FloatTensor(1, inference.train_x.size(1)), requires_grad=True)
+	lower_bnd = bounds[0]
+	upper_bnd = bounds[1]
 
 	###--------------------------------------------------###
 	# This block can be modified to use other optimization method
-	n_init = 5
 	n_step = 100
 	local_optima = []
 	optima_value = []
-	for _ in range(n_init):
-		x.data.normal_()
+	for i in range(x0.size(0)):
+		x.data = x0[i].view(1, -1)
 		optimizer = optim.Adam([x], lr=0.01)
 		for _ in range(n_step):
 			optimizer.zero_grad()
-			# x.grad = autograd.grad(-acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs), x)[0]
 			loss = -acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs)
 			loss.backward(retain_graph=True)
 			optimizer.step()
+			if bounds is not None and ((x.data < lower_bnd).any() or (x.data > upper_bnd).any()):
+				x.data[x.data < lower_bnd] = lower_bnd[x.data < lower_bnd]
+				x.data[x.data > upper_bnd] = upper_bnd[x.data > upper_bnd]
+				break
 		###--------------------------------------------------###
 		local_optima.append(x.data.clone())
 		optima_value.append(-acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
