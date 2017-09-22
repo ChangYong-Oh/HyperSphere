@@ -17,8 +17,8 @@ from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimiz
 
 
 def sphere_BO(func, n_eval=200):
-	n_spray = 5
-	n_random = 5
+	n_spray = 10
+	n_random = 10
 
 	ndim = func.dim
 	search_sphere_radius = ndim ** 0.5
@@ -87,7 +87,7 @@ def sphere_BO(func, n_eval=200):
 			sphr_str = ('%+.4f/' % rphi_input.data[d, 0]) + '/'.join(['%+.3fpi' % (rphi_input.data[d, i]/math.pi) for i in range(1, rphi_input.size(1))])
 			rect_str = '/'.join(['%+.4f' % x_input.data[d, i] for i in range(0, x_input.size(1))])
 			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[d])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapes_list[d])) +')  '
-			print(('%4d : ' % (d+1)) + time_str + rect_str + ' & ' + sphr_str + '    =>' + ('%12.6f' % output.data[d].squeeze()[0]))
+			print(('%4d : ' % (d+1)) + time_str + rect_str + ' & ' + sphr_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[d].squeeze()[0], torch.min(output.data))))
 
 
 if __name__ == '__main__':

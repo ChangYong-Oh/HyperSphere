@@ -54,7 +54,7 @@ def cube_BO(func, n_eval=200):
 		for d in range(x_input.size(0)):
 			rect_str = '/'.join(['%+.4f' % x_input.data[d, i] for i in range(0, x_input.size(1))])
 			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[d])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapes_list[d])) +')  '
-			print(('%4d : ' % (d+1)) + time_str + rect_str + '    =>' + ('%12.6f' % output.data[d].squeeze()[0]))
+			print(('%4d : ' % (d+1)) + time_str + rect_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[d].squeeze()[0], torch.min(output.data))))
 
 
 if __name__ == '__main__':

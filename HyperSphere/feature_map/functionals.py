@@ -23,7 +23,7 @@ def phi_periodize_sin(phi):
 phi_periodize_sin.dim_change = phi_periodize.dim_change
 
 
-def phi_periodize_one(phi, inflection=0.2):
+def phi_periodize_one(phi, inflection=0.1):
 	ratio = 0.5 * (1 - torch.cos(phi[:, 0:1] * math.pi))
 	multiplier = ratio.clone() * 0 + 1
 	ind_small = ratio < inflection
