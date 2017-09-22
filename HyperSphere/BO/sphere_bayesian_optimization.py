@@ -87,7 +87,7 @@ def sphere_BO(func, n_eval=200):
 			sphr_str = ('%+.4f/' % rphi_input.data[d, 0]) + '/'.join(['%+.3fpi' % (rphi_input.data[d, i]/math.pi) for i in range(1, rphi_input.size(1))])
 			rect_str = '/'.join(['%+.4f' % x_input.data[d, i] for i in range(0, x_input.size(1))])
 			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[d])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapes_list[d])) +')  '
-			print(('%4d : ' % (d+1)) + time_str + rect_str + ' & ' + sphr_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[d].squeeze()[0], torch.min(output.data))))
+			print(('%4d : ' % (d+1)) + time_str + rect_str + ' & ' + sphr_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[d].squeeze()[0], torch.min(output[:d+1].data))))
 
 
 if __name__ == '__main__':
