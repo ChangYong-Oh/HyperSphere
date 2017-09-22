@@ -17,22 +17,22 @@ from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimiz
 
 
 def sphere_BO(func, n_eval=200):
-	n_spray = 10
-	n_random = 10
+	n_spray = 5
+	n_random = 5
 
 	ndim = func.dim
-	search_rphi_radius = ndim ** 0.5
+	search_sphere_radius = ndim ** 0.5
 
 	rphi_sidelength = Variable(torch.ones(ndim) * math.pi)
-	rphi_sidelength.data[0] = search_rphi_radius
+	rphi_sidelength.data[0] = search_sphere_radius
 	rphi_sidelength.data[-1] *= 2
 
 	x_input = Variable(torch.zeros(2, ndim))
-	x_input.data[1, -2] = -search_rphi_radius / 2.0
+	x_input.data[1, -2] = -search_sphere_radius / 2.0
 	rphi_input = rect2spherical(x_input)
 	rphi_input[rphi_input != rphi_input] = 0
-	phi_input = rphi_input / search_rphi_radius
-	phi_input[:, 0] = torch.asin(phi_input[:, 0]) * 2 / math.pi
+	phi_input = rphi_input / rphi_sidelength
+	phi_input[:, 0] = torch.acos(1 - 2 * phi_input[:, 0]) / math.pi
 
 	output = Variable(torch.zeros(x_input.size(0), 1))
 	for i in range(x_input.size(0)):
@@ -55,15 +55,30 @@ def sphere_BO(func, n_eval=200):
 		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
 		phi0 = optimization_init_points(phi_input, output, 0, 1, n_spray=n_spray, n_random=n_random)
-		next_eval_point = suggest(inference, learned_params, x0=phi0, reference=torch.min(output)[0])
-		next_eval_point[0] = torch.fmod(torch.abs(next_eval_point[0]), 2)
-		next_eval_point[0][next_eval_point[0] > 1] = 2 - next_eval_point[0][next_eval_point[0] > 1]
+		next_phi_point = suggest(inference, learned_params, x0=phi0, reference=torch.min(output)[0])
+		next_phi_point[0, :-1] = torch.fmod(torch.fmod(torch.abs(next_phi_point[0, :-1]), 2) + 2, 2)
+		next_phi_point[0, -1:] = torch.fmod(torch.fmod(torch.abs(next_phi_point[0, -1:]), 1) + 1, 1)
+
+		# only using 2pi periodicity and spherical transformation property(smooth extension)
+		# kernel_input_map should only assume that it is 2 pi periodic
+		# next_rphi_point = next_phi_point * math.pi
+		# next_rphi_point[0, -1] *= 2
+		# next_rphi_point[0, 0] = 0.5 * search_sphere_radius * (1 - torch.cos(next_rphi_point[0, 0]))
+		# next_phi_point = rect2spherical(spherical2rect(next_rphi_point))
+		# next_phi_point[0, 0] = torch.acos(1 - 2 * next_phi_point[0, 0] / search_sphere_radius)
+
+		# using pi reflection
+		# kernel_input_map assumes pi reflection
+		next_phi_point[0, :-1][next_phi_point[0, :-1] > 1] = 2 - next_phi_point[0, :-1][next_phi_point[0, :-1] > 1]
+		next_rphi_point = next_phi_point * math.pi
+		next_rphi_point[0, -1] *= 2
+		next_rphi_point[0, 0:1] = 0.5 * search_sphere_radius * (1 - torch.cos(next_rphi_point[0, 0:1]))
 
 		time_list.append(time.time())
 		elapes_list.append(time_list[-1] - time_list[-2])
 
-		phi_input = torch.cat([phi_input, next_eval_point])
-		rphi_input = torch.cat([torch.sin(phi_input[:, 0:1] * math.pi / 2), phi_input[:, 1:]], 1) * search_rphi_radius
+		phi_input = torch.cat([phi_input, Variable(next_phi_point)], 0)
+		rphi_input = torch.cat([0.5 * (1 - torch.cos(phi_input[:, 0:1] * math.pi)), phi_input[:, 1:]], 1) * rphi_sidelength
 		x_input = spherical2rect(rphi_input)
 		output = torch.cat([output, func(x_input[-1])])
 
