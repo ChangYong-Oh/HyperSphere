@@ -5,7 +5,7 @@ import torch
 
 def rect2spherical(x):
 	_, n_dim = x.size()
-	reverse_ind = torch.arange(n_dim-1, -1, -1).type(torch.LongTensor)
+	reverse_ind = torch.arange(n_dim-1, -1, -1).type_as(x.data if hasattr(x, 'data') else x).long()
 	x_sq_accum = torch.sqrt(torch.cumsum((x**2)[:, reverse_ind], dim=1)[:, reverse_ind])
 	rphi = torch.cat((x_sq_accum[:, [0]], x[:, 0:n_dim-1]), dim=1)
 	if n_dim > 2:

@@ -3,7 +3,7 @@ import progressbar
 import numpy as np
 
 import torch
-from torch.autograd import Variable
+from torch.autograd import Variable, grad
 import torch.optim as optim
 
 from HyperSphere.GP.inference.inference import Inference
@@ -11,7 +11,7 @@ from HyperSphere.BO.acquisition_functions import expected_improvement
 
 
 def suggest(inference, param_samples, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
-	x = Variable(torch.FloatTensor(1, inference.train_x.size(1)), requires_grad=True)
+	x = Variable(inference.train_x.data.new(1, inference.train_x.size(1)), requires_grad=True)
 	if bounds is not None:
 		lower_bnd = bounds[0]
 		upper_bnd = bounds[1]
@@ -29,7 +29,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		for _ in range(n_step):
 			optimizer.zero_grad()
 			loss = -acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs)
-			loss.backward(retain_graph=True)
+			x.grad = grad([loss], [x], retain_graph=True)[0]
 			optimizer.step()
 			if bounds is not None and ((x.data < lower_bnd).any() or (x.data > upper_bnd).any()):
 				x.data[x.data < lower_bnd] = lower_bnd[x.data < lower_bnd]

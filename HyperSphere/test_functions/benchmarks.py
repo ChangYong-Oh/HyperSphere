@@ -54,5 +54,29 @@ def hartmann6(x):
 	else:
 		x = (x + 1) * 0.5
 
-	return -(alpha.view(1, -1).repeat(x.size(0), 1) * torch.exp(-(A.unsqueeze(0).repeat(x.size(0), 1, 1) * (x.unsqueeze(2).repeat(1, 1, 4) - P.unsqueeze(0).repeat(x.size(0), 1, 1)) ** 2).sum(1))).sum(1)
+	output = -(alpha.view(1, -1).repeat(x.size(0), 1) * torch.exp(-(A.unsqueeze(0).repeat(x.size(0), 1, 1) * (x.unsqueeze(2).repeat(1, 1, 4) - P.unsqueeze(0).repeat(x.size(0), 1, 1)) ** 2).sum(1))).sum(1)
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output
 
+
+hartmann6.dim = 6
+
+
+def levy(x):
+	flat = x.dim() == 1
+	if flat:
+		x = x.view(1, -1)
+	if hasattr(x, 'data'):
+		x.data = x.data * 10
+	else:
+		x = x * 10
+
+	w = 1 + (x - 1) / 4.0
+	output = ((w - 1) ** 2 * (1 + 10 * torch.sin(math.pi * w + 1))).sum(1, keepdim=True)
+	output += torch.sin(math.pi * w[:, 0:1]) ** 2 + ((w[:, -1:] - 1) ** 2 * (1 + torch.sin(2 * math.pi * w[:, -1:])))
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output

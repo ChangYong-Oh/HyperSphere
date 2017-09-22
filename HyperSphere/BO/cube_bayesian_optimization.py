@@ -13,11 +13,15 @@ from HyperSphere.test_functions.benchmarks import branin
 from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points
 
 
-def cube_BO(func, n_eval=200):
+def cube_BO(func, n_eval=200, **kwargs):
 	n_spray = 10
 	n_random = 10
 
-	ndim = func.dim
+	if func.dim == 0:
+		assert 'dim' in kwargs.keys()
+		ndim = kwargs['dim']
+	else:
+		ndim = func.dim
 	search_cube_half_sidelength = 1
 
 	lower_bnd = -torch.ones(ndim) * search_cube_half_sidelength
@@ -58,4 +62,4 @@ def cube_BO(func, n_eval=200):
 
 
 if __name__ == '__main__':
-	cube_BO(branin, n_eval=100)
+	cube_BO(branin, n_eval=200)

@@ -11,16 +11,20 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.acquisition_maximization import suggest
 from HyperSphere.feature_map.functionals import phi_periodize, phi_periodize_lp, phi_periodize_one, phi_periodize_sin
 
-from HyperSphere.test_functions.benchmarks import branin
+from HyperSphere.test_functions.benchmarks import branin, hartmann6
 
 from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points
 
 
-def sphere_BO(func, n_eval=200):
+def sphere_BO(func, n_eval=200, **kwargs):
 	n_spray = 10
 	n_random = 10
 
-	ndim = func.dim
+	if func.dim == 0:
+		assert 'dim' in kwargs.keys()
+		ndim = kwargs['dim']
+	else:
+		ndim = func.dim
 	search_sphere_radius = ndim ** 0.5
 
 	rphi_sidelength = Variable(torch.ones(ndim) * math.pi)
@@ -91,4 +95,4 @@ def sphere_BO(func, n_eval=200):
 
 
 if __name__ == '__main__':
-	sphere_BO(branin, n_eval=100)
+	sphere_BO(hartmann6, n_eval=200)
