@@ -28,7 +28,7 @@ def sphere_BO(func, n_eval=200):
 	rphi_sidelength.data[-1] *= 2
 
 	x_input = Variable(torch.zeros(2, ndim))
-	x_input.data[1, -2] = -search_sphere_radius / 2.0
+	x_input.data[1, -2] = -search_sphere_radius
 	rphi_input = rect2spherical(x_input)
 	rphi_input[rphi_input != rphi_input] = 0
 	phi_input = rphi_input / rphi_sidelength
