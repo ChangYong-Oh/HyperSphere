@@ -75,7 +75,7 @@ def levy(x):
 
 	w = 1 + (x - 1) / 4.0
 	output = ((w - 1) ** 2 * (1 + 10 * torch.sin(math.pi * w + 1))).sum(1, keepdim=True)
-	output += torch.sin(math.pi * w[:, 0:1]) ** 2 + ((w[:, -1:] - 1) ** 2 * (1 + torch.sin(2 * math.pi * w[:, -1:])))
+	output += torch.sin(math.pi * w[:, 0:1]) ** 2 + ((w[:, -1:] - 1) ** 2 * (1 + torch.sin(2 * math.pi * w[:, -1:]) ** 2))
 	if flat:
 		return output.squeeze(0)
 	else:
