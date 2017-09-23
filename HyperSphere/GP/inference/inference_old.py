@@ -12,53 +12,35 @@ from HyperSphere.GP.inference.log_determinant import LogDeterminant
 
 class Inference(nn.Module):
 
-	def __init__(self, train_data, model, hyper=None):
+	def __init__(self, train_data, model):
 		super(Inference, self).__init__()
 		self.model = model
 		self.train_x = train_data[0]
 		self.train_y = train_data[1]
 		assert self.model.kernel.input_map(torch.ones(1, self.train_x.size(1))).numel() == model.kernel.ndim
-		self.K_noise = None
-		self.K_noise_inv = None
-		self.matrix_update(hyper)
 
 	def reset_parameters(self):
 		self.model.reset_parameters()
 
-	def matrix_update(self, hyper=None):
-		if hyper is not None:
-			self.model.vec_to_param(hyper)
-		self.K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
-		if hasattr(self.K_noise, 'data'):
-			eye_mat = Variable(torch.eye(self.K_noise.size(0)).type_as(self.K_noise.data))
-		else:
-			eye_mat = torch.eye(self.K_noise.size(0)).type_as(self.K_noise)
-		self.K_noise_inv, _ = torch.gesv(eye_mat, self.K_noise)
-
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
-			param_original = self.model.param_to_vec()
-			self.matrix_update(hyper)
+			self.model.vec_to_param(hyper)
+		K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 
-		shared_part = k_pred_train.mm(self.K_noise_inv)
+		shared_part, _ = torch.gesv(k_pred_train.t(), K_noise)
 		kernel_on_identical = torch.cat([self.model.kernel(pred_x[[i], :]) for i in range(pred_x.size(0))])
 
-		pred_mean = torch.mm(shared_part, self.train_y - self.model.mean(self.train_x)) + self.model.mean(pred_x)
-		pred_var = kernel_on_identical - (shared_part * k_pred_train).sum(1, keepdim=True)
-		if hyper is not None:
-			self.model.vec_to_param(param_original)
+		pred_mean = torch.mm(shared_part.t(), self.train_y - self.model.mean(self.train_x)) + self.model.mean(pred_x)
+		pred_var = kernel_on_identical - (shared_part.t() * k_pred_train).sum(1, keepdim=True)
 		return pred_mean, pred_var
 
 	def negative_log_likelihood(self, hyper=None):
 		if hyper is not None:
-			param_original = self.model.param_to_vec()
-			self.matrix_update(hyper)
+			self.model.vec_to_param(hyper)
+		K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
 		adjusted_y = self.train_y - self.model.mean(self.train_x)
-		nll = 0.5 * InverseBilinearForm.apply(adjusted_y, self.K_noise, adjusted_y) + 0.5 * LogDeterminant.apply(self.K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
-		if hyper is not None:
-			self.model.vec_to_param(param_original)
-		return nll
+		return 0.5 * InverseBilinearForm.apply(adjusted_y, K_noise, adjusted_y) + 0.5 * LogDeterminant.apply(K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 
 	def learning(self, n_restarts=10):
 		vec_list = []
@@ -74,7 +56,7 @@ class Inference(nn.Module):
 			optimizer = optim.Adam(self.model.parameters(), lr=0.01)
 			for _ in range(n_step):
 				optimizer.zero_grad()
-				loss = self.negative_log_likelihood(self.model.param_to_vec())
+				loss = self.negative_log_likelihood()
 				loss.backward(retain_graph=True)
 				optimizer.step()
 			###--------------------------------------------------###

@@ -1,5 +1,5 @@
 import torch
-from HyperSphere.GP.inference.inference import Inference
+from HyperSphere.GP.inference.inference_old import Inference
 
 
 class ShadowInference(Inference):

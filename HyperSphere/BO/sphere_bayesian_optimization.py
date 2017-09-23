@@ -54,7 +54,7 @@ def sphere_BO(func, n_eval=200, **kwargs):
 	inference = Inference((rphi_input, output), model)
 	inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
-	for e in range(n_eval):
+	for e in range(output.numel(), n_eval):
 		inference = Inference((phi_input, output), model)
 		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
@@ -95,4 +95,4 @@ def sphere_BO(func, n_eval=200, **kwargs):
 
 
 if __name__ == '__main__':
-	sphere_BO(hartmann6, n_eval=200)
+	sphere_BO(hartmann6, n_eval=3)

@@ -1,6 +1,7 @@
 import progressbar
 
 import numpy as np
+import copy
 
 import torch
 from torch.autograd import Variable, grad
@@ -16,6 +17,12 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		lower_bnd = bounds[0]
 		upper_bnd = bounds[1]
 
+	# for multi process, https://discuss.pytorch.org/t/copying-nn-modules-without-shared-memory/113
+	inferences = []
+	for s in range(param_samples.size(0)):
+		inferences.append(deepcopy_inference(inference))
+		inferences[-1].matrix_update(param_samples[s])
+
 	bar = progressbar.ProgressBar(max_value=x0.size(0))
 	bar.update(0)
 	n_step = 100
@@ -28,7 +35,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		optimizer = optim.Adam([x], lr=0.01)
 		for _ in range(n_step):
 			optimizer.zero_grad()
-			loss = -acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs)
+			loss = -acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs)
 			x.grad = grad([loss], [x], retain_graph=True)[0]
 			optimizer.step()
 			if bounds is not None and ((x.data < lower_bnd).any() or (x.data > upper_bnd).any()):
@@ -38,16 +45,18 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		###--------------------------------------------------###
 		bar.update(i+1)
 		local_optima.append(x.data.clone())
-		optima_value.append(-acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
+		optima_value.append(-acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
 	return local_optima[np.argmin(optima_value)]
 
 
-def acquisition(x, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
-	if param_samples.dim() == 1:
-		param_samples = param_samples.unsqueeze(0).clone()
+def deepcopy_inference(inference):
+	return Inference((inference.train_x, inference.train_y), copy.deepcopy(inference.model))
+
+
+def acquisition(x, inferences, acquisition_function=expected_improvement, **kwargs):
 	acquisition_sample_list = []
-	for s in range(param_samples.size(0)):
-		pred_mean_sample, pred_var_sample = inference.predict(x, param_samples[s])
+	for s in range(len(inferences)):
+		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
 		acquisition_sample_list.append(acquisition_function(pred_mean_sample[:, 0], pred_var_sample[:, 0], **kwargs))
 	return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
 
