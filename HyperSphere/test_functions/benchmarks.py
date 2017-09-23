@@ -80,3 +80,6 @@ def levy(x):
 		return output.squeeze(0)
 	else:
 		return output
+
+
+levy.dim = 0

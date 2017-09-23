@@ -18,6 +18,7 @@ class Inference(nn.Module):
 		self.train_x = train_data[0]
 		self.train_y = train_data[1]
 		assert self.model.kernel.input_map(torch.ones(1, self.train_x.size(1))).numel() == model.kernel.ndim
+		self.mean_vec = None
 		self.K_noise = None
 		self.K_noise_inv = None
 		self.matrix_update(hyper)
@@ -28,6 +29,7 @@ class Inference(nn.Module):
 	def matrix_update(self, hyper=None):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)
+		self.mean_vec = self.train_y - self.model.mean(self.train_x)
 		self.K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
 		if hasattr(self.K_noise, 'data'):
 			eye_mat = Variable(torch.eye(self.K_noise.size(0)).type_as(self.K_noise.data))
@@ -44,7 +46,7 @@ class Inference(nn.Module):
 		shared_part = k_pred_train.mm(self.K_noise_inv)
 		kernel_on_identical = torch.cat([self.model.kernel(pred_x[[i], :]) for i in range(pred_x.size(0))])
 
-		pred_mean = torch.mm(shared_part, self.train_y - self.model.mean(self.train_x)) + self.model.mean(pred_x)
+		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
 		pred_var = kernel_on_identical - (shared_part * k_pred_train).sum(1, keepdim=True)
 		if hyper is not None:
 			self.model.vec_to_param(param_original)
@@ -54,8 +56,7 @@ class Inference(nn.Module):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.matrix_update(hyper)
-		adjusted_y = self.train_y - self.model.mean(self.train_x)
-		nll = 0.5 * InverseBilinearForm.apply(adjusted_y, self.K_noise, adjusted_y) + 0.5 * LogDeterminant.apply(self.K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
+		nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.K_noise, self.mean_vec) + 0.5 * LogDeterminant.apply(self.K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 		if hyper is not None:
 			self.model.vec_to_param(param_original)
 		return nll
