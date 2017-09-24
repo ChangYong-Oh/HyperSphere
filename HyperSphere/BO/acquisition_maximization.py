@@ -18,10 +18,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		upper_bnd = bounds[1]
 
 	# for multi process, https://discuss.pytorch.org/t/copying-nn-modules-without-shared-memory/113
-	inferences = []
-	for s in range(param_samples.size(0)):
-		inferences.append(deepcopy_inference(inference))
-		inferences[-1].matrix_update(param_samples[s])
+	inferences = deepcopy_inference(inference, param_samples)
 
 	bar = progressbar.ProgressBar(max_value=x0.size(0))
 	bar.update(0)
@@ -49,8 +46,13 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 	return local_optima[np.argmin(optima_value)]
 
 
-def deepcopy_inference(inference):
-	return Inference((inference.train_x, inference.train_y), copy.deepcopy(inference.model))
+def deepcopy_inference(inference, param_samples):
+	inferences = []
+	for s in range(param_samples.size(0)):
+		model = copy.deepcopy(inference.model)
+		model.vec_to_param(param_samples[s])
+		inferences.append(Inference((inference.train_x.clone(), inference.train_y.clone()), model))
+	return inferences
 
 
 def acquisition(x, inferences, acquisition_function=expected_improvement, **kwargs):
