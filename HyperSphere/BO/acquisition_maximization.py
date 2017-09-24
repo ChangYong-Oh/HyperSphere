@@ -34,6 +34,8 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 			optimizer.zero_grad()
 			loss = -acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs)
 			x.grad = grad([loss], [x], retain_graph=True)[0]
+			if (x.grad.data != x.grad.data).any():
+				break
 			optimizer.step()
 			if bounds is not None and ((x.data < lower_bnd).any() or (x.data > upper_bnd).any()):
 				x.data[x.data < lower_bnd] = lower_bnd[x.data < lower_bnd]
@@ -43,7 +45,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		bar.update(i+1)
 		local_optima.append(x.data.clone())
 		optima_value.append(-acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
-	return local_optima[np.argmin(optima_value)]
+	return local_optima[np.nanargmin(optima_value)]
 
 
 def deepcopy_inference(inference, param_samples):
