@@ -83,3 +83,22 @@ def levy(x):
 
 
 levy.dim = 0
+
+
+def rosenbrock(x):
+	flat = x.dim() == 1
+	if flat:
+		x = x.view(1, -1)
+	if hasattr(x, 'data'):
+		x.data = x.data * 7.5 + 2.5
+	else:
+		x = x * 7.5 + 2.5
+
+	output = 100 * ((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output
+
+
+rosenbrock.dim = 0

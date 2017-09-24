@@ -62,4 +62,4 @@ def cube_BO(func, n_eval=200, **kwargs):
 
 
 if __name__ == '__main__':
-	cube_BO(branin, n_eval=200)
+	sphere_BO(levy, n_eval=200, dim=20)
