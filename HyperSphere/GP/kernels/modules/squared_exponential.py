@@ -8,7 +8,7 @@ from HyperSphere.GP.kernels.functions import squared_exponential
 
 class SquaredExponentialKernel(Stationary):
 
-	def __init__(self, ndim, input_map=lambda x: x):
+	def __init__(self, ndim, input_map=None):
 		super(SquaredExponentialKernel, self).__init__(ndim, input_map)
 
 	def reset_parameters(self):

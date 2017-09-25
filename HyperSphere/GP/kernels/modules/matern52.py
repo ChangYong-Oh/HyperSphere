@@ -8,7 +8,7 @@ from HyperSphere.GP.kernels.functions import matern52
 
 class Matern52(Stationary):
 
-	def __init__(self, ndim, input_map=lambda x: x):
+	def __init__(self, ndim, input_map=None):
 		super(Matern52, self).__init__(ndim, input_map)
 
 	def reset_parameters(self):

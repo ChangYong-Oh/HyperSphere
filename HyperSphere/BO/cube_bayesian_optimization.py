@@ -17,7 +17,7 @@ from HyperSphere.test_functions.benchmarks import branin, levy
 from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points, EXPERIMENT_DIR
 
 
-def cube_BO(func, n_eval=200, **kwargs):
+def cube_BO(n_eval=200, **kwargs):
 	if 'path' in kwargs.keys():
 		path = kwargs['path']
 		if path[-1] != '/':
@@ -29,10 +29,10 @@ def cube_BO(func, n_eval=200, **kwargs):
 		data_config_dict = pickle.load(data_config_filename, 'r')
 		locals().update(data_config_dict)
 
-		inference = Inference((rphi_input, output), model)
+		inference = Inference((x_input, output), model)
 	else:
-		n_spray = 10
-		n_random = 10
+		n_spray = 1
+		n_random = 1
 		func = kwargs['func']
 		if func.dim == 0:
 			assert 'dim' in kwargs.keys()
@@ -40,7 +40,7 @@ def cube_BO(func, n_eval=200, **kwargs):
 		else:
 			ndim = func.dim
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
-		folder_name_root = func.__name__ + '_D' + str(ndim) + '_sphere'
+		folder_name_root = func.__name__ + '_D' + str(ndim) + '_cube'
 		folder_name_suffix = [elm[len(folder_name_root):] for elm in dir_list if elm[:len(folder_name_root)] == folder_name_root]
 		next_ind = 1 + np.max([int(elm) for elm in folder_name_suffix if elm.isdigit()] + [-1])
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind)))
