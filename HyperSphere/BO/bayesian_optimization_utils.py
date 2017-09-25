@@ -1,6 +1,11 @@
+import os
+import os.path
+
 import torch
 
 from HyperSphere.GP.models.gp import GP
+
+EXPERIMENT_DIR = os.path.join('/'.join(os.getcwd().split('/')[:-4]), 'Experiments/Hypersphere')
 
 
 def model_param_init(model, output):
@@ -31,7 +36,3 @@ def optimization_init_points(input, output, lower_bnd, upper_bnd, n_spray=10, n_
 	elif isinstance(upper_bnd, float):
 		x0[x0 < upper_bnd] = upper_bnd
 	return x0
-
-
-def declare_variable_from_dict(dict):
-	pass
