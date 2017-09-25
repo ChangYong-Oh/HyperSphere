@@ -31,3 +31,7 @@ def optimization_init_points(input, output, lower_bnd, upper_bnd, n_spray=10, n_
 	elif isinstance(upper_bnd, float):
 		x0[x0 < upper_bnd] = upper_bnd
 	return x0
+
+
+def declare_variable_from_dict(dict):
+	pass

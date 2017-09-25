@@ -1,6 +1,10 @@
 import time
 import math
+import pickle
+import copy
+import os.path
 
+import numpy as np
 import torch
 from torch.autograd import Variable
 
@@ -15,44 +19,61 @@ from HyperSphere.test_functions.benchmarks import branin, hartmann6, levy
 
 from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points
 
+EXPERIMENT_DIR = os.path.join(os.path.join(*(os.getcwd().split('/')[:-4])), 'Experiments/Hypersphere')
 
-def sphere_BO(func, n_eval=200, **kwargs):
-	n_spray = 10
-	n_random = 10
 
-	if func.dim == 0:
-		assert 'dim' in kwargs.keys()
-		ndim = kwargs['dim']
+def sphere_BO(n_eval=200, **kwargs):
+	if 'path' in kwargs.keys():
+		model_filename = os.path.join(kwargs['path'], 'model.pkl')
+		data_config_filename = os.path.join(kwargs['path'], 'data_config.pkl')
+
+		model = torch.load(model_filename)
+		data_config_dict = pickle.load(data_config_filename, 'r')
+		locals().update(data_config_dict)
+
+		inference = Inference((rphi_input, output), model)
 	else:
-		ndim = func.dim
-	search_sphere_radius = ndim ** 0.5
+		n_spray = 10
+		n_random = 10
+		func = kwargs['func']
+		if func.dim == 0:
+			assert 'dim' in kwargs.keys()
+			ndim = kwargs['dim']
+		else:
+			ndim = func.dim
+		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
+		folder_name_root = func.__name__ + '_D' + str(ndim) + '_cube'
+		next_ind = 1 + np.max([elm[len(folder_name_root):] for elm in dir_list if elm[:len(folder_name_root)]==folder_name_root] + [0])
+		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind+1)))
+		model_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind+1), 'model.pkl')
+		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind+1), 'data_config.pkl')
 
-	rphi_sidelength = Variable(torch.ones(ndim) * math.pi)
-	rphi_sidelength.data[0] = search_sphere_radius
-	rphi_sidelength.data[-1] *= 2
+		search_sphere_radius = ndim ** 0.5
 
-	x_input = Variable(torch.zeros(2, ndim))
-	x_input.data[1, -2] = -search_sphere_radius
-	rphi_input = rect2spherical(x_input)
-	rphi_input[rphi_input != rphi_input] = 0
-	phi_input = rphi_input / rphi_sidelength
-	phi_input[:, 0] = torch.acos(1 - 2 * phi_input[:, 0]) / math.pi
+		rphi_sidelength = Variable(torch.ones(ndim) * math.pi)
+		rphi_sidelength.data[0] = search_sphere_radius
+		rphi_sidelength.data[-1] *= 2
 
-	output = Variable(torch.zeros(x_input.size(0), 1))
-	for i in range(x_input.size(0)):
-		output[i] = func(x_input[i])
+		x_input = Variable(torch.zeros(2, ndim))
+		x_input.data[1, -2] = -search_sphere_radius
+		rphi_input = rect2spherical(x_input)
+		rphi_input[rphi_input != rphi_input] = 0
+		phi_input = rphi_input / rphi_sidelength
+		phi_input[:, 0] = torch.acos(1 - 2 * phi_input[:, 0]) / math.pi
 
-	kernel_input_map = phi_periodize_one
+		output = Variable(torch.zeros(x_input.size(0), 1))
+		for i in range(x_input.size(0)):
+			output[i] = func(x_input[i])
 
-	kernel = Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map)
-	model = GPRegression(kernel=kernel)
-	model_param_init(model, output)
+		kernel_input_map = phi_periodize_one
+		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
+		model_param_init(model, output)
 
-	time_list = [time.time()] * 2
-	elapes_list = [0, 0]
+		time_list = [time.time()] * 2
+		elapse_list = [0, 0]
 
-	inference = Inference((rphi_input, output), model)
-	inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
+		inference = Inference((rphi_input, output), model)
+		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
 	for e in range(output.numel(), n_eval):
 		inference = Inference((phi_input, output), model)
@@ -79,20 +100,27 @@ def sphere_BO(func, n_eval=200, **kwargs):
 		next_rphi_point[0, 0:1] = 0.5 * search_sphere_radius * (1 - torch.cos(next_rphi_point[0, 0:1]))
 
 		time_list.append(time.time())
-		elapes_list.append(time_list[-1] - time_list[-2])
+		elapse_list.append(time_list[-1] - time_list[-2])
 
 		phi_input = torch.cat([phi_input, Variable(next_phi_point)], 0)
 		rphi_input = torch.cat([0.5 * (1 - torch.cos(phi_input[:, 0:1] * math.pi)), phi_input[:, 1:]], 1) * rphi_sidelength
 		x_input = spherical2rect(rphi_input)
 		output = torch.cat([output, func(x_input[-1])])
 
-		print('')
-		for d in range(rphi_input.size(0)):
-			sphr_str = ('%+.4f/' % rphi_input.data[d, 0]) + '/'.join(['%+.3fpi' % (rphi_input.data[d, i]/math.pi) for i in range(1, rphi_input.size(1))])
-			rect_str = '/'.join(['%+.4f' % x_input.data[d, i] for i in range(0, x_input.size(1))])
-			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[d])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapes_list[d])) +')  '
-			print(('%4d : ' % (d+1)) + time_str + rect_str + ' & ' + sphr_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[d].squeeze()[0], torch.min(output[:d+1].data))))
+		sphr_str = ('%+.4f/' % rphi_input.data[-1, 0]) + '/'.join(['%+.3fpi' % (rphi_input.data[-1, i]/math.pi) for i in range(1, rphi_input.size(1))])
+		rect_str = '/'.join(['%+.4f' % x_input.data[-1, i] for i in range(0, x_input.size(1))])
+		time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[-1])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[-1])) +')  '
+		print(('%4d : ' % (x_input.size(0)+1)) + time_str + rect_str + ' & ' + sphr_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[-1].squeeze()[0], torch.min(output.data))))
+
+		torch.save(model, model_filename)
+		stored_variable = copy.deepcopy(locals())
+		for key in ['i', 'sys', 'model', 'kernel_input_map', 'dir_list', 'folder_name_root', 'next_ind', 'model_filename', 'data_config_filename']:
+			if key in stored_variable.keys():
+				del stored_variable[key]
+		f = open(data_config_filename, 'r')
+		pickle.dump(stored_variable, f)
+		f.close()
 
 
 if __name__ == '__main__':
-	sphere_BO(levy, n_eval=200, dim=20)
+	sphere_BO(n_eval=200, func=levy, dim=20)
