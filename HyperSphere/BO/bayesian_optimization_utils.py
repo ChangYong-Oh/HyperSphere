@@ -5,7 +5,7 @@ import torch
 
 from HyperSphere.GP.models.gp import GP
 
-EXPERIMENT_DIR = os.path.join('/'.join(os.getcwd().split('/')[:-4]), 'Experiments/Hypersphere')
+EXPERIMENT_DIR = os.path.join('/'.join(os.path.realpath(__file__).split('/')[:-5]), 'Experiments/Hypersphere')
 
 
 def model_param_init(model, output):
