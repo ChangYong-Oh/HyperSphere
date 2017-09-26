@@ -137,10 +137,8 @@ if __name__ == '__main__':
 	if len(sys.argv) == 1:
 		sphere_BO(n_eval=200, func=levy, dim=20)
 	elif len(sys.argv) == 2:
-		remove_last_evaluation(sys.argv[1])
 		sphere_BO(n_eval=100, path=sys.argv[1])
 	elif len(sys.argv) == 3:
-		remove_last_evaluation(sys.argv[1])
 		sphere_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])
 
 

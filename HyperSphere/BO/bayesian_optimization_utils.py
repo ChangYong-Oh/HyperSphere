@@ -6,14 +6,11 @@ import sys
 import torch
 from torch.autograd import Variable
 
-from HyperSphere.GP.models.gp import GP
 
 EXPERIMENT_DIR = os.path.join('/'.join(os.path.realpath(__file__).split('/')[:-5]), 'Experiments/Hypersphere')
 
 
 def model_param_init(model, output):
-	assert isinstance(model, GP)
-
 	model.kernel.log_amp.data = torch.std(output).log().data + 1e-4
 	model.kernel.log_ls.data.fill_(0)
 	model.mean.const_mean.data.fill_(torch.mean(output.data))
@@ -50,7 +47,7 @@ def remove_last_evaluation(path):
 	data_config_file.close()
 	for key, value in data_config.iteritems():
 		if isinstance(value, Variable) and value.dim() == 2:
-			print(key, value[-1])
+			print('%12s : %4d-th evaluation %4d dimensional data whose sum is %.6E' % (key, value.size(0), value.size(1), (value.data if hasattr(value, 'data') else value).sum()))
 	while True:
 		sys.stdout.write('Want to remove this last evaluation?(YES/NO) : ')
 		decision = sys.stdin.readline()[:-1]
@@ -67,3 +64,6 @@ def remove_last_evaluation(path):
 		else:
 			sys.stdout.write('Input YES or NO\n')
 
+
+if __name__ == '__main__':
+	remove_last_evaluation(sys.argv[1])
