@@ -84,6 +84,9 @@ def sphere_BO(n_eval=200, **kwargs):
 	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
 
+	for _ in range(3):
+		print('Experiment based on data in ' + os.path.split(model_filename)[0])
+
 	for _ in range(n_eval):
 		inference = Inference((phi_input, output), model)
 		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
