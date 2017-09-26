@@ -15,7 +15,7 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.acquisition_maximization import suggest
 from HyperSphere.feature_map.functionals import phi_periodize, phi_periodize_lp, phi_periodize_one, phi_periodize_sin
 
-from HyperSphere.test_functions.benchmarks import branin, hartmann6, levy
+from HyperSphere.test_functions.benchmarks import *
 
 from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points, remove_last_evaluation, EXPERIMENT_DIR
 
@@ -135,7 +135,7 @@ def sphere_BO(n_eval=200, **kwargs):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		sphere_BO(n_eval=200, func=levy, dim=20)
+		sphere_BO(n_eval=300, func=rosenbrock, dim=40)
 	elif len(sys.argv) == 2:
 		sphere_BO(n_eval=100, path=sys.argv[1])
 	elif len(sys.argv) == 3:

@@ -13,7 +13,7 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.acquisition_maximization import suggest
 from HyperSphere.feature_map.functionals import *
 
-from HyperSphere.test_functions.benchmarks import branin, levy
+from HyperSphere.test_functions.benchmarks import *
 
 from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points, EXPERIMENT_DIR
 
@@ -107,7 +107,7 @@ def cube_BO(n_eval=200, **kwargs):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		cube_BO(n_eval=200, func=levy, dim=20)
+		cube_BO(n_eval=300, func=rosenbrock, dim=40)
 	elif len(sys.argv) == 2:
 		cube_BO(n_eval=100, path=sys.argv[1])
 	elif len(sys.argv) == 3:
