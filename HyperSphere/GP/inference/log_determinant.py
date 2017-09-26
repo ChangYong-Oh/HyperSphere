@@ -1,6 +1,7 @@
 import sys
 
 import numpy as np
+import scipy.linalg as linalg
 
 import torch
 from torch.autograd import Function, Variable, gradcheck
@@ -33,6 +34,7 @@ class LogDeterminant(Function):
 		#
 		# return (torch.sum(torch.log(torch.diag(chol_from_upper)), 0, keepdim=True) + torch.sum(torch.log(torch.diag(chol_from_lower)), 0, keepdim=True)).view(1, 1)
 
+		eps = 1e-12
 		try:
 			chol_from_upper = torch.potrf(matrix, True)
 			chol_from_lower = torch.potrf(matrix, False)
@@ -40,8 +42,10 @@ class LogDeterminant(Function):
 		except RuntimeError:
 			matrix_tensor = matrix.data if hasattr(matrix, 'data') else matrix
 			matrix_numpy = (matrix_tensor.cpu() if matrix_tensor.is_cuda else matrix_tensor).numpy()
-			_, logdet = np.linalg.slogdet(matrix_numpy)
-			result = matrix_tensor.new(1, 1).fill_(float(logdet))
+			_, _, u = linalg.lu(matrix_numpy)
+			diag = np.abs(np.diag(u))
+			diag[diag < eps] = eps
+			result = matrix_tensor.new(1, 1).fill_(float(np.sum(np.log(diag))))
 			return Variable(result) if hasattr(matrix, 'data') else result
 
 	@staticmethod
