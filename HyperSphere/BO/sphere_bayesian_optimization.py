@@ -17,7 +17,7 @@ from HyperSphere.feature_map.functionals import phi_periodize, phi_periodize_lp,
 
 from HyperSphere.test_functions.benchmarks import branin, hartmann6, levy
 
-from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points, EXPERIMENT_DIR
+from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points, remove_last_evaluation, EXPERIMENT_DIR
 
 
 def sphere_BO(n_eval=200, **kwargs):
@@ -30,8 +30,8 @@ def sphere_BO(n_eval=200, **kwargs):
 
 		model = torch.load(model_filename)
 		data_config_file = open(data_config_filename, 'r')
-		stored_variable_dict = pickle.load(data_config_file)
-		locals().update(stored_variable_dict)
+		for key, value in pickle.load(data_config_file).iteritems():
+			exec(key + '=value')
 		data_config_file.close()
 
 		inference = Inference((rphi_input, output), model)
@@ -49,7 +49,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		folder_name_suffix = [elm[len(folder_name_root):] for elm in dir_list if elm[:len(folder_name_root)] == folder_name_root]
 		next_ind = 1 + np.max([int(elm) for elm in folder_name_suffix if elm.isdigit()] + [-1])
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind)))
-		model_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'model.pkl')
+		model_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'data_config.pkl')
 
 		search_sphere_radius = ndim ** 0.5
@@ -134,8 +134,10 @@ if __name__ == '__main__':
 	if len(sys.argv) == 1:
 		sphere_BO(n_eval=200, func=levy, dim=20)
 	elif len(sys.argv) == 2:
+		remove_last_evaluation(sys.argv[1])
 		sphere_BO(n_eval=100, path=sys.argv[1])
 	elif len(sys.argv) == 3:
+		remove_last_evaluation(sys.argv[1])
 		sphere_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])
 
 

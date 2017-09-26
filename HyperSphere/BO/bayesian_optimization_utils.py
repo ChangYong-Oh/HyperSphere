@@ -1,7 +1,10 @@
 import os
 import os.path
+import pickle
+import sys
 
 import torch
+from torch.autograd import Variable
 
 from HyperSphere.GP.models.gp import GP
 
@@ -36,3 +39,31 @@ def optimization_init_points(input, output, lower_bnd, upper_bnd, n_spray=10, n_
 	elif isinstance(upper_bnd, float):
 		x0[x0 < upper_bnd] = upper_bnd
 	return x0
+
+
+def remove_last_evaluation(path):
+	if not os.path.exists(path):
+		path = os.path.join(EXPERIMENT_DIR, path)
+	data_config_filename = os.path.join(path, 'data_config.pkl')
+	data_config_file = open(data_config_filename, 'r')
+	data_config = pickle.load(data_config_file)
+	data_config_file.close()
+	for key, value in data_config.iteritems():
+		if isinstance(value, Variable) and value.dim() == 2:
+			print(key, value[-1])
+	while True:
+		sys.stdout.write('Want to remove this last evaluation?(YES/NO) : ')
+		decision = sys.stdin.readline()[:-1]
+		if decision == 'YES':
+			for key, value in data_config.iteritems():
+				if isinstance(value, Variable) and value.dim() == 2:
+					data_config[key] = value[:-1]
+			data_config_file = open(data_config_filename, 'w')
+			pickle.dump(data_config, data_config_file)
+			data_config_file.close()
+			break
+		elif decision == 'NO':
+			break
+		else:
+			sys.stdout.write('Input YES or NO\n')
+

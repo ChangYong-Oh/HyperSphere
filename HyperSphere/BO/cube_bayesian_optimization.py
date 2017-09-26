@@ -28,7 +28,8 @@ def cube_BO(n_eval=200, **kwargs):
 
 		model = torch.load(model_filename)
 		data_config_file = open(data_config_filename, 'r')
-		locals().update(pickle.load(data_config_file))
+		for key, value in pickle.load(data_config_file).iteritems():
+			exec (key + '=value')
 		data_config_file.close()
 
 		inference = Inference((x_input, output), model)
@@ -46,7 +47,7 @@ def cube_BO(n_eval=200, **kwargs):
 		folder_name_suffix = [elm[len(folder_name_root):] for elm in dir_list if elm[:len(folder_name_root)] == folder_name_root]
 		next_ind = 1 + np.max([int(elm) for elm in folder_name_suffix if elm.isdigit()] + [-1])
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind)))
-		model_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'model.pkl')
+		model_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'data_config.pkl')
 
 		search_cube_half_sidelength = 1
