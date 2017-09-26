@@ -2,6 +2,7 @@ import time
 import pickle
 import os
 import os.path
+import sys
 
 import numpy as np
 from torch.autograd import Variable
@@ -20,19 +21,20 @@ from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimiz
 def cube_BO(n_eval=200, **kwargs):
 	if 'path' in kwargs.keys():
 		path = kwargs['path']
-		if path[-1] != '/':
-			path += '/'
-		model_filename = path + 'model.pkl'
-		data_config_filename = path + 'data_config.pkl'
+		if not os.path.exists(path):
+			path = os.path.join(EXPERIMENT_DIR, path)
+		model_filename = os.path.join(path, 'model.pt')
+		data_config_filename = os.path.join(path, 'data_config.pkl')
 
 		model = torch.load(model_filename)
-		data_config_dict = pickle.load(data_config_filename, 'r')
-		locals().update(data_config_dict)
+		data_config_file = open(data_config_filename, 'r')
+		locals().update(pickle.load(data_config_file))
+		data_config_file.close()
 
 		inference = Inference((x_input, output), model)
 	else:
-		n_spray = 1
-		n_random = 1
+		n_spray = 10
+		n_random = 10
 		func = kwargs['func']
 		if func.dim == 0:
 			assert 'dim' in kwargs.keys()
@@ -57,7 +59,8 @@ def cube_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		model = GPRegression(kernel=Matern52(ndim=ndim))
+		kernel_input_map = id_transform
+		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 		model_param_init(model, output)
 
 		time_list = [time.time()] * 2
@@ -67,11 +70,12 @@ def cube_BO(n_eval=200, **kwargs):
 		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
 	stored_variable_names = locals().keys()
-	ignored_variable_names = ['kwargs', 'dir_list', 'folder_name_root', 'folder_name_suffix', 'next_ind', 'model_filename',
-	                          'data_config_filename', 'i', 'kernel_input_map', 'model', 'inference']
+	ignored_variable_names = ['kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',
+	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
+	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
 
-	for e in range(output.numel(), n_eval):
+	for _ in range(n_eval):
 		inference = Inference((x_input, output), model)
 		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
@@ -98,4 +102,9 @@ def cube_BO(n_eval=200, **kwargs):
 
 
 if __name__ == '__main__':
-	cube_BO(n_eval=200, func=levy, dim=20)
+	if len(sys.argv) == 1:
+		cube_BO(n_eval=200, func=levy, dim=20)
+	elif len(sys.argv) == 2:
+		cube_BO(n_eval=100, path=sys.argv[1])
+	elif len(sys.argv) == 3:
+		cube_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])

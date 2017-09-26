@@ -8,13 +8,10 @@ from HyperSphere.GP.modules.gp_modules import Module, GPModule
 
 class Kernel(GPModule):
 
-	def __init__(self, ndim, input_map=None):
+	def __init__(self, ndim, input_map):
 		super(Kernel, self).__init__()
 		self.ndim = ndim
 		self.log_amp = Parameter(torch.FloatTensor(1))
-		if input_map is None:
-			def input_map(x):
-				return x
 		self.input_map = input_map
 
 	def reset_parameters(self):

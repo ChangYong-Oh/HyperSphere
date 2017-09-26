@@ -2,6 +2,7 @@ import time
 import math
 import pickle
 import os.path
+import sys
 
 import numpy as np
 import torch
@@ -21,11 +22,17 @@ from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimiz
 
 def sphere_BO(n_eval=200, **kwargs):
 	if 'path' in kwargs.keys():
-		model_filename = os.path.join(kwargs['path'], 'model.pkl')
-		data_config_filename = os.path.join(kwargs['path'], 'data_config.pkl')
+		path = kwargs['path']
+		if not os.path.exists(path):
+			path = os.path.join(EXPERIMENT_DIR, path)
+		model_filename = os.path.join(path, 'model.pt')
+		data_config_filename = os.path.join(path, 'data_config.pkl')
 
 		model = torch.load(model_filename)
-		locals().update(pickle.load(data_config_filename, 'r'))
+		data_config_file = open(data_config_filename, 'r')
+		stored_variable_dict = pickle.load(data_config_file)
+		locals().update(stored_variable_dict)
+		data_config_file.close()
 
 		inference = Inference((rphi_input, output), model)
 	else:
@@ -72,11 +79,12 @@ def sphere_BO(n_eval=200, **kwargs):
 		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
 	stored_variable_names = locals().keys()
-	ignored_variable_names = ['kwargs', 'dir_list', 'folder_name_root', 'folder_name_suffix', 'next_ind', 'model_filename',
-	                          'data_config_filename', 'i', 'kernel_input_map', 'model', 'inference']
+	ignored_variable_names = ['kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',
+	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
+	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
 
-	for e in range(output.numel(), n_eval):
+	for _ in range(n_eval):
 		inference = Inference((phi_input, output), model)
 		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
@@ -123,4 +131,11 @@ def sphere_BO(n_eval=200, **kwargs):
 
 
 if __name__ == '__main__':
-	sphere_BO(n_eval=200, func=levy, dim=20)
+	if len(sys.argv) == 1:
+		sphere_BO(n_eval=200, func=levy, dim=20)
+	elif len(sys.argv) == 2:
+		sphere_BO(n_eval=100, path=sys.argv[1])
+	elif len(sys.argv) == 3:
+		sphere_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])
+
+

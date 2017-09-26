@@ -3,6 +3,12 @@ import math
 import torch
 
 
+def id_transform(phi):
+	return phi
+
+id_transform.dim_change = lambda x: x
+
+
 def phi_periodize(phi):
 	return torch.cat([torch.cos(phi[:, :-1] * math.pi), torch.cos(phi[:, -1:] * 2 * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)
 
