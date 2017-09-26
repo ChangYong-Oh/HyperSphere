@@ -67,7 +67,7 @@ class LogDeterminant(Function):
 if __name__ == '__main__':
 	ndim = 2
 	A = torch.randn(ndim, ndim)
-	matrix = Variable(A.mm(A.t()) + np.random.uniform(0, 0.2) * torch.eye(ndim), requires_grad=True)
+	matrix = Variable(A.mm(A.t()) + 0 * torch.eye(ndim), requires_grad=True)
 
 	eps = 1e-4
 
