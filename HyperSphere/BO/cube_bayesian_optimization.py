@@ -108,7 +108,7 @@ if __name__ == '__main__':
 		run_new = True
 	if run_new:
 		func = locals()[sys.argv[1]]
-		n_eval = int(sys.argv[3]) if len(sys.argv) > 2 else 100
+		n_eval = int(sys.argv[3]) if len(sys.argv) > 3 else 100
 		if func.dim == 0:
 			cube_BO(n_eval=n_eval, func=func, dim=int(sys.argv[2]))
 		else:
