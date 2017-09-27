@@ -30,15 +30,19 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 	optima_value = []
 	for i in range(x0.size(0)):
 		x.data = x0[i].view(1, -1)
+		prev_loss = None
 		###--------------------------------------------------###
 		# This block can be modified to use other optimization method
 		optimizer = optim.Adam([x], lr=0.01)
 		for _ in range(n_step):
 			optimizer.zero_grad()
 			loss = -acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs)
+			curr_loss = loss.data.squeeze()[0]
 			x.grad = grad([loss], [x], retain_graph=True)[0]
-			if (x.grad.data != x.grad.data).any():
+			ftol = (prev_loss - curr_loss)/max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
+			if (x.grad.data != x.grad.data).any() or (ftol < 1e-7):
 				break
+			prev_loss = curr_loss
 			optimizer.step()
 			if bounds is not None and ((x.data < lower_bnd).any() or (x.data > upper_bnd).any()):
 				x.data[x.data < lower_bnd] = lower_bnd[x.data < lower_bnd]
