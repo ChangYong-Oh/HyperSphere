@@ -1,36 +1,12 @@
 import os
 import os.path
 import pickle
-import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-import matplotlib.pyplot as plt
-
-from HyperSphere.BO.bayesian_optimization_utils import EXPERIMENT_DIR
-
-
-def folder_name_list(path):
-	parent_dir, prefix = os.path.split(path)
-	if not os.path.exists(parent_dir):
-		parent_dir = os.path.join(EXPERIMENT_DIR, parent_dir)
-	search_sub_dir = not np.any([os.path.isfile(os.path.join(parent_dir, elm)) for elm in os.listdir(parent_dir)])
-	if search_sub_dir:
-		sphere_folder_list = []
-		cube_folder_list = []
-		for sub_folder in [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm))]:
-			sub_folder_folder_list = [elm for elm in os.listdir(os.path.join(parent_dir, sub_folder)) if os.path.isdir(os.path.join(parent_dir, sub_folder, elm)) and prefix == elm[:len(prefix)]]
-			sphere_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'sphere' in elm]
-			cube_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'cube' in elm]
-	else:
-		folder_list = [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm)) and prefix == elm[:len(prefix)]]
-		if len(folder_list) == 0:
-			print('No experimental result')
-			return
-		sphere_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'sphere' in elm]
-		cube_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'cube' in elm]
-	return sphere_folder_list, cube_folder_list
+from HyperSphere.BO.utils.datafile_utils import folder_name_list
 
 
 def plot(path):
@@ -75,18 +51,20 @@ def plot(path):
 	axes[1].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
 	axes[1].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(cube_data.shape[1]) + ')')
 	axes[1].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
+	axes[1].set_title('Comparison', fontsize=10)
 	axes[1].legend()
 
 	for i in range(sphere_data.shape[1]):
 		axes[0].plot(np.arange(sphere_n_eval), sphere_data[:, i])
-	axes[0].set_title('Spherical')
+	axes[0].set_title('Spherical', fontsize=10)
 
 	for i in range(cube_data.shape[1]):
 		axes[2].plot(np.arange(cube_n_eval), cube_data[:, i])
-	axes[2].set_title('Rectangular')
+	axes[2].set_title('Rectangular', fontsize=10)
 
+	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 	plt.show()
 
 
 if __name__ == '__main__':
-	plot('/home/coh1/Experiments/Hypersphere_ALL/levy_D20')
+	plot('/home/coh1/Experiments/Hypersphere_ALL/rosenbrock_D40')

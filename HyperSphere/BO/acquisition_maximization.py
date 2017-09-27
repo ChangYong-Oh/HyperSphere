@@ -9,6 +9,11 @@ import torch.optim as optim
 
 from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.acquisition_functions import expected_improvement
+from HyperSphere.BO.utils.sobol import sobol_generate
+
+N_SOBOL = 1000
+N_SPRAY = 5
+N_INIT = 20
 
 
 def suggest(inference, param_samples, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
@@ -62,6 +67,37 @@ def acquisition(x, inference, param_samples, acquisition_function=expected_impro
 		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
 		acquisition_sample_list.append(acquisition_function(pred_mean_sample[:, 0], pred_var_sample[:, 0], **kwargs))
 	return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
+
+
+def optimization_candidates(input, output, lower_bnd, upper_bnd):
+	ndim = input.size(1)
+	_, min_ind = torch.min(output.data, 0)
+	x0_spray_best = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
+	x0_spray_new = input.data[-1].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
+	x0_spray = torch.cat([x0_spray_best, x0_spray_new], 0)
+	if hasattr(lower_bnd, 'size'):
+		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
+	else:
+		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd - x0_spray[x0_spray < lower_bnd]
+	if hasattr(upper_bnd, 'size'):
+		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray > upper_bnd]
+	else:
+		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd - x0_spray[x0_spray > upper_bnd]
+
+	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
+	x0 = torch.cat([x0_spray, x0_sobol], 0)
+
+	return x0
+
+
+def optimization_init_points(candidates, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
+	ndim = candidates.size(1)
+	acq_value = acquisition(Variable(candidates), inference, param_samples, acquisition_function, **kwargs).data
+	nonnan_ind = acq_value == acq_value
+	acq_value = acq_value[nonnan_ind]
+	init_points = candidates[nonnan_ind.view(-1, 1).repeat(1, ndim)].view(-1, ndim)
+	_, sort_ind = torch.sort(acq_value, 0, descending=True)
+	return init_points[(sort_ind < N_INIT).view(-1, 1).repeat(1, ndim)].view(-1, ndim)
 
 
 def one_dim_plotting(ax1, ax2, inference, param_samples, color, ls='-', label='', title_str=''):

@@ -26,6 +26,15 @@ class Inference(nn.Module):
 	def reset_parameters(self):
 		self.model.reset_parameters()
 
+	def model_param_init(self):
+		if self.train_x.size(0) < 5:
+			self.model.kernel.log_amp.data = torch.std(self.train_y).log().data + 1e-4
+			self.model.kernel.log_ls.data.fill_(0)
+			self.model.mean.const_mean.data.fill_(torch.mean(self.train_y.data))
+			self.model.likelihood.log_noise_var.data.fill_(-3)
+		else:
+			raise RuntimeError('Initialization is called after long training')
+
 	def matrix_update(self, hyper=None):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)

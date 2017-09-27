@@ -1,21 +1,18 @@
-import time
-import pickle
 import os
 import os.path
+import pickle
 import sys
+import time
 
 import numpy as np
-from torch.autograd import Variable
 
-from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.GP.kernels.modules.matern52 import Matern52
+from HyperSphere.BO.acquisition_maximization import suggest, optimization_candidates, optimization_init_points
+from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.inference.inference import Inference
-from HyperSphere.BO.acquisition_maximization import suggest
+from HyperSphere.GP.kernels.modules.matern52 import Matern52
+from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.feature_map.functionals import *
-
 from HyperSphere.test_functions.benchmarks import *
-
-from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points, EXPERIMENT_DIR
 
 
 def cube_BO(n_eval=200, **kwargs):
@@ -34,11 +31,8 @@ def cube_BO(n_eval=200, **kwargs):
 
 		inference = Inference((x_input, output), model)
 	else:
-		n_spray = 10
-		n_random = 10
 		func = kwargs['func']
 		if func.dim == 0:
-			assert 'dim' in kwargs.keys()
 			ndim = kwargs['dim']
 		else:
 			ndim = func.dim
@@ -62,12 +56,12 @@ def cube_BO(n_eval=200, **kwargs):
 
 		kernel_input_map = id_transform
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
-		model_param_init(model, output)
 
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]
 
 		inference = Inference((x_input, output), model)
+		inference.model_param_init()
 		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
 	stored_variable_names = locals().keys()
@@ -81,15 +75,17 @@ def cube_BO(n_eval=200, **kwargs):
 
 	for _ in range(n_eval):
 		inference = Inference((x_input, output), model)
-		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
+		reference = torch.min(output)[0]
+		sampled_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
-		x0 = optimization_init_points(x_input, output, lower_bnd, upper_bnd, n_spray=n_spray, n_random=n_random)
-		next_eval_point = suggest(inference, learned_params, x0=x0, reference=torch.min(output)[0], bounds=(lower_bnd, upper_bnd))
+		x0_cand = optimization_candidates(x_input, output, 0, 1)
+		x0 = optimization_init_points(x0_cand, inference, sampled_params, reference=reference)
+		next_x_point = suggest(inference, sampled_params, x0=x0, reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
 
-		x_input = torch.cat([x_input, next_eval_point])
+		x_input = torch.cat([x_input, next_x_point])
 		output = torch.cat([output, func(x_input[-1])])
 
 		rect_str = '/'.join(['%+.4f' % x_input.data[-1, i] for i in range(0, x_input.size(1))])
@@ -106,9 +102,16 @@ def cube_BO(n_eval=200, **kwargs):
 
 
 if __name__ == '__main__':
-	if len(sys.argv) == 1:
-		cube_BO(n_eval=300, func=rosenbrock, dim=40)
-	elif len(sys.argv) == 2:
-		cube_BO(n_eval=100, path=sys.argv[1])
-	elif len(sys.argv) == 3:
+	run_new = False
+	path, suffix = os.path.split(sys.argv[1])
+	if path == '' and not ('_D' in suffix):
+		run_new = True
+	if run_new:
+		func = locals()[sys.argv[1]]
+		n_eval = int(sys.argv[3]) if len(sys.argv) > 2 else 100
+		if func.dim == 0:
+			cube_BO(n_eval=n_eval, func=func, dim=int(sys.argv[2]))
+		else:
+			cube_BO(n_eval=n_eval, func=func)
+	else:
 		cube_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])

@@ -90,11 +90,11 @@ def rosenbrock(x):
 	if flat:
 		x = x.view(1, -1)
 	if hasattr(x, 'data'):
-		x.data = x.data * 2.048
+		x.data = x.data * 7.5 + 2.5
 	else:
-		x = x * 2.048
+		x = x * 7.5 + 2.5
 
-	output = ((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + 0.01 * ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)
+	output = (((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True) - 3.827e5) / 3.755e5
 	if flat:
 		return output.squeeze(0)
 	else:

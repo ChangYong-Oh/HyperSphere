@@ -1,23 +1,18 @@
-import time
-import math
-import pickle
 import os.path
+import pickle
 import sys
+import time
 
 import numpy as np
-import torch
-from torch.autograd import Variable
 
-from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect
-from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.GP.kernels.modules.matern52 import Matern52
+from HyperSphere.BO.acquisition_maximization import suggest, optimization_candidates, optimization_init_points
+from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.inference.inference import Inference
-from HyperSphere.BO.acquisition_maximization import suggest
-from HyperSphere.feature_map.functionals import phi_periodize, phi_periodize_lp, phi_periodize_one, phi_periodize_sin
-
+from HyperSphere.GP.kernels.modules.matern52 import Matern52
+from HyperSphere.GP.models.gp_regression import GPRegression
+from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect
+from HyperSphere.feature_map.functionals import phi_periodize_one
 from HyperSphere.test_functions.benchmarks import *
-
-from HyperSphere.BO.bayesian_optimization_utils import model_param_init, optimization_init_points, remove_last_evaluation, EXPERIMENT_DIR
 
 
 def sphere_BO(n_eval=200, **kwargs):
@@ -36,11 +31,8 @@ def sphere_BO(n_eval=200, **kwargs):
 
 		inference = Inference((rphi_input, output), model)
 	else:
-		n_spray = 10
-		n_random = 10
 		func = kwargs['func']
 		if func.dim == 0:
-			assert 'dim' in kwargs.keys()
 			ndim = kwargs['dim']
 		else:
 			ndim = func.dim
@@ -70,12 +62,12 @@ def sphere_BO(n_eval=200, **kwargs):
 
 		kernel_input_map = phi_periodize_one
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
-		model_param_init(model, output)
 
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]
 
 		inference = Inference((phi_input, output), model)
+		inference.model_param_init()
 		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
 	stored_variable_names = locals().keys()
@@ -89,10 +81,12 @@ def sphere_BO(n_eval=200, **kwargs):
 
 	for _ in range(n_eval):
 		inference = Inference((phi_input, output), model)
-		learned_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
+		reference = torch.min(output)[0]
+		sampled_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
-		phi0 = optimization_init_points(phi_input, output, 0, 1, n_spray=n_spray, n_random=n_random)
-		next_phi_point = suggest(inference, learned_params, x0=phi0, reference=torch.min(output)[0])
+		phi0_cand = optimization_candidates(phi_input, output, 0, 1)
+		phi0 = optimization_init_points(phi0_cand, inference, sampled_params, reference=reference)
+		next_phi_point = suggest(inference, sampled_params, x0=phi0, reference=reference)
 		next_phi_point[0, :-1] = torch.fmod(torch.fmod(torch.abs(next_phi_point[0, :-1]), 2) + 2, 2)
 		next_phi_point[0, -1:] = torch.fmod(torch.fmod(torch.abs(next_phi_point[0, -1:]), 1) + 1, 1)
 
@@ -134,11 +128,16 @@ def sphere_BO(n_eval=200, **kwargs):
 
 
 if __name__ == '__main__':
-	if len(sys.argv) == 1:
-		sphere_BO(n_eval=300, func=rosenbrock, dim=40)
-	elif len(sys.argv) == 2:
-		sphere_BO(n_eval=100, path=sys.argv[1])
-	elif len(sys.argv) == 3:
+	run_new = False
+	path, suffix = os.path.split(sys.argv[1])
+	if path == '' and not ('_D' in suffix):
+		run_new = True
+	if run_new:
+		func = locals()[sys.argv[1]]
+		n_eval = int(sys.argv[3]) if len(sys.argv) > 2 else 100
+		if func.dim == 0:
+			sphere_BO(n_eval=n_eval, func=func, dim=int(sys.argv[2]))
+		else:
+			sphere_BO(n_eval=n_eval, func=func)
+	else:
 		sphere_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])
-
-
