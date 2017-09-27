@@ -75,7 +75,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]
 
-		inference = Inference((rphi_input, output), model)
+		inference = Inference((phi_input, output), model)
 		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
 
 	stored_variable_names = locals().keys()

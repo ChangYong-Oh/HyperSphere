@@ -47,7 +47,7 @@ def remove_last_evaluation(path):
 	data_config_file.close()
 	for key, value in data_config.iteritems():
 		if isinstance(value, Variable) and value.dim() == 2:
-			print('%12s : %4d-th evaluation %4d dimensional data whose sum is %.6E' % (key, value.size(0), value.size(1), (value.data if hasattr(value, 'data') else value).sum()))
+			print('%s : %4d-th evaluation %4d dimensional data whose sum is %.E' % (key, value.size(0), value.size(1), (is hasattr(value, 'data'))))
 	while True:
 		sys.stdout.write('Want to remove this last evaluation?(YES/NO) : ')
 		decision = sys.stdin.readline()[:-1]
