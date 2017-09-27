@@ -7,7 +7,7 @@ import numpy as np
 from torch.autograd import Variable
 
 
-EXPERIMENT_DIR = os.path.join('/'.join(os.path.realpath(__file__).split('/')[:3]), 'Experiments/Hypersphere')
+EXPERIMENT_DIR = os.path.join('/'.join(os.path.realpath(__file__).split('/')[:-5]), 'Experiments/Hypersphere')
 
 
 def remove_last_evaluation(path):
