@@ -137,10 +137,10 @@ if __name__ == '__main__':
 		run_new = True
 	if run_new:
 		func = locals()[sys.argv[1]]
-		n_eval = int(sys.argv[3]) if len(sys.argv) > 3 else 100
 		if func.dim == 0:
+			n_eval = int(sys.argv[3]) if len(sys.argv) > 3 else 100
 			sphere_BO(n_eval=n_eval, func=func, dim=int(sys.argv[2]))
 		else:
-			sphere_BO(n_eval=n_eval, func=func)
+			sphere_BO(n_eval=int(sys.argv[2]), func=func)
 	else:
 		sphere_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])
