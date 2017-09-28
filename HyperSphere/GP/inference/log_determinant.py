@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.linalg as linalg
 
 import torch
 from torch.autograd import Function, Variable, gradcheck
@@ -11,40 +10,18 @@ class LogDeterminant(Function):
 	def forward(ctx, matrix):
 		ctx.save_for_backward(matrix)
 
-		# matrix_tensor = matrix.data if hasattr(matrix, 'data') else matrix
-		# matrix_numpy = (matrix_tensor.cpu() if matrix_tensor.is_cuda else matrix_tensor).numpy()
-		# _, logdet = np.linalg.slogdet(matrix_numpy)
-		# result = matrix_tensor.new(1, 1).fill_(float(logdet))
-		# return Variable(result) if hasattr(matrix, 'data') else result
-
-		# one_vector = (matrix.data if hasattr(matrix, 'data') else matrix).new(matrix.size(0)).fill_(1)
-		# id_matrix = torch.diag(Variable(one_vector) if hasattr(matrix, 'data') else one_vector)
-		# stabilizer = 0
-		# while True:
-		# 	try:
-		# 		chol_from_upper = torch.potrf(matrix + id_matrix * stabilizer, True)
-		# 		chol_from_lower = torch.potrf(matrix + id_matrix * stabilizer, False)
-		# 		break
-		# 	except RuntimeError:
-		# 		if stabilizer == 0:
-		# 			stabilizer = np.abs(torch.min(torch.symeig(matrix)[0]))
-		# 		stabilizer *= 1 + 1e-4
-		#
-		# return (torch.sum(torch.log(torch.diag(chol_from_upper)), 0, keepdim=True) + torch.sum(torch.log(torch.diag(chol_from_lower)), 0, keepdim=True)).view(1, 1)
-
-		eps = 1e-12
 		try:
 			chol_from_upper = torch.potrf(matrix, True)
 			chol_from_lower = torch.potrf(matrix, False)
 			return (torch.sum(torch.log(torch.diag(chol_from_upper)), 0, keepdim=True) + torch.sum(torch.log(torch.diag(chol_from_lower)), 0, keepdim=True)).view(1, 1)
 		except RuntimeError:
-			matrix_tensor = matrix.data if hasattr(matrix, 'data') else matrix
-			matrix_numpy = (matrix_tensor.cpu() if matrix_tensor.is_cuda else matrix_tensor).numpy()
-			_, _, u = linalg.lu(matrix_numpy)
-			diag = np.abs(np.diag(u))
-			diag[diag < eps] = eps
-			result = matrix_tensor.new(1, 1).fill_(float(np.sum(np.log(diag))))
-			return Variable(result) if hasattr(matrix, 'data') else result
+			if hasattr(matrix, 'data'):
+				_, lu = torch.gesv(Variable(torch.ones(matrix.size(0), 1).type_as(matrix.data)), matrix)
+			else:
+				_, lu = torch.gesv(torch.ones(matrix.size(0), 1).type_as(matrix), matrix)
+			diag = torch.diag(lu)
+			diag = diag[diag > 0]
+			return torch.sum(torch.log(diag), 0, keepdim=True)
 
 	@staticmethod
 	def backward(ctx, grad_output):
@@ -57,18 +34,35 @@ class LogDeterminant(Function):
 		grad_matrix = None
 
 		if ctx.needs_input_grad[0]:
-			grad_matrix = grad_output * matrix.inverse()
+			logdet_grad, _ = torch.gesv(torch.diag(Variable(matrix.data.new(matrix.size(0)).fill_(1))), matrix)
+			grad_matrix = grad_output * logdet_grad
 
 		return grad_matrix
 
 
 if __name__ == '__main__':
-	ndim = 2
+	ndim = 10
 	A = torch.randn(ndim, ndim)
-	matrix = Variable(A.mm(A.t()) + 0 * torch.eye(ndim), requires_grad=True)
+	A = A.mm(A.t())
+	eig, _ = torch.symeig(A)
+	print(torch.min(eig))
+	matrix = Variable(A + (1e-8 - torch.min(eig)) * torch.eye(ndim), requires_grad=True)
+	_, logdet = np.linalg.slogdet(matrix.data.numpy())
 
 	eps = 1e-4
+	fdm_deriv = torch.zeros(ndim, ndim)
+	for i in range(ndim):
+		for j in range(ndim):
+			matrix_perturb = Variable(matrix.data).clone()
+			matrix_perturb.data[i, j] += eps
+			_, logdet_perturb = np.linalg.slogdet(matrix_perturb.data.numpy())
+			fdm_deriv[i, j] = (logdet_perturb - logdet) / eps
+
+	output = LogDeterminant.apply(matrix)
+	output.backward()
+	print(torch.abs((matrix.grad.data - fdm_deriv)/matrix.grad.data))
+
 
 	# gradcheck doesn't have to pass all the time.
-	test = gradcheck(LogDeterminant.apply, (matrix, ), eps=eps, atol=1e-3, rtol=1e-2)
-	print(test)
+	# test = gradcheck(LogDeterminant.apply, (matrix, ), eps=eps, atol=1e-3, rtol=1e-2)
+	# print(test)

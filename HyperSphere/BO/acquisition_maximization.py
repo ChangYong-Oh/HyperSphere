@@ -11,8 +11,8 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
-N_SOBOL = 1000
-N_SPRAY = 5
+N_SOBOL = 10000
+N_SPRAY = 10
 N_INIT = 20
 
 
@@ -40,7 +40,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 			curr_loss = loss.data.squeeze()[0]
 			x.grad = grad([loss], [x], retain_graph=True)[0]
 			ftol = (prev_loss - curr_loss)/max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
-			if (x.grad.data != x.grad.data).any() or (ftol < 1e-7):
+			if (x.grad.data != x.grad.data).any() or (ftol < 1e-9):
 				break
 			prev_loss = curr_loss
 			optimizer.step()
@@ -101,7 +101,13 @@ def optimization_init_points(candidates, inference, param_samples, acquisition_f
 	acq_value = acq_value[nonnan_ind]
 	init_points = candidates[nonnan_ind.view(-1, 1).repeat(1, ndim)].view(-1, ndim)
 	_, sort_ind = torch.sort(acq_value, 0, descending=True)
-	return init_points[(sort_ind < N_INIT).view(-1, 1).repeat(1, ndim)].view(-1, ndim)
+	is_maximum = acq_value == acq_value[sort_ind[0]]
+	n_equal_maximum = torch.sum(is_maximum)
+	if n_equal_maximum > N_INIT:
+		shuffled_ind = torch.sort(torch.randn(n_equal_maximum), 0)[1]
+		return init_points[is_maximum][shuffled_ind < N_INIT]
+	else:
+		return init_points[sort_ind][:N_INIT]
 
 
 def one_dim_plotting(ax1, ax2, inference, param_samples, color, ls='-', label='', title_str=''):

@@ -69,4 +69,4 @@ def plot(path):
 
 
 if __name__ == '__main__':
-	plot('/home/coh1/Experiments/Hypersphere_ALL/levy_D20')
+	plot('/home/coh1/Experiments/Hypersphere_ALL/rosenbrock_D10')
