@@ -10,6 +10,7 @@ from HyperSphere.BO.utils.datafile_utils import folder_name_list
 
 
 def plot(path):
+	title = os.path.split(path)[1]
 	sphere_folder_list, cube_folder_list = folder_name_list(path)
 
 	sphere_output_list = []
@@ -55,16 +56,17 @@ def plot(path):
 	axes[1].legend()
 
 	for i in range(sphere_data.shape[1]):
-		axes[0].plot(np.arange(sphere_n_eval), sphere_data[:, i])
+		axes[0].plot(np.arange(sphere_n_eval), sphere_data[:sphere_n_eval, i])
 	axes[0].set_title('Spherical', fontsize=10)
 
 	for i in range(cube_data.shape[1]):
-		axes[2].plot(np.arange(cube_n_eval), cube_data[:, i])
+		axes[2].plot(np.arange(cube_n_eval), cube_data[:cube_n_eval, i])
 	axes[2].set_title('Rectangular', fontsize=10)
 
-	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=2.0)
+	plt.suptitle(title)
 	plt.show()
 
 
 if __name__ == '__main__':
-	plot('/home/coh1/Experiments/Hypersphere_ALL/rosenbrock_D40')
+	plot('/home/coh1/Experiments/Hypersphere_ALL/levy_D20')

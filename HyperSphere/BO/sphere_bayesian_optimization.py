@@ -126,6 +126,9 @@ def sphere_BO(n_eval=200, **kwargs):
 		pickle.dump(stored_variable, f)
 		f.close()
 
+	for _ in range(3):
+		print('Experiment based on data in ' + os.path.split(model_filename)[0])
+
 
 if __name__ == '__main__':
 	run_new = False

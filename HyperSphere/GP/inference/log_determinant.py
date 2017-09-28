@@ -1,5 +1,3 @@
-import sys
-
 import numpy as np
 import scipy.linalg as linalg
 
