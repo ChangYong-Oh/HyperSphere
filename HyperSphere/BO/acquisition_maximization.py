@@ -105,7 +105,7 @@ def optimization_init_points(candidates, inference, param_samples, acquisition_f
 	n_equal_maximum = torch.sum(is_maximum)
 	if n_equal_maximum > N_INIT:
 		shuffled_ind = torch.sort(torch.randn(n_equal_maximum), 0)[1]
-		return init_points[is_maximum][shuffled_ind < N_INIT]
+		return init_points[is_maximum.view(-1, 1).repeat(1, ndim)].view(-1, ndim)[(shuffled_ind < N_INIT).view(-1, 1).repeat(1, ndim)].view(-1, ndim)
 	else:
 		return init_points[sort_ind][:N_INIT]
 
