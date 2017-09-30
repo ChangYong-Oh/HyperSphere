@@ -33,8 +33,19 @@ class Kernel(GPModule):
 				cnt += p.numel()
 		return cnt
 
-	def prior(self, vec):
-		likelihood = smp.normal(vec[-1:], mu=0.0, sig=1.0)
+	def param_to_vec(self):
+		flat_param_list = [self.log_amp.data.clone()]
 		if isinstance(self.input_map, GPModule):
-			likelihood += self.input_map.prior(vec[:-1])
+			flat_param_list.append(self.input_map.param_to_vec())
+		return torch.cat(flat_param_list)
+
+	def vec_to_param(self, vec):
+		self.log_amp.data = vec[:1]
+		if isinstance(self.input_map, GPModule):
+			self.input_map.vec_to_param(vec[1:])
+
+	def prior(self, vec):
+		likelihood = smp.normal(vec[:1], mu=0.0, sig=1.0)
+		if isinstance(self.input_map, GPModule):
+			likelihood += self.input_map.prior(vec[1:])
 		return likelihood

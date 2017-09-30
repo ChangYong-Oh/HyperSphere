@@ -94,7 +94,7 @@ def rosenbrock(x):
 	else:
 		x = x * 7.5 + 2.5
 
-	output = (((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True) - 3.827e5) / 3.755e5
+	output = ((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)
 	if flat:
 		return output.squeeze(0)
 	else:
@@ -102,3 +102,22 @@ def rosenbrock(x):
 
 
 rosenbrock.dim = 0
+
+
+def styblinskitang(x):
+	flat = x.dim() == 1
+	if flat:
+		x = x.view(1, -1)
+	if hasattr(x, 'data'):
+		x.data = x.data * 5
+	else:
+		x = x * 5
+
+	output = ((x ** 4).sum(1, keepdim=True) - 16 * (x ** 2).sum(1, keepdim=True) + 5 * x.sum(1, keepdim=True)) / (2.0 * x.size(1))
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output
+
+
+styblinskitang.dim = 0

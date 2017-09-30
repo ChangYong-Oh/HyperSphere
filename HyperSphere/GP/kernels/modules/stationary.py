@@ -3,7 +3,7 @@ import sampyl as smp
 
 import torch
 from torch.nn.parameter import Parameter
-from HyperSphere.GP.kernels.modules.kernel import Kernel
+from HyperSphere.GP.kernels.modules.kernel import GPModule, Kernel
 
 
 class Stationary(Kernel):
@@ -26,21 +26,25 @@ class Stationary(Kernel):
 		return True
 
 	def n_params(self):
-		return super(Stationary, self).n_params() + self.ndim
+		cnt = super(Stationary, self).n_params() + self.ndim
+		return cnt
 
 	def param_to_vec(self):
-		return torch.cat([self.log_amp.data, self.log_ls.data])
+		return torch.cat([super(Stationary, self).param_to_vec(), self.log_ls.data])
 
 	def vec_to_param(self, vec):
-		self.log_amp.data = vec[0:1]
-		self.log_ls.data = vec[1:]
+		n_param_super = super(Stationary, self).n_params()
+		super(Stationary, self).vec_to_param(vec[:n_param_super])
+		self.log_ls.data = vec[n_param_super:]
 
 	def elastic_vec_to_param(self, vec, func):
-		self.log_amp.data = vec[0:1]
-		self.log_ls.data = func(vec[1:])
+		n_param_super = super(Stationary, self).n_params()
+		super(Stationary, self).vec_to_param(vec[:n_param_super])
+		self.log_ls.data = func(vec[n_param_super:])
 
 	def prior(self, vec):
-		return super(Stationary, self).prior(vec[:1]) + smp.normal(vec[1:], mu=0.0, sig=2.0)
+		n_param_super = super(Stationary, self).n_params()
+		return super(Stationary, self).prior(vec[:n_param_super]) + smp.normal(vec[n_param_super:], mu=0.0, sig=2.0)
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (' + 'dim=' + str(self.ndim) + ')'

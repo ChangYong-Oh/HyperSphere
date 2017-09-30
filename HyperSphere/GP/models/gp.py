@@ -25,7 +25,7 @@ class GP(GPModule):
 					return True
 			return False
 
-	def n_param(self):
+	def n_params(self):
 		cnt = 0
 		for param in self.parameters():
 			cnt += param.numel()

@@ -6,6 +6,7 @@ import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
+from torch.nn.modules.module import Module
 from HyperSphere.GP.inference.inverse_bilinear_form import InverseBilinearForm
 from HyperSphere.GP.inference.log_determinant import LogDeterminant
 
@@ -17,7 +18,7 @@ class Inference(nn.Module):
 		self.model = model
 		self.train_x = train_data[0]
 		self.train_y = train_data[1]
-		assert self.model.kernel.input_map(torch.ones(1, self.train_x.size(1))).numel() == model.kernel.ndim
+		assert self.model.kernel.input_map(Variable(torch.ones(1, self.train_x.size(1)))).numel() == model.kernel.ndim
 		self.mean_vec = None
 		self.K_noise = None
 		self.K_noise_inv = None
@@ -30,6 +31,8 @@ class Inference(nn.Module):
 		if self.train_x.size(0) < 5:
 			self.model.kernel.log_amp.data = torch.std(self.train_y).log().data + 1e-4
 			self.model.kernel.log_ls.data.fill_(0)
+			if isinstance(self.model.kernel.input_map, Module):
+				self.model.kernel.input_map.model_param_init()
 			self.model.mean.const_mean.data.fill_(torch.mean(self.train_y.data))
 			self.model.likelihood.log_noise_var.data.fill_(-3)
 		else:
