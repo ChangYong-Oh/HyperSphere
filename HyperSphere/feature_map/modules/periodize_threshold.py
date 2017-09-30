@@ -2,15 +2,18 @@ from HyperSphere.feature_map.functionals import phi_periodize
 from HyperSphere.feature_map.modules.reduce_threshold import ReduceThreshold
 
 
+def periodize_threshold_dim_change(x):
+	return x + 1
+
+
 class PeriodizeThreshold(ReduceThreshold):
 
 	def __init__(self):
 		super(PeriodizeThreshold, self).__init__()
-		self.dim_change = lambda x: x + 1
+		self.dim_change = periodize_threshold_dim_change
 
 	def forward(self, input):
-		input = phi_periodize(input)
-		return super(PeriodizeThreshold, self).forward(input)
+		return super(PeriodizeThreshold, self).forward(phi_periodize(input))
 
 
 if __name__ == '__main__':

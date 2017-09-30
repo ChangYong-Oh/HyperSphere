@@ -109,8 +109,6 @@ class Inference(nn.Module):
 			return prior + likelihood
 		hyper_torch = self.model.param_to_vec()
 		hyper_numpy = (hyper_torch.cpu() if hyper_torch.is_cuda else hyper_torch).numpy()
-		if np.isinf(logp(hyper_numpy)) or np.isnan(logp(hyper_numpy)):
-			raise RuntimeError("Start value is of likelihood zero")
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
 		sampler = smp.Slice(logp=logp, start={'hyper': hyper_numpy}, compwise=True)
