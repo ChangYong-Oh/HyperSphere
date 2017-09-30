@@ -1,4 +1,3 @@
-import math
 import numpy as np
 
 import torch
@@ -19,9 +18,9 @@ class GaussianLikelihood(Likelihood):
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
-			return (self.log_noise_var.data > math.log(100)).any()
+			return (self.log_noise_var.data < -25).any() or (self.log_noise_var.data > 16 + np.log(self.noise_scale/0.1)).any()
 		else:
-			return (vec > math.log(1000)).any()
+			return (vec < -25).any() or (vec > 16 + np.log(self.noise_scale/0.1)).any()
 
 	def n_params(self):
 		return 1
@@ -33,7 +32,10 @@ class GaussianLikelihood(Likelihood):
 		self.log_noise_var.data = vec
 
 	def prior(self, vec):
+		if (vec < -25).any() or (vec > 16 + np.log(self.noise_scale/0.1)).any():
+			return -np.inf
 		return np.log(np.log(1 + 2 * (self.noise_scale / np.exp(vec)) ** 2)).sum()
+
 
 	def forward(self, input):
 		return gaussian.GaussianLikelihood.apply(input, self.log_noise_var)

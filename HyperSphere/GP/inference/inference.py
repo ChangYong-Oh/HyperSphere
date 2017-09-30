@@ -29,7 +29,8 @@ class Inference(nn.Module):
 
 	def model_param_init(self):
 		if self.train_x.size(0) < 5:
-			self.model.kernel.log_amp.data = torch.std(self.train_y).log().data + 1e-4
+			log_std = torch.std(self.train_y).log().data + 1e-4
+			self.model.kernel.log_amp.data = log_std
 			self.model.kernel.log_ls.data.fill_(0)
 			if isinstance(self.model.kernel.input_map, Module):
 				self.model.kernel.input_map.model_param_init()
@@ -106,11 +107,13 @@ class Inference(nn.Module):
 			prior = self.model.prior(hyper)
 			likelihood = -self.negative_log_likelihood(torch.from_numpy(hyper).type_as(type_as_arg)).data.squeeze()[0]
 			return prior + likelihood
-		start = self.model.param_to_vec()
-
+		hyper_torch = self.model.param_to_vec()
+		hyper_numpy = (hyper_torch.cpu() if hyper_torch.is_cuda else hyper_torch).numpy()
+		if np.isinf(logp(hyper_numpy)) or np.isnan(logp(hyper_numpy)):
+			raise RuntimeError("Start value is of likelihood zero")
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
-		sampler = smp.Slice(logp=logp, start={'hyper': (start.cpu() if start.is_cuda else start).numpy()})
+		sampler = smp.Slice(logp=logp, start={'hyper': hyper_numpy}, compwise=True)
 		samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
 		###--------------------------------------------------###
 		self.model.vec_to_param(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))

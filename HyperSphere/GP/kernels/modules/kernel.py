@@ -20,10 +20,16 @@ class Kernel(GPModule):
 			self.input_map.reset_parameters()
 
 	def out_of_bounds(self, vec=None):
-		if not (vec[-1] < math.log(0.0001)).any():
-			if isinstance(self.input_map, GPModule):
-				return self.input_map.out_of_bounds(vec[:-1])
-			return False
+		if vec is not None:
+			if vec[0] >= -12.0:
+				if isinstance(self.input_map, GPModule):
+					return self.input_map.out_of_bounds(vec[1:])
+				return False
+		else:
+			if (self.log_amp.data >= -12.0).all():
+				if isinstance(self.input_map, GPModule):
+					return self.input_map.out_of_bounds()
+				return False
 		return True
 
 	def n_params(self):

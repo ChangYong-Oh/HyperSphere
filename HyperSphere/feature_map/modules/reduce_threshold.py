@@ -50,7 +50,7 @@ class ReduceThreshold(GPModule):
 		self.sigmoid_inv_threshold.data = vec
 
 	def prior(self, vec):
-		return smp.beta(vec, alpha=self.alpha, beta=self.beta)
+		return smp.beta(sigmoid_numpy(vec), alpha=self.alpha, beta=self.beta)
 
 	def forward(self, input):
 		return reduce_threshold.ReduceThreshold.apply(input, torch.sigmoid(self.sigmoid_inv_threshold))
