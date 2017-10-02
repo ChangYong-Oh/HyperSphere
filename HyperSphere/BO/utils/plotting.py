@@ -8,9 +8,7 @@ import torch
 
 from HyperSphere.BO.utils.datafile_utils import folder_name_list
 
-np.random.seed(123)
 color_matrix = np.random.uniform(0, 1, [10, 3])
-np.random.seed()
 
 
 def optimum_plot(path):
@@ -47,31 +45,19 @@ def optimum_plot(path):
 	for elm in cube_output_list:
 		cube_best_history_list.append(np.array([torch.min(elm.data[:d]) for d in range(1, elm.numel()+1)]))
 
-	sphere_data = sphere_best_history.data if hasattr(sphere_best_history, 'data') else sphere_best_history
-	sphere_data = (sphere_data.cpu() if sphere_data.is_cuda else sphere_data).numpy()
-	sphere_mean = np.mean(sphere_data, 1)
-	sphere_std = np.std(sphere_data, 1)
-
-	cube_data = cube_best_history.data if hasattr(cube_best_history, 'data') else cube_best_history
-	cube_data = (cube_data.cpu() if cube_data.is_cuda else cube_data).numpy()
-	cube_mean = np.mean(cube_data, 1)
-	cube_std = np.std(cube_data, 1)
+	sphere_mean, sphere_std = mean_std(sphere_best_history)
+	cube_mean, cube_std = mean_std(cube_best_history)
 
 	fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, sharey=True)
-	axes[1].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(sphere_data.shape[1]) + ')')
+	axes[1].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_output_list)) + ')')
 	axes[1].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
-	axes[1].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(cube_data.shape[1]) + ')')
+	axes[1].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_output_list)) + ')')
 	axes[1].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
 	axes[1].set_title('Comparison', fontsize=10)
 	axes[1].legend()
 
-	for i, best_history in enumerate(sphere_best_history_list):
-		axes[0].plot(np.arange(best_history.size), best_history, color=color_matrix[i])
-	axes[0].set_title('Spherical', fontsize=10)
-
-	for i, best_history in enumerate(cube_best_history_list):
-		axes[2].plot(np.arange(best_history.size), best_history, color=color_matrix[i])
-	axes[2].set_title('Rectangular', fontsize=10)
+	plot_samples(axes[0], sphere_best_history_list, color_matrix, 'Spherical')
+	plot_samples(axes[2], cube_best_history_list, color_matrix, 'Rectangular')
 
 	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=2.0)
 	plt.suptitle(title)
@@ -102,39 +88,44 @@ def radius_plot(path):
 	cube_radius_tensor = torch.stack([elm[:cube_n_eval] for elm in cube_radius_list], 1)
 	cube_radius_list = [(elm.data if hasattr(elm, 'data') else elm).numpy() for elm in cube_radius_list]
 
-	sphere_data = sphere_radius_tensor.data if hasattr(sphere_radius_tensor, 'data') else sphere_radius_tensor
-	sphere_data = (sphere_data.cpu() if sphere_data.is_cuda else sphere_data).numpy()
-	sphere_mean = np.mean(sphere_data, 1)
-	sphere_std = np.std(sphere_data, 1)
-
-	cube_data = cube_radius_tensor.data if hasattr(cube_radius_tensor, 'data') else cube_radius_tensor
-	cube_data = (cube_data.cpu() if cube_data.is_cuda else cube_data).numpy()
-	cube_mean = np.mean(cube_data, 1)
-	cube_std = np.std(cube_data, 1)
+	sphere_mean, sphere_std = mean_std(sphere_radius_tensor)
+	cube_mean, cube_std = mean_std(cube_radius_tensor)
 
 	fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, sharey=True)
-	axes[1].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(sphere_data.shape[1]) + ')')
-	axes[1].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r',
-	                     alpha=0.25)
-	axes[1].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(cube_data.shape[1]) + ')')
+	axes[1].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_radius_list)) + ')')
+	axes[1].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
+	axes[1].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_radius_list)) + ')')
 	axes[1].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
 	axes[1].set_title('Comparison', fontsize=10)
 	axes[1].legend()
 
-	for i, radius in enumerate(sphere_radius_list):
-		axes[0].plot(np.arange(radius.size), radius, color=color_matrix[i])
-	axes[0].set_title('Spherical', fontsize=10)
-
-	for i, radius in enumerate(cube_radius_list):
-		axes[2].plot(np.arange(radius.size), radius, color=color_matrix[i])
-	axes[2].set_title('Rectangular', fontsize=10)
+	plot_samples(axes[0], sphere_radius_list, color_matrix, 'Spherical')
+	plot_samples(axes[2], cube_radius_list, color_matrix, 'Rectangular')
 
 	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=2.0)
 	plt.suptitle(title)
 	plt.show()
 
+
+def plot_samples(ax, sample_list, color_matrix, title_str):
+	sample_len = [elm.size for elm in sample_list]
+	max_len = int(np.max(sample_len) * 1.1)
+	for i, sample in enumerate(sample_list):
+		ax.plot(np.arange(sample.size), sample, color=color_matrix[i])
+	ax.set_title(title_str, fontsize=10)
+	ax.set_xticks(np.arange(0, max_len, 50))
+	ax.set_xticks(np.arange(0, max_len, 10), minor=True)
+	ax.grid(which='both')
+
+
+def mean_std(sample_tensor):
+	sample_data = sample_tensor.data if hasattr(sample_tensor, 'data') else sample_tensor
+	sample_data = (sample_data.cpu() if sample_data.is_cuda else sample_data).numpy()
+	return np.mean(sample_data, 1), np.std(sample_data, 1)
+
+
 if __name__ == '__main__':
-	radius_plot('/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D20')
+	optimum_plot('/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D20')
 	# rosenbrock
 	# levy
 	# styblinskitang

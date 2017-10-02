@@ -1,4 +1,3 @@
-import numpy as np
 import scipy.stats as stats
 import sampyl as smp
 
@@ -6,18 +5,7 @@ import torch
 from torch.nn.parameter import Parameter
 from HyperSphere.GP.modules.gp_modules import GPModule
 from HyperSphere.feature_map.functions import reduce_threshold
-
-
-def sigmoid_numpy(x):
-	return 1.0 / (1.0 + np.exp(-x))
-
-
-def sigmoid_inv_numpy(x):
-	return 1.0 - np.log(1.0/x - 1)
-
-
-def sigmoid_inv(x):
-	return 1.0 - torch.log(1.0/x - 1)
+from HyperSphere.feature_map.functionals import sigmoid_numpy, sigmoid_inv_numpy
 
 
 class ReduceThreshold(GPModule):
