@@ -134,7 +134,7 @@ def radius_plot(path):
 	plt.show()
 
 if __name__ == '__main__':
-	optimum_plot('/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D20')
+	radius_plot('/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D20')
 	# rosenbrock
 	# levy
 	# styblinskitang

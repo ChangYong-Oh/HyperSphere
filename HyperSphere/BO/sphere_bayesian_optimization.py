@@ -11,7 +11,7 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect
-from HyperSphere.feature_map.functionals import phi_periodize_threshold
+from HyperSphere.feature_map.functionals import phi_periodize_threshold, phi_periodize
 from HyperSphere.feature_map.modules.periodize_threshold import PeriodizeThreshold
 from HyperSphere.test_functions.benchmarks import *
 
