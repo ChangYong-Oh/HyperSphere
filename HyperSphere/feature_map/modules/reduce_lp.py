@@ -1,4 +1,3 @@
-import numpy as np
 import sampyl as smp
 
 import torch

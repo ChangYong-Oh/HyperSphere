@@ -11,7 +11,7 @@ class ReduceLp(Function):
 		ctx.save_for_backward(input, p)
 		ratio = 0.5 * (1.0 - input[:, 0:1])
 		reduction = (1.0 - (1.0 - ratio) ** p) ** (1.0 / p)
-		return input * reduction.view(-1, 1)
+		return torch.cat([input[:, 0:1], input[:, 1:] * reduction.view(-1, 1)], 1)
 
 	@staticmethod
 	def backward(ctx, grad_output):
@@ -23,13 +23,13 @@ class ReduceLp(Function):
 		reduction = (1.0 - (1.0 - ratio) ** p) ** (1.0 / p)
 
 		if ctx.needs_input_grad[0]:
-			grad_phi0 = ((1.0 - ratio) / reduction) ** (p - 1.0) * ratio_derivative
-			grad_input_phi = (input * grad_phi0.view(-1, 1) * grad_output).sum(1, keepdim=True) + reduction * grad_output[:, 0:1]
-			grad_input = torch.cat([grad_input_phi, reduction.view(-1, 1).repeat(1, input.size(1) - 1) * grad_output[:, 1:]], 1)
+			grad_f_phi0 = ((1.0 - ratio) / reduction) ** (p - 1.0) * ratio_derivative
+			grad_phi0 = grad_output[:, 0:1] + (input[:, 1:] * grad_output[:, 1:] * grad_f_phi0.view(-1, 1)).sum(1, keepdim=True)
+			grad_input = torch.cat([grad_phi0, reduction.view(-1, 1).repeat(1, input.size(1) - 1) * grad_output[:, 1:]], 1)
 		if ctx.needs_input_grad[1]:
 			p_power = (1.0 - ratio) ** p
 			grad_reduction = -(p_power * torch.log(p_power) + (1 - p_power) * torch.log(1.0 - p_power)) / (p ** 2 * reduction ** (p - 1))
-			grad_threshold = (grad_output * input * grad_reduction.view(-1, 1)).sum()
+			grad_threshold = (grad_output[:, 1:] * input[:, 1:] * grad_reduction.view(-1, 1)).sum()
 
 		return grad_input, grad_threshold
 
@@ -37,7 +37,7 @@ class ReduceLp(Function):
 if __name__ == '__main__':
 	n = 1
 	ndim = 5
-	input_grad = False
+	input_grad = True
 	param_grad = not input_grad
 	input = Variable(torch.FloatTensor(n, ndim).uniform_(-1, 1), requires_grad=input_grad)
 	p = Variable(torch.FloatTensor(1).normal_().abs().exp(), requires_grad=param_grad)
