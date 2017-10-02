@@ -62,7 +62,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = ReflectionLp
+		kernel_input_map = ReflectionLp()
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2

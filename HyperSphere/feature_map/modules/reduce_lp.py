@@ -35,7 +35,7 @@ class ReduceLp(GPModule):
 		self.log_p_minus_one.data = vec
 
 	def prior(self, vec):
-		return smp.normal(np.log(vec - 1.0))
+		return smp.normal(vec)
 
 	def forward(self, input):
 		return reduce_lp.ReduceLp.apply(input, 1 + torch.exp(self.log_p_minus_one))
