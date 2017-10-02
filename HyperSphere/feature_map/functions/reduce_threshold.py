@@ -13,7 +13,7 @@ class ReduceThreshold(Function):
 		reduction = ratio.clone() * 0 + 1
 		ind_small = ratio < threshold
 		if torch.sum(ind_small) > 0:
-			reduction[ind_small] = 0.5 * (1 - torch.cos(ratio[ind_small] * math.pi / threshold))
+			reduction[ind_small] = torch.sin(ratio[ind_small] * 0.25 * math.pi / threshold)
 		return input * reduction.view(-1, 1)
 
 	@staticmethod
@@ -26,18 +26,18 @@ class ReduceThreshold(Function):
 		reduction = ratio.clone() * 0 + 1
 		ind_small = ratio < threshold
 		if ind_small.data.any():
-			reduction[ind_small] = 0.5 * (1 - torch.cos(ratio[ind_small] * math.pi / threshold))
+			reduction[ind_small] = torch.sin(ratio[ind_small] * 0.25 * math.pi / threshold)
 
 		if ctx.needs_input_grad[0]:
 			grad_phi0 = ratio.clone() * 0
 			if ind_small.data.any():
-				grad_phi0[ind_small] = 0.5 * torch.sin(ratio[ind_small] * math.pi / threshold) * math.pi / threshold * ratio_derivative
+				grad_phi0[ind_small] = 0.25 * math.pi / threshold * torch.cos(ratio[ind_small] * 0.25 * math.pi / threshold) * ratio_derivative
 			input_grad_phi0 = (input * grad_phi0.view(-1, 1) * grad_output).sum(1, keepdim=True) + reduction * grad_output[:, 0:1]
 			grad_input = torch.cat([input_grad_phi0, reduction.view(-1, 1).repeat(1, input.size(1) - 1) * grad_output[:, 1:]], 1)
 		if ctx.needs_input_grad[1]:
 			grad_reduction = ratio.clone() * 0
 			if ind_small.data.any():
-				grad_reduction[ind_small] = -0.5 * ratio[ind_small] * math.pi / threshold**2 * torch.sin(ratio[ind_small] * math.pi / threshold)
+				grad_reduction[ind_small] = -0.25 * ratio[ind_small] * math.pi / threshold**2 * torch.cos(ratio[ind_small] * 0.25 * math.pi / threshold)
 			grad_threshold = (grad_output * input * grad_reduction.view(-1, 1)).sum()
 
 		return grad_input, grad_threshold
