@@ -13,6 +13,7 @@ from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect
 from HyperSphere.feature_map.functionals import phi_reflection, phi_reflection_threshold
 from HyperSphere.feature_map.modules.reflection_threshold import ReflectionThreshold
+from HyperSphere.feature_map.modules.reflection_lp import ReflectionLp
 from HyperSphere.test_functions.benchmarks import *
 
 
@@ -61,7 +62,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = phi_reflection
+		kernel_input_map = ReflectionLp
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2

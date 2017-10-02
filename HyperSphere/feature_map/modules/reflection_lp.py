@@ -6,14 +6,14 @@ def reflection_lp_dim_change(x):
 	return x + 1
 
 
-class ReflectionThreshold(ReduceLp):
+class ReflectionLp(ReduceLp):
 
 	def __init__(self):
-		super(ReflectionThreshold, self).__init__()
+		super(ReflectionLp, self).__init__()
 		self.dim_change = reflection_lp_dim_change
 
 	def forward(self, input):
-		return super(ReflectionThreshold, self).forward(phi_reflection(input))
+		return super(ReflectionLp, self).forward(phi_reflection(input))
 
 
 if __name__ == '__main__':
@@ -23,7 +23,7 @@ if __name__ == '__main__':
 	n = 10
 	dim = 10
 	input = Variable(torch.FloatTensor(n, dim).uniform_(-1, 1))
-	feature_map = ReflectionThreshold()
+	feature_map = ReflectionLp()
 	feature_map.reset_parameters()
 	print(torch.sigmoid(feature_map.sigmoid_inv_threshold.data)[0])
 	output1 = feature_map(input)
