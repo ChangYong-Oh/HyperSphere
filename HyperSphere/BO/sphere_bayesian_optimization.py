@@ -90,7 +90,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		# gp_hyper_params = inference.learning(n_restarts=20)
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
-		x0_cand = optimization_candidates(phi_input, output, -1, 1)
+		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		rphi0_cand = rect2spherical(x0_cand, shuffle_ind)
 		phi0_cand = phi2rphi(rphi0_cand, radius=search_sphere_radius)
 		phi0 = optimization_init_points(phi0_cand, inference, gp_hyper_params, reference=reference)
