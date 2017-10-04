@@ -9,6 +9,7 @@ from HyperSphere.BO.acquisition_maximization import suggest, optimization_candid
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
+from HyperSphere.GP.means.modules.quadratic import QuadraticMean
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect, phi2rphi, rphi2phi, shuffle_ind_inverse
 from HyperSphere.feature_map.functionals import phi_reflection, phi_reflection_threshold, phi_smooth
@@ -89,7 +90,9 @@ def sphere_BO(n_eval=200, **kwargs):
 		# gp_hyper_params = inference.learning(n_restarts=20)
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
-		phi0_cand = optimization_candidates(phi_input, output, 0, 1)
+		x0_cand = optimization_candidates(phi_input, output, -1, 1)
+		rphi0_cand = rect2spherical(x0_cand, shuffle_ind)
+		phi0_cand = phi2rphi(rphi0_cand, radius=search_sphere_radius)
 		phi0 = optimization_init_points(phi0_cand, inference, gp_hyper_params, reference=reference)
 		next_phi_point = suggest(inference, gp_hyper_params, x0=phi0, reference=reference)
 		next_phi_point[0, :-1] = torch.fmod(torch.fmod(next_phi_point[0, :-1], 2) + 2, 2)
