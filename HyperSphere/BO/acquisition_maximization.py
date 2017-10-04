@@ -25,7 +25,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 	# for multi process, https://discuss.pytorch.org/t/copying-nn-modules-without-shared-memory/113
 	bar = progressbar.ProgressBar(max_value=x0.size(0))
 	bar.update(0)
-	n_step = 100
+	n_step = 500
 	local_optima = []
 	optima_value = []
 	for i in range(x0.size(0)):

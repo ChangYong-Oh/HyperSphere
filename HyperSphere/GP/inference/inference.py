@@ -1,3 +1,5 @@
+import progressbar
+
 import math
 import numpy as np
 import sampyl as smp
@@ -75,6 +77,8 @@ class Inference(nn.Module):
 		return nll
 
 	def learning(self, n_restarts=10):
+		bar = progressbar.ProgressBar(max_value=n_restarts)
+		bar.update(0)
 		vec_list = []
 		nll_list = []
 		for r in range(n_restarts):
@@ -82,22 +86,32 @@ class Inference(nn.Module):
 				for m in self.model.children():
 					m.reset_parameters()
 
+			prev_loss = None
+			n_step = 500
 			###--------------------------------------------------###
 			# This block can be modified to use other optimization method
-			n_step = 50
 			optimizer = optim.Adam(self.model.parameters(), lr=0.01)
 			for _ in range(n_step):
 				optimizer.zero_grad()
 				loss = self.negative_log_likelihood(self.model.param_to_vec())
+				curr_loss = loss.data.squeeze()[0]
 				loss.backward(retain_graph=True)
+				ftol = (prev_loss - curr_loss) / max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
+				if param_groups_nan(optimizer.param_groups) or (ftol < 1e-9):
+					break
+				prev_loss = curr_loss
 				optimizer.step()
 			###--------------------------------------------------###
-
+			bar.update(r + 1)
 			vec_list.append(self.model.param_to_vec())
 			nll_list.append(self.negative_log_likelihood().data.squeeze()[0])
-		_, best_ind = torch.min(torch.FloatTensor(nll_list), dim=0)
-		self.model.vec_to_param(vec_list[best_ind[0]])
-		return vec_list[best_ind[0]].unsqueeze(0)
+		try:
+			best_ind = np.nanargmin(nll_list)
+		except ValueError:
+			print(nll_list)
+		self.model.vec_to_param(vec_list[best_ind])
+		print('')
+		return vec_list[best_ind].unsqueeze(0)
 
 	def sampling(self, n_sample=10, n_burnin=100, n_thin=10):
 		type_as_arg = list(self.model.likelihood.parameters())[0].data
@@ -116,6 +130,14 @@ class Inference(nn.Module):
 		###--------------------------------------------------###
 		self.model.vec_to_param(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
 		return torch.stack([torch.from_numpy(elm[0]) for elm in samples], 0).type_as(type_as_arg)
+
+
+def param_groups_nan(param_groups):
+	for group in param_groups:
+		for p in group['params']:
+			if (p.grad.data != p.grad.data).any():
+				return True
+	return False
 
 
 def one_dim_plotting(ax, inference, param_samples, title_str=''):

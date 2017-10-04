@@ -22,7 +22,7 @@ def phi_smooth(phi):
 	f_phi0 = torch.abs(torch.sin(phi[:, :1] * math.pi * 0.25))
 	sin_part = torch.cumprod(torch.cat([torch.sin(phi[:, 1:-1] * math.pi), torch.sin(phi[:, -1:] * math.pi * 2.0)], 1), 1)
 	cos_part = torch.cat([torch.cos(phi[:, 1:-1] * math.pi), torch.cos(phi[:, -1:] * math.pi * 2)], 1)
-	f_phi_rest = torch.cat([cos_part[:, :1], sin_part[:, :-1] * cos_part[:, 1:], sin_part[:, -1:]])
+	f_phi_rest = torch.cat([cos_part[:, :1], sin_part[:, :-1] * cos_part[:, 1:], sin_part[:, -1:]], 1)
 	return torch.cat([f_phi0, f_phi_rest * f_phi0.view(-1, 1)], 1)
 
 phi_smooth.dim_change = lambda x: x+1

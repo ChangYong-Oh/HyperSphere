@@ -10,10 +10,11 @@ from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect
-from HyperSphere.feature_map.functionals import phi_reflection, phi_reflection_threshold
+from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect, phi2rphi, rphi2phi, shuffle_ind_inverse
+from HyperSphere.feature_map.functionals import phi_reflection, phi_reflection_threshold, phi_smooth
 from HyperSphere.feature_map.modules.reflection_threshold import ReflectionThreshold
 from HyperSphere.feature_map.modules.reflection_lp import ReflectionLp
+from HyperSphere.feature_map.modules.smooth_lp import SmoothLp
 from HyperSphere.test_functions.benchmarks import *
 
 
@@ -48,21 +49,15 @@ def sphere_BO(n_eval=200, **kwargs):
 
 		search_sphere_radius = ndim ** 0.5
 
-		rphi_sidelength = Variable(torch.ones(ndim) * math.pi)
-		rphi_sidelength.data[0] = search_sphere_radius
-		rphi_sidelength.data[-1] *= 2
-
 		x_input = Variable(torch.stack([torch.zeros(ndim), torch.ones(ndim)]))
 		rphi_input = rect2spherical(x_input)
-		rphi_input[rphi_input != rphi_input] = 0
-		phi_input = rphi_input / rphi_sidelength
-		phi_input[:, 0] = torch.acos(1 - 2 * phi_input[:, 0]) / math.pi
+		phi_input = rphi2phi(rphi_input, search_sphere_radius)
 
 		output = Variable(torch.zeros(x_input.size(0), 1))
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = ReflectionLp()
+		kernel_input_map = SmoothLp()
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2
@@ -70,7 +65,7 @@ def sphere_BO(n_eval=200, **kwargs):
 
 		inference = Inference((phi_input, output), model)
 		inference.model_param_init()
-		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
+		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
 	stored_variable_names = locals().keys()
 	ignored_variable_names = ['kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',
@@ -82,38 +77,45 @@ def sphere_BO(n_eval=200, **kwargs):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
 
 	for _ in range(n_eval):
+		_, shuffle_ind = torch.sort(torch.randn(ndim), 0)
+		# shuffle_ind = None
+		rphi_input = rect2spherical(x_input, shuffle_ind)
+		phi_input = phi2rphi(rphi_input, radius=search_sphere_radius)
 		inference = Inference((phi_input, output), model)
+		log_ls_data = inference.model.kernel.log_ls.data.clone()
+		shuffled_log_ls_data = torch.cat([log_ls_data[:1], log_ls_data[1:][shuffle_ind]])
+		inference.model.kernel.log_ls.data = shuffled_log_ls_data
 		reference = torch.min(output)[0]
-		sampled_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
+		# gp_hyper_params = inference.learning(n_restarts=20)
+		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
 		phi0_cand = optimization_candidates(phi_input, output, 0, 1)
-		phi0 = optimization_init_points(phi0_cand, inference, sampled_params, reference=reference)
-		next_phi_point = suggest(inference, sampled_params, x0=phi0, reference=reference)
-		next_phi_point[0, :-1] = torch.fmod(torch.fmod(torch.abs(next_phi_point[0, :-1]), 2) + 2, 2)
-		next_phi_point[0, -1:] = torch.fmod(torch.fmod(torch.abs(next_phi_point[0, -1:]), 1) + 1, 1)
+		phi0 = optimization_init_points(phi0_cand, inference, gp_hyper_params, reference=reference)
+		next_phi_point = suggest(inference, gp_hyper_params, x0=phi0, reference=reference)
+		next_phi_point[0, :-1] = torch.fmod(torch.fmod(next_phi_point[0, :-1], 2) + 2, 2)
+		next_phi_point[0, -1:] = torch.fmod(torch.fmod(next_phi_point[0, -1:], 1) + 1, 1)
 
 		# only using 2pi periodicity and spherical transformation property(smooth extension)
 		# kernel_input_map should only assume that it is 2 pi periodic
-		# next_rphi_point = next_phi_point * math.pi
-		# next_rphi_point[0, -1] *= 2
-		# next_rphi_point[0, 0] = 0.5 * search_sphere_radius * (1 - torch.cos(next_rphi_point[0, 0]))
-		# next_phi_point = rect2spherical(spherical2rect(next_rphi_point))
-		# next_phi_point[0, 0] = torch.acos(1 - 2 * next_phi_point[0, 0] / search_sphere_radius)
+		next_rphi_point = rect2spherical(spherical2rect(phi2rphi(next_phi_point, radius=search_sphere_radius)))
+		next_phi_point = rphi2phi(next_rphi_point, radius=search_sphere_radius)
 
 		# using pi reflection
 		# kernel_input_map assumes pi reflection
-		next_phi_point[0, :-1][next_phi_point[0, :-1] > 1] = 2 - next_phi_point[0, :-1][next_phi_point[0, :-1] > 1]
-		next_rphi_point = next_phi_point * math.pi
-		next_rphi_point[0, -1] *= 2
-		next_rphi_point[0, 0:1] = 0.5 * search_sphere_radius * (1 - torch.cos(next_rphi_point[0, 0:1]))
+		# next_phi_point[0, :-1][next_phi_point[0, :-1] > 1] = 2 - next_phi_point[0, :-1][next_phi_point[0, :-1] > 1]
+		# next_rphi_point = phi2rphi(next_phi_point, radius=search_sphere_radius)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
 
 		phi_input = torch.cat([phi_input, Variable(next_phi_point)], 0)
-		rphi_input = torch.cat([0.5 * (1 - torch.cos(phi_input[:, 0:1] * math.pi)), phi_input[:, 1:]], 1) * rphi_sidelength
-		x_input = spherical2rect(rphi_input)
+		rphi_input = phi2rphi(phi_input, radius=search_sphere_radius)
+		x_input = spherical2rect(rphi_input, shuffle_ind)
 		output = torch.cat([output, func(x_input[-1])])
+
+		shuffled_log_ls_data = inference.model.kernel.log_ls.data.clone()
+		log_ls_data = torch.cat([shuffled_log_ls_data[:1], shuffled_log_ls_data[1:][shuffle_ind_inverse(shuffle_ind)]])
+		inference.model.kernel.log_ls.data = log_ls_data
 
 		sphr_str = ('%+.4f/' % rphi_input.data[-1, 0]) + '/'.join(['%+.3fpi' % (rphi_input.data[-1, i]/math.pi) for i in range(1, rphi_input.size(1))])
 		rect_str = '/'.join(['%+.4f' % x_input.data[-1, i] for i in range(0, x_input.size(1))])
