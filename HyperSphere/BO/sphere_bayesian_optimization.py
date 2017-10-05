@@ -58,7 +58,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = ReflectionLp()
+		kernel_input_map = SmoothLp()
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2
@@ -77,16 +77,19 @@ def sphere_BO(n_eval=200, **kwargs):
 	for _ in range(3):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
 
+	shuffling_period = 4
+
 	shuffle_ind = torch.arange(0, ndim).long()
 	for _ in range(n_eval):
-		if x_input.size(0) % 4 == 0:
+		if x_input.size(0) % shuffling_period == 0:
 			_, shuffle_ind = torch.sort(torch.randn(ndim), 0)
 		rphi_input = rect2spherical(x_input, shuffle_ind)
 		phi_input = phi2rphi(rphi_input, radius=search_sphere_radius)
 		inference = ShadowInference((phi_input, output), model)
-		log_ls_data = inference.model.kernel.log_ls.data.clone()
-		shuffled_log_ls_data = torch.cat([log_ls_data[:1], log_ls_data[1:][shuffle_ind]])
-		inference.model.kernel.log_ls.data = shuffled_log_ls_data
+		if x_input.size(0) % shuffling_period == 0:
+			log_ls_data = inference.model.kernel.log_ls.data.clone()
+			shuffled_log_ls_data = torch.cat([log_ls_data[:1], log_ls_data[1:][shuffle_ind]])
+			inference.model.kernel.log_ls.data = shuffled_log_ls_data
 		reference = torch.min(output)[0]
 		# gp_hyper_params = inference.learning(n_restarts=20)
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
@@ -117,9 +120,10 @@ def sphere_BO(n_eval=200, **kwargs):
 		x_input = spherical2rect(rphi_input, shuffle_ind)
 		output = torch.cat([output, func(x_input[-1])])
 
-		shuffled_log_ls_data = inference.model.kernel.log_ls.data.clone()
-		log_ls_data = torch.cat([shuffled_log_ls_data[:1], shuffled_log_ls_data[1:][shuffle_ind_inverse(shuffle_ind)]])
-		inference.model.kernel.log_ls.data = log_ls_data
+		if x_input.size(0) % shuffling_period == 0:
+			shuffled_log_ls_data = inference.model.kernel.log_ls.data.clone()
+			log_ls_data = torch.cat([shuffled_log_ls_data[:1], shuffled_log_ls_data[1:][shuffle_ind_inverse(shuffle_ind)]])
+			inference.model.kernel.log_ls.data = log_ls_data
 
 		sphr_str = ('%+.4f/' % rphi_input.data[-1, 0]) + '/'.join(['%+.3fpi' % (rphi_input.data[-1, i]/math.pi) for i in range(1, rphi_input.size(1))])
 		rect_str = '/'.join(['%+.4f' % x_input.data[-1, i] for i in range(0, x_input.size(1))])
