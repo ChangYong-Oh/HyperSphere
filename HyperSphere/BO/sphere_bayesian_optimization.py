@@ -78,8 +78,8 @@ def sphere_BO(n_eval=200, **kwargs):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
 
 	for _ in range(n_eval):
-		# _, shuffle_ind = torch.sort(torch.randn(ndim), 0)
-		shuffle_ind = torch.arange(0, ndim).long()
+		_, shuffle_ind = torch.sort(torch.randn(ndim), 0)
+		# shuffle_ind = torch.arange(0, ndim).long()
 		rphi_input = rect2spherical(x_input, shuffle_ind)
 		phi_input = phi2rphi(rphi_input, radius=search_sphere_radius)
 		inference = ShadowInference((phi_input, output), model)
