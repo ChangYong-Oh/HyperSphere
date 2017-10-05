@@ -58,7 +58,7 @@ class ShadowInference(Inference):
 			mu_linear_solver, _ = torch.gesv(mu_BtAinvp_p0, mu_D_BtAinvB)
 			pred_mean_list[i] = pt_Ainv_q[i].view(1, 1) + mu_BtAinvq_q0.t().mm(mu_linear_solver)
 
-			quad_added_input = torch.cat([mu_added_input, input_stationary_satellite[i:i + 1]], 0)
+			quad_added_input = torch.cat([mu_added_input.repeat(n_zero_radius, 1), input_stationary_satellite[i:i + 1]], 0)
 			quad_K_nonzero_zero = torch.cat([mu_K_nonzero_zero, K_nonzero_stationary_satellite[:, i:i + 1]], 1)
 			quad_k_star = torch.cat([mu_k_star, self.model.kernel(pred_x[i:i + 1], input_stationary_satellite[i:i + 1])], 1)
 			quad_K_noise = self.model.kernel(quad_added_input) + torch.diag(self.model.likelihood(quad_added_input))
