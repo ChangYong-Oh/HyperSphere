@@ -7,7 +7,7 @@ import numpy as np
 
 from HyperSphere.BO.acquisition_maximization import suggest, optimization_candidates, optimization_init_points
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
-from HyperSphere.GP.inference.inference import Inference
+from HyperSphere.BO.shadow_inference import ShadowInference
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.means.modules.quadratic import QuadraticMean
 from HyperSphere.GP.models.gp_regression import GPRegression
@@ -33,7 +33,7 @@ def sphere_BO(n_eval=200, **kwargs):
 			exec(key + '=value')
 		data_config_file.close()
 
-		inference = Inference((rphi_input, output), model)
+		inference = ShadowInference((rphi_input, output), model)
 	else:
 		func = kwargs['func']
 		if func.dim == 0:
@@ -64,7 +64,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]
 
-		inference = Inference((phi_input, output), model)
+		inference = ShadowInference((phi_input, output), model)
 		inference.model_param_init()
 		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
@@ -78,11 +78,11 @@ def sphere_BO(n_eval=200, **kwargs):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
 
 	for _ in range(n_eval):
-		_, shuffle_ind = torch.sort(torch.randn(ndim), 0)
-		# shuffle_ind = None
+		# _, shuffle_ind = torch.sort(torch.randn(ndim), 0)
+		shuffle_ind = torch.arange(0, ndim).long()
 		rphi_input = rect2spherical(x_input, shuffle_ind)
 		phi_input = phi2rphi(rphi_input, radius=search_sphere_radius)
-		inference = Inference((phi_input, output), model)
+		inference = ShadowInference((phi_input, output), model)
 		log_ls_data = inference.model.kernel.log_ls.data.clone()
 		shuffled_log_ls_data = torch.cat([log_ls_data[:1], log_ls_data[1:][shuffle_ind]])
 		inference.model.kernel.log_ls.data = shuffled_log_ls_data

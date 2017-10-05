@@ -12,7 +12,9 @@ id_transform.dim_change = lambda x: x
 
 def phi_reflection(phi):
 	f_phi0 = torch.cos(phi[:, :1] * math.pi)
-	f_phi_rest = torch.cat([torch.cos(phi[:, 1:-1] * math.pi), torch.cos(phi[:, -1:] * 2 * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)
+	f_phi_rest = torch.cat([torch.cos(phi[:, -1:] * 2 * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)
+	if phi.size(1) > 2:
+		f_phi_rest = torch.cat([torch.cos(phi[:, 1:-1] * math.pi), f_phi_rest], 1)
 	return torch.cat([f_phi0, f_phi_rest], 1)
 
 phi_reflection.dim_change = lambda x: x+1
@@ -45,7 +47,9 @@ def phi_reflection_threshold(phi, threshold=0.1):
 	ind_small = ratio < threshold
 	# reduction[ind_small] = 0.5 * (1 - torch.cos(ratio[ind_small] * math.pi / threshold))
 	reduction[ind_small] = torch.sin(ratio[ind_small] * 0.25 * math.pi / threshold)
-	f_phi_rest = torch.cat([torch.cos(phi[:, 1:-1] * math.pi), torch.cos(phi[:, -1:] * 2 * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)
+	f_phi_rest = torch.cat([torch.cos(phi[:, -1:] * 2 * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)
+	if phi.size(1) > 2:
+		f_phi_rest = torch.cat([torch.cos(phi[:, 1:-1] * math.pi), f_phi_rest], 1)
 	return torch.cat([f_phi0, f_phi_rest * reduction.view(-1, 1)], 1)
 
 

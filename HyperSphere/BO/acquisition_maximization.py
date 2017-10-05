@@ -8,6 +8,7 @@ from torch.autograd import Variable, grad
 import torch.optim as optim
 
 from HyperSphere.GP.inference.inference import Inference
+from HyperSphere.BO.shadow_inference import ShadowInference
 from HyperSphere.BO.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
@@ -60,7 +61,10 @@ def deepcopy_inference(inference, param_samples):
 	for s in range(param_samples.size(0)):
 		model = copy.deepcopy(inference.model)
 		model.vec_to_param(param_samples[s])
-		inferences.append(Inference((inference.train_x, inference.train_y), model))
+		if inference.__class__.__name__ == 'Inference':
+			inferences.append(Inference((inference.train_x, inference.train_y), model))
+		elif inference.__class__.__name__ == 'ShadowInference':
+			inferences.append(ShadowInference((inference.train_x, inference.train_y), model))
 	return inferences
 
 
@@ -76,9 +80,7 @@ def acquisition(x, inference, param_samples, acquisition_function=expected_impro
 def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	ndim = input.size(1)
 	_, min_ind = torch.min(output.data, 0)
-	x0_spray_best = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
-	x0_spray_new = input.data[-1].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
-	x0_spray = torch.cat([x0_spray_best, x0_spray_new], 0)
+	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
 	if hasattr(lower_bnd, 'size'):
 		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
 	else:
