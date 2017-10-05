@@ -77,7 +77,6 @@ if __name__ == '__main__':
 	import numpy as np
 	import matplotlib.pyplot as plt
 	from mpl_toolkits.mplot3d import Axes3D
-	from torch.autograd import Variable
 	from HyperSphere.GP.kernels.modules.matern52 import Matern52
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	from HyperSphere.BO.acquisition_maximization import acquisition
