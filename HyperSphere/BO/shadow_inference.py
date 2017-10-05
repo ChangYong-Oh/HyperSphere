@@ -37,11 +37,11 @@ class ShadowInference(Inference):
 
 		input_zero_relocated = pred_x.clone()
 		input_zero_relocated.data[:, 0] = 0
-		# input_stationary_satellite = pred_x.clone()
-		# input_stationary_satellite.data[:, 0] = 1
+		input_stationary_satellite = pred_x.clone()
+		input_stationary_satellite.data[:, 0] = 1
 
 		K_nonzero_zero_relocated = self.model.kernel(input_nonzero_radius, input_zero_relocated)
-		# K_nonzero_stationary_satellite = self.model.kernel(input_nonzero_radius, input_stationary_satellite)
+		K_nonzero_stationary_satellite = self.model.kernel(input_nonzero_radius, input_stationary_satellite)
 
 		pred_mean_list = [None] * pred_x.size(0)
 		pred_var_list = [None] * pred_x.size(0)
@@ -58,16 +58,16 @@ class ShadowInference(Inference):
 			mu_linear_solver, _ = torch.gesv(mu_BtAinvp_p0, mu_D_BtAinvB)
 			pred_mean_list[i] = pt_Ainv_q[i].view(1, 1) + mu_BtAinvq_q0.t().mm(mu_linear_solver)
 
-			# quad_added_input = torch.cat([mu_added_input, input_stationary_satellite[i:i + 1]], 0)
-			# quad_K_nonzero_zero = torch.cat([mu_K_nonzero_zero, K_nonzero_stationary_satellite[:, i:i + 1]], 1)
-			# quad_k_star = torch.cat([mu_k_star, self.model.kernel(pred_x[i:i + 1], input_stationary_satellite[i:i + 1])], 1)
-			# quad_K_noise = self.model.kernel(quad_added_input) + torch.diag(self.model.likelihood(quad_added_input))
-			# quad_BtAinvp_p0 = quad_K_nonzero_zero.t().mm(Ainv_p[:, i:i+1]) - quad_k_star.t()
-			# quad_D_BtAinvB = quad_K_noise - quad_K_nonzero_zero.t().mm(K_nonzero_noise_inv).mm(quad_K_nonzero_zero)
-			#
-			# quad_linear_solver, _ = torch.gesv(quad_BtAinvp_p0, quad_D_BtAinvB)
-			# pred_var_list[i] = self.model.kernel(pred_x[i:i + 1]) - (diag_pt_Ainv_p[i:i + 1] + quad_BtAinvp_p0.t().mm(quad_linear_solver))
-			pred_var_list[i] = self.model.kernel(pred_x[i:i + 1]) - (diag_pt_Ainv_p[i:i + 1] + mu_BtAinvp_p0.t().mm(mu_linear_solver))
+			quad_added_input = torch.cat([mu_added_input, input_stationary_satellite[i:i + 1]], 0)
+			quad_K_nonzero_zero = torch.cat([mu_K_nonzero_zero, K_nonzero_stationary_satellite[:, i:i + 1]], 1)
+			quad_k_star = torch.cat([mu_k_star, self.model.kernel(pred_x[i:i + 1], input_stationary_satellite[i:i + 1])], 1)
+			quad_K_noise = self.model.kernel(quad_added_input) + torch.diag(self.model.likelihood(quad_added_input))
+			quad_BtAinvp_p0 = quad_K_nonzero_zero.t().mm(Ainv_p[:, i:i+1]) - quad_k_star.t()
+			quad_D_BtAinvB = quad_K_noise - quad_K_nonzero_zero.t().mm(K_nonzero_noise_inv).mm(quad_K_nonzero_zero)
+
+			quad_linear_solver, _ = torch.gesv(quad_BtAinvp_p0, quad_D_BtAinvB)
+			pred_var_list[i] = self.model.kernel(pred_x[i:i + 1]) - (diag_pt_Ainv_p[i:i + 1] + quad_BtAinvp_p0.t().mm(quad_linear_solver))
+			# pred_var_list[i] = self.model.kernel(pred_x[i:i + 1]) - (diag_pt_Ainv_p[i:i + 1] + mu_BtAinvp_p0.t().mm(mu_linear_solver))
 
 		return torch.cat(pred_mean_list, 0), torch.cat(pred_var_list, 0)
 
