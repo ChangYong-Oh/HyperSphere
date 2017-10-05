@@ -58,7 +58,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = SmoothLp()
+		kernel_input_map = phi_smooth
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2
@@ -78,6 +78,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
 
 	for _ in range(n_eval):
+		# if torch.sum((x_input[-2] - x_input[-1]) ** 2).data[0] <
 		_, shuffle_ind = torch.sort(torch.randn(ndim), 0)
 		# shuffle_ind = torch.arange(0, ndim).long()
 		rphi_input = rect2spherical(x_input, shuffle_ind)
