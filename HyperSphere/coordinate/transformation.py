@@ -1,21 +1,25 @@
 import math
 
 import torch
+from torch.autograd import Variable
 
 
-def rect2spherical(x, shuffle_ind=None):
+def rect2spherical(x, rotation_mat=None):
 	_, n_dim = x.size()
-	if shuffle_ind is None:
-		shuffle_ind = torch.arange(0, n_dim).type_as(x.data if hasattr(x, 'data') else x).long()
+	if rotation_mat is None:
+		if hasattr(x, 'data'):
+			rotation_mat = Variable(torch.eye(n_dim)).type_as(x)
+		else:
+			rotation_mat = torch.eye(n_dim).type_as(x)
 	reverse_ind = torch.arange(n_dim-1, -1, -1).type_as(x.data if hasattr(x, 'data') else x).long()
-	x_shuffled = x[:, shuffle_ind]
-	x_shuffled_sq_accum = torch.sqrt(torch.cumsum((x_shuffled**2)[:, reverse_ind], dim=1)[:, reverse_ind])
-	rphi = torch.cat((x_shuffled_sq_accum[:, [0]], x_shuffled[:, 0:n_dim-1]), dim=1)
+	x_rotated = x.mm(rotation_mat.t())
+	x_rotated_sq_accum = torch.sqrt(torch.cumsum((x_rotated**2)[:, reverse_ind], dim=1)[:, reverse_ind])
+	rphi = torch.cat((x_rotated_sq_accum[:, [0]], x_rotated[:, 0:n_dim-1]), dim=1)
 	if n_dim > 2:
-		rphi[:, 1:n_dim-1] = torch.acos(x_shuffled[:, 0:n_dim-2]/x_shuffled_sq_accum[:, 0:n_dim-2])
-	rphi[:, -1] = torch.acos(x_shuffled[:, -2] / x_shuffled_sq_accum[:, -2])
+		rphi[:, 1:n_dim-1] = torch.acos(x_rotated[:, 0:n_dim-2]/x_rotated_sq_accum[:, 0:n_dim-2])
+	rphi[:, -1] = torch.acos(x_rotated[:, -2] / x_rotated_sq_accum[:, -2])
 	if hasattr(x, 'data'):
-		rphi.data[:, -1][x_shuffled.data[:, -1] < 0] = 2 * math.pi - rphi.data[:, -1][x_shuffled.data[:, -1] < 0]
+		rphi.data[:, -1][x_rotated.data[:, -1] < 0] = 2 * math.pi - rphi.data[:, -1][x_rotated.data[:, -1] < 0]
 		zero_radius_mask = rphi.data[:, 0] == 0
 		n_zero_radius = torch.sum(zero_radius_mask)
 		if n_zero_radius > 0:
@@ -27,7 +31,7 @@ def rect2spherical(x, shuffle_ind=None):
 			rphi.data[zero_radius, zero_radius.new(1).zero_()] = rphi.data.new(n_zero_radius).fill_(0)
 			rphi.data[zero_radius, zero_radius.new(1).fill_(n_dim-1)] *= 2
 	else:
-		rphi[:, -1][x_shuffled[:, -1] < 0] = 2 * math.pi - rphi[:, -1][x_shuffled[:, -1] < 0]
+		rphi[:, -1][x_rotated[:, -1] < 0] = 2 * math.pi - rphi[:, -1][x_rotated[:, -1] < 0]
 		zero_radius_mask = rphi[:, 0] == 0
 		n_zero_radius = torch.sum(zero_radius_mask)
 		if n_zero_radius > 0:
@@ -41,7 +45,7 @@ def rect2spherical(x, shuffle_ind=None):
 	return rphi
 
 
-def spherical2rect(rphi, shuffle_ind=None):
+def spherical2rect(rphi, rotation_mat=None):
 	"""
 
 	:param rphi: r in [0, radius], phi0 in [0, pi], phi1 in [0, pi], ..., phi(n-1) in [0, 2pi] 
@@ -49,17 +53,11 @@ def spherical2rect(rphi, shuffle_ind=None):
 	:return: 
 	"""
 	_, n_dim = rphi.size()
-	if shuffle_ind is None:
-		shuffle_ind = torch.arange(0, n_dim)
-	inv_shuffle_ind = shuffle_ind_inverse(shuffle_ind)
+	if rotation_mat is None:
+		rotation_mat = torch.eye(n_dim).type_as(rphi.data if hasattr(rphi, 'data') else rphi)
 	x = torch.cumprod(torch.cat((rphi[:, [0]], torch.sin(rphi[:, 1:n_dim])), dim=1), dim=1)
 	x[:, 0:n_dim-1] = x[:, 0:n_dim-1] * torch.cos(rphi[:, 1:n_dim])
-	return x[:, inv_shuffle_ind]
-
-
-def shuffle_ind_inverse(shuffle_ind):
-	_, inv_shuffle_ind = torch.sort(shuffle_ind, 0)
-	return inv_shuffle_ind
+	return x.mm(rotation_mat)
 
 
 def rphi2phi(rphi, radius):

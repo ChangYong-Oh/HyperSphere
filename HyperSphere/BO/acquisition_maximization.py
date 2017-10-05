@@ -12,7 +12,7 @@ from HyperSphere.BO.shadow_inference import ShadowInference
 from HyperSphere.BO.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
-N_SOBOL = 10000
+N_SOBOL = 1000
 N_SPRAY = 10
 N_INIT = 20
 
@@ -91,17 +91,18 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	# 	x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd - x0_spray[x0_spray > upper_bnd]
 
 	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
+	x0 = x0_sobol
 	# x0 = torch.cat([x0_spray, x0_sobol], 0)
 
-	return x0_sobol
+	return Variable(x0)
 
 
 def optimization_init_points(candidates, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
 	ndim = candidates.size(1)
-	acq_value = acquisition(Variable(candidates), inference, param_samples, acquisition_function, **kwargs).data
+	acq_value = acquisition(candidates, inference, param_samples, acquisition_function, **kwargs).data
 	nonnan_ind = acq_value == acq_value
 	acq_value = acq_value[nonnan_ind]
-	init_points = candidates[nonnan_ind.view(-1, 1).repeat(1, ndim)].view(-1, ndim)
+	init_points = candidates.data[nonnan_ind.view(-1, 1).repeat(1, ndim)].view(-1, ndim)
 	_, sort_ind = torch.sort(acq_value, 0, descending=True)
 	is_maximum = acq_value == acq_value[sort_ind[0]]
 	n_equal_maximum = torch.sum(is_maximum)
