@@ -28,7 +28,6 @@ class ShadowInference(Inference):
 
 		adjusted_y_nonzero = self.train_y[nonzero_radius_ind] - self.model.mean(input_nonzero_radius)
 		y_zero = self.train_y[zero_radius_ind]
-		y_zero.data[:] = torch.mean(y_zero.data)
 
 		k_star_nonzero = self.model.kernel(pred_x, input_nonzero_radius)
 		Ainv_p = K_nonzero_noise_inv.mm(k_star_nonzero.t())
@@ -48,7 +47,7 @@ class ShadowInference(Inference):
 		pred_var_list = [None] * pred_x.size(0)
 		for i in range(pred_x.size(0)):
 			mu_added_input = input_zero_relocated[i:i + 1]
-			adjusted_y_zero = (y_zero - self.model.mean(mu_added_input)).view(1, 1).repeat(1, n_zero_radius)
+			adjusted_y_zero = y_zero - (self.model.mean(mu_added_input)).view(1, 1).repeat(1, n_zero_radius)
 			mu_K_nonzero_zero = K_nonzero_zero_relocated[:, i:i + 1].repeat(1, n_zero_radius)
 			mu_k_star = self.model.kernel(pred_x[i:i + 1], mu_added_input).view(1, 1).repeat(1, n_zero_radius)
 			mu_K_noise = torch.diag((self.model.kernel(mu_added_input) + torch.diag(self.model.likelihood(mu_added_input))).view(-1).repeat(n_zero_radius))
