@@ -46,10 +46,11 @@ if __name__ == '__main__':
 	A = A.mm(A.t())
 	eig, _ = torch.symeig(A)
 	print(torch.min(eig))
-	matrix = Variable(A + (1e-8 - torch.min(eig)) * torch.eye(ndim), requires_grad=True)
+	matrix = Variable(A + (1e-4 - torch.min(eig)) * torch.eye(ndim), requires_grad=True)
 	_, logdet = np.linalg.slogdet(matrix.data.numpy())
 
 	eps = 1e-4
+
 	fdm_deriv = torch.zeros(ndim, ndim)
 	for i in range(ndim):
 		for j in range(ndim):
@@ -64,5 +65,5 @@ if __name__ == '__main__':
 
 
 	# gradcheck doesn't have to pass all the time.
-	# test = gradcheck(LogDeterminant.apply, (matrix, ), eps=eps, atol=1e-3, rtol=1e-2)
-	# print(test)
+	test = gradcheck(LogDeterminant.apply, (matrix, ), eps=eps, atol=1e-3, rtol=1e-2)
+	print(test)

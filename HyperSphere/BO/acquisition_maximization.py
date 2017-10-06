@@ -8,7 +8,7 @@ from torch.autograd import Variable, grad
 import torch.optim as optim
 
 from HyperSphere.GP.inference.inference import Inference
-from HyperSphere.BO.shadow_inference import ShadowInference
+from HyperSphere.BO.shadow_inference_grassmanian import ShadowInference
 from HyperSphere.BO.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
@@ -20,8 +20,11 @@ N_INIT = 20
 def suggest(inference, param_samples, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
 	x = Variable(inference.train_x.data.new(1, inference.train_x.size(1)), requires_grad=True)
 	if bounds is not None:
-		lower_bnd = bounds[0]
-		upper_bnd = bounds[1]
+		if not hasattr(bounds, '__call__'):
+			def out_of_bounds(x):
+				return (x.data < bounds[0]).any() or (x.data > bounds[1]).any()
+		else:
+			out_of_bounds = bounds
 
 	# for multi process, https://discuss.pytorch.org/t/copying-nn-modules-without-shared-memory/113
 	bar = progressbar.ProgressBar(max_value=x0.size(0))
@@ -43,11 +46,11 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 			ftol = (prev_loss - curr_loss)/max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
 			if (x.grad.data != x.grad.data).any() or (ftol < 1e-9):
 				break
+			prev_x = x.data.clone()
 			prev_loss = curr_loss
 			optimizer.step()
-			if bounds is not None and ((x.data < lower_bnd).any() or (x.data > upper_bnd).any()):
-				x.data[x.data < lower_bnd] = lower_bnd[x.data < lower_bnd]
-				x.data[x.data > upper_bnd] = upper_bnd[x.data > upper_bnd]
+			if bounds is not None and out_of_bounds(x):
+				x.data = prev_x
 				break
 		###--------------------------------------------------###
 		bar.update(i+1)

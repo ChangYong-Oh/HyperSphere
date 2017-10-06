@@ -4,6 +4,42 @@ import torch
 from torch.autograd import Variable
 
 
+def rect2grass_radius(x):
+	radius = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
+	nonzero_radius_mask = radius.squeeze() == 0
+	n_nonzero_radius = torch.sum(nonzero_radius_mask.data)
+	if n_nonzero_radius > 0:
+		nonzero_radius_ind = torch.sort(nonzero_radius_mask.data, 0, descending=True)[1][:n_nonzero_radius]
+		radius[nonzero_radius_ind] = 1.0
+	direction = x / radius
+	return torch.cat([radius, direction], 1)
+
+rect2grass_radius.dim_change = lambda x: x+ 1
+
+
+def grass_radius2rect(rd):
+	return rd[:, :1] * rd[:, 1:]
+
+
+def rect2grass_angle(x, search_radius):
+	radius = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
+	angle = torch.acos(1 - 2 * radius / search_radius) / math.pi
+	nonzero_radius_mask = radius.squeeze() == 0
+	n_nonzero_radius = torch.sum(nonzero_radius_mask.data)
+	if n_nonzero_radius > 0:
+		nonzero_radius_ind = torch.sort(nonzero_radius_mask.data, 0, descending=True)[1][:n_nonzero_radius]
+		radius[nonzero_radius_ind] = 1.0
+	direction = x / radius
+	return torch.cat([angle, direction], 1)
+
+rect2grass_angle.dim_change = lambda x: x+ 1
+
+
+def grass_angle2rect(ad, search_radius):
+	radius = 0.5 * (1 - torch.cos(ad[:, :1] * math.pi)) * search_radius
+	return radius * ad[:, 1]
+
+
 def rect2spherical(x, rotation_mat=None):
 	_, n_dim = x.size()
 	if rotation_mat is None:
