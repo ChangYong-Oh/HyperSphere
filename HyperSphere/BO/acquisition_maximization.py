@@ -12,7 +12,7 @@ from HyperSphere.BO.shadow_inference_grassmanian import ShadowInference
 from HyperSphere.BO.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
-N_SOBOL = 1000
+N_SOBOL = 10000
 N_SPRAY = 10
 N_INIT = 20
 
