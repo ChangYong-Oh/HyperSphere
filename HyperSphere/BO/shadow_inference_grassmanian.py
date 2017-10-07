@@ -32,9 +32,6 @@ class ShadowInference(Inference):
 		normalized_pred_x = pred_x / pred_x_radius
 		input_stationary_satellite = normalized_pred_x * ndim ** 0.5
 
-		kernel_on_mapping = deepcopy(self.model.kernel)
-		kernel_on_mapping.input_map = id_transform
-
 		K_nonzero_stationary_satellite = self.model.kernel(self.train_x, input_stationary_satellite)
 
 		pred_var_list = [None] * n_pred

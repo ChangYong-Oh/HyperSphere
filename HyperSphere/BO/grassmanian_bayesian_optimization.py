@@ -10,7 +10,7 @@ from HyperSphere.BO.acquisition_maximization import suggest, optimization_candid
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.coordinate.transformation import rect2grass_radius
+from HyperSphere.feature_map.functionals import id_transform
 from HyperSphere.test_functions.benchmarks import *
 
 
@@ -57,7 +57,7 @@ def grassmanian_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = rect2grass_radius
+		kernel_input_map = id_transform
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2
