@@ -4,20 +4,31 @@ import torch
 from torch.autograd import Variable
 
 
-def rect2grass_radius(x):
+def rect2grass_radius(x, threshold_radius=1.0):
 	radius = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
-	nonzero_radius_mask = radius.squeeze() == 0
-	n_nonzero_radius = torch.sum(nonzero_radius_mask.data)
-	if n_nonzero_radius > 0:
-		nonzero_radius_ind = torch.sort(nonzero_radius_mask.data, 0, descending=True)[1][:n_nonzero_radius]
-		radius[nonzero_radius_ind] = 1.0
-	direction = x / radius
-	return torch.cat([radius, direction], 1)
+	large_radius_mask = radius.squeeze() > threshold_radius
+	n_large_radius = torch.sum(large_radius_mask.data)
+	direction = x.clone()
+	if n_large_radius > 0:
+		large_radius_ind = torch.sort(large_radius_mask.data, 0, descending=True)[1][:n_large_radius]
+		direction[large_radius_ind] = direction[large_radius_ind] / radius[large_radius_ind]
+	return torch.cat([(radius - threshold_radius).clamp(min=0), direction], 1)
+
+
+# def rect2grass_radius(x):
+# 	radius = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
+# 	nonzero_radius_mask = radius.squeeze() == 0
+# 	n_nonzero_radius = torch.sum(nonzero_radius_mask.data)
+# 	if n_nonzero_radius > 0:
+# 		nonzero_radius_ind = torch.sort(nonzero_radius_mask.data, 0, descending=True)[1][:n_nonzero_radius]
+# 		radius[nonzero_radius_ind] = 1.0
+# 	direction = x / radius
+# 	return torch.cat([radius, direction], 1)
 
 rect2grass_radius.dim_change = lambda x: x+ 1
 
 
-def grass_radius2rect(rd):
+def grass_radius2rect(rd, threshold_radius):
 	return rd[:, :1] * rd[:, 1:]
 
 

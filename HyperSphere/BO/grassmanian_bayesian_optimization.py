@@ -94,9 +94,10 @@ def grassmanian_BO(n_eval=200, **kwargs):
 		x_input = torch.cat([x_input, Variable(next_x_point)], 0)
 		output = torch.cat([output, func(x_input[-1])])
 
+		radius_str = ('(%.4f)' % np.sqrt(torch.sum(x_input.data[-1] ** 2)))
 		rect_str = '/'.join(['%+.4f' % x_input.data[-1, i] for i in range(0, x_input.size(1))])
 		time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[-1])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[-1])) +')  '
-		print(('\n%4d : ' % (x_input.size(0))) + time_str + rect_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[-1].squeeze()[0], torch.min(output.data))))
+		print(('\n%4d : ' % (x_input.size(0))) + time_str + rect_str + radius_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[-1].squeeze()[0], torch.min(output.data))))
 
 		torch.save(model, model_filename)
 		stored_variable = dict()
