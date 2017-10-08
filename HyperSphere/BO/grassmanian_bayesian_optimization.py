@@ -73,8 +73,6 @@ def grassmanian_BO(n_eval=200, **kwargs):
 	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
 
-	violate_radial_bound = radial_bounds(search_sphere_radius)
-
 	for _ in range(3):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
 
@@ -86,7 +84,7 @@ def grassmanian_BO(n_eval=200, **kwargs):
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0 = optimization_init_points(x0_cand, inference, gp_hyper_params, reference=reference)
-		next_x_point = suggest(inference, gp_hyper_params, x0=x0, bounds=violate_radial_bound, reference=reference)
+		next_x_point = suggest(inference, gp_hyper_params, x0=x0, bounds=(-1, 1), reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
