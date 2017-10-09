@@ -114,7 +114,10 @@ def rphi2phi(rphi, radius):
 	:return: point in cube [0, 1] ^ d 
 	"""
 	phi0 = torch.acos(1 - 2 * rphi[:, :1] / radius) / math.pi
-	phi = torch.cat([phi0, rphi[:, 1:-1] / math.pi, rphi[:, -1:] / (2.0 * math.pi)], 1)
+	if rphi.size(1) > 2:
+		phi = torch.cat([phi0, rphi[:, 1:-1] / math.pi, rphi[:, -1:] / (2.0 * math.pi)], 1)
+	else:
+		phi = torch.cat([phi0, rphi[:, -1:] / (2.0 * math.pi)], 1)
 	return phi
 
 
@@ -125,7 +128,10 @@ def phi2rphi(phi, radius):
 	:return: r in [0, R], phi_i in [0, pi] for i in [1, d-2], phi_i in [0, 2pi] for i = d-1 
 	"""
 	r = 0.5 * (1 - torch.cos(phi[:, 0:1] * math.pi)) * radius
-	rphi = torch.cat([r, phi[:, 1:-1] * math.pi, phi[:, -1:] * 2 * math.pi], 1)
+	if phi.size(1) > 2:
+		rphi = torch.cat([r, phi[:, 1:-1] * math.pi, phi[:, -1:] * 2 * math.pi], 1)
+	else:
+		rphi = torch.cat([r, phi[:, -1:] * 2 * math.pi], 1)
 	return rphi
 
 

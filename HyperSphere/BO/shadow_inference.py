@@ -32,7 +32,7 @@ class ShadowInference(Inference):
 		k_star_nonzero = self.model.kernel(pred_x, input_nonzero_radius)
 		Ainv_p = K_nonzero_noise_inv.mm(k_star_nonzero.t())
 		Ainv_q = K_nonzero_noise_inv.mm(adjusted_y_nonzero)
-		pt_Ainv_q = k_star_nonzero.mm(Ainv_q)
+		pt_Ainv_q = k_star_nonzero.mm(Ainv_q) + self.model.mean(pred_x)
 		diag_pt_Ainv_p = (k_star_nonzero * Ainv_p.t()).sum(1, keepdim=True)
 
 		input_zero_relocated = pred_x.clone()
@@ -56,7 +56,7 @@ class ShadowInference(Inference):
 			mu_D_BtAinvB = mu_K_noise - mu_K_nonzero_zero.t().mm(K_nonzero_noise_inv).mm(mu_K_nonzero_zero)
 
 			mu_linear_solver, _ = torch.gesv(mu_BtAinvp_p0, mu_D_BtAinvB)
-			pred_mean_list[i] = pt_Ainv_q[i].view(1, 1) + mu_BtAinvq_q0.t().mm(mu_linear_solver)
+			pred_mean_list[i] = pt_Ainv_q[i].view(1, 1) + mu_BtAinvq_q0.t().mm(mu_linear_solver) + self.model.mean(pred_x[i:i + 1])
 
 			quad_added_input = torch.cat([mu_added_input.repeat(n_zero_radius, 1), input_stationary_satellite[i:i + 1]], 0)
 			quad_K_nonzero_zero = torch.cat([mu_K_nonzero_zero, K_nonzero_stationary_satellite[:, i:i + 1]], 1)
@@ -67,7 +67,6 @@ class ShadowInference(Inference):
 
 			quad_linear_solver, _ = torch.gesv(quad_BtAinvp_p0, quad_D_BtAinvB)
 			pred_var_list[i] = self.model.kernel(pred_x[i:i + 1]) - (diag_pt_Ainv_p[i:i + 1] + quad_BtAinvp_p0.t().mm(quad_linear_solver))
-			# pred_var_list[i] = self.model.kernel(pred_x[i:i + 1]) - (diag_pt_Ainv_p[i:i + 1] + mu_BtAinvp_p0.t().mm(mu_linear_solver))
 
 		return torch.cat(pred_mean_list, 0), torch.cat(pred_var_list, 0)
 
@@ -80,53 +79,84 @@ if __name__ == '__main__':
 	from HyperSphere.GP.kernels.modules.matern52 import Matern52
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	from HyperSphere.BO.acquisition_maximization import acquisition
-	from HyperSphere.feature_map.functionals import phi_reflection, phi_reflection_threshold
+	from HyperSphere.coordinate.transformation import rect2spherical, spherical2rect, phi2rphi, rphi2phi
+	from HyperSphere.feature_map.functionals import phi_reflection, phi_smooth, id_transform
 
 	ndata = 10
-	train_x = Variable(torch.FloatTensor(ndata, 2).uniform_(0, 1))
-	train_x.data[0, :] = 0
-	train_y = torch.cos(train_x[:, 0:1] + (train_x[:, 1:2] / math.pi * 0.5) + torch.prod(train_x, 1, keepdim=True))
-	reference = torch.min(train_y).data.squeeze()[0]
-	train_data = (train_x, train_y)
+	ndim = 2
+	search_radius = ndim ** 0.5
+	x_input = Variable(torch.FloatTensor(ndata, ndim).uniform_(-1, 1))
+	x_input.data[0, :] = 0
+	x_input.data[1, :] = 1
+	output = torch.cos(x_input[:, 0:1] + (x_input[:, 1:2] / math.pi * 0.5) + torch.prod(x_input, 1, keepdim=True))
+	reference = torch.min(output).data.squeeze()[0]
+	train_data = (x_input, output)
 
-	model1 = GPRegression(kernel=Matern52(3, phi_reflection))
-	model2 = GPRegression(kernel=Matern52(3, phi_reflection))
+	rphi_input = rect2spherical(x_input)
+	phi_input = rphi2phi(rphi_input, search_radius)
 
-	# n_added = 5
-	# added_x = Variable(torch.stack([torch.zeros(n_added), torch.linspace(0, 1, n_added)], 0).t())
-	# added_y = train_y[0:1, 0:1].repeat(n_added, 1)
-	# added_data = (torch.cat([train_x[1:], added_x], 0), torch.cat([train_y[1:], added_y], 0))
+	model_rect = GPRegression(kernel=Matern52(ndim, id_transform))
+	kernel_input_map = phi_reflection
+	model_sphere1 = GPRegression(kernel=Matern52(kernel_input_map.dim_change(ndim), phi_reflection))
+	model_sphere2 = GPRegression(kernel=Matern52(kernel_input_map.dim_change(ndim), phi_reflection))
 
-	inference1 = Inference(train_data, model1)
-	inference2 = ShadowInference(train_data, model2)
-	model1.mean.const_mean.data[:] = train_y[0].data.squeeze()[0]
-	model1.kernel.log_amp.data[:] = torch.log(torch.std(train_y)).data.squeeze()[0]
-	learned_params = inference1.learning(n_restarts=10)
-	model2.vec_to_param(model1.param_to_vec())
-	x_grid, y_grid = np.meshgrid(np.linspace(0, 1, 50), np.linspace(0, 1, 50))
-	pred_points = Variable(torch.from_numpy(np.vstack([x_grid.flatten(), y_grid.flatten()]).astype(np.float32)).t())
-	# acq1 = acquisition(pred_points, inference1, learned_params, reference=reference)
-	start_time = time.time()
-	_, acq1 = inference1.predict(pred_points, learned_params.squeeze())
-	print(time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
-	start_time = time.time()
-	_, acq2 = inference2.predict(pred_points, learned_params.squeeze())
-	print(time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
-	acq1 = acq1.data.numpy().reshape(x_grid.shape)
-	acq2 = acq2.data.numpy().reshape(x_grid.shape)
+	inference_rect = Inference((x_input, output), model_rect)
+	inference_sphere1 = Inference((phi_input, output), model_sphere1)
+	inference_sphere2 = ShadowInference((phi_input, output), model_sphere2)
+	inference_rect.model_param_init()
+	inference_sphere1.model_param_init()
+	inference_sphere2.model_param_init()
 
-	ax1 = plt.subplot(221)
-	ax1.contour(x_grid, y_grid, acq1)
-	ax1.plot(train_x.data.numpy()[:, 0], train_x.data.numpy()[:, 1], '*')
-	ax2 = plt.subplot(222, sharex=ax1, sharey=ax1)
-	ax2.contour(x_grid, y_grid, acq2)
-	ax2.plot(train_x.data.numpy()[:, 0], train_x.data.numpy()[:, 1], '*')
-	ax3 = plt.subplot(223, projection='3d')
-	ax3.plot_surface(x_grid, y_grid, acq1)
-	ax3.set_title('inference')
-	ax3.set_zlim(0, np.max(acq1))
-	ax4 = plt.subplot(224, projection='3d')
-	ax4.plot_surface(x_grid, y_grid, acq2)
-	ax4.set_title('shadow inference')
-	ax4.set_zlim(0, np.max(acq1))
+	params_rect = inference_rect.learning(n_restarts=10)
+	params_sphere1 = inference_sphere1.learning(n_restarts=10)
+	model_sphere2.vec_to_param(model_sphere1.param_to_vec())
+
+	if ndim == 2:
+		x1_grid, x2_grid = np.meshgrid(np.linspace(-1, 1, 50), np.linspace(-1, 1, 50))
+		x_pred_points = Variable(torch.from_numpy(np.vstack([x1_grid.flatten(), x2_grid.flatten()]).astype(np.float32)).t())
+		pred_mean_rect, pred_var_rect = inference_rect.predict(x_pred_points)
+		pred_std_rect = pred_var_rect ** 0.5
+		acq_rect = acquisition(x_pred_points, inference_rect, params_rect, reference=reference)
+
+		rphi_pred_points = rect2spherical(x_pred_points)
+		phi_pred_points = rphi2phi(rphi_pred_points, search_radius)
+		pred_mean_sphere1, pred_var_sphere1 = inference_sphere1.predict(phi_pred_points)
+		pred_mean_sphere2, pred_var_sphere2 = inference_sphere2.predict(phi_pred_points)
+		pred_std_sphere1 = pred_var_sphere1 ** 0.5
+		pred_std_sphere2 = pred_var_sphere2 ** 0.5
+		acq_sphere1 = acquisition(phi_pred_points, inference_sphere1, params_sphere1, reference=reference)
+		acq_sphere2 = acquisition(phi_pred_points, inference_sphere2, params_sphere1, reference=reference)
+
+		fig = plt.figure()
+		acq_list = [acq_rect, acq_sphere1, acq_sphere2]
+		pred_mean_list = [pred_mean_rect, pred_mean_sphere1, pred_mean_sphere2]
+		pred_std_list = [pred_std_rect, pred_std_sphere1, pred_std_sphere2]
+		for i in range(3):
+			ax = fig.add_subplot(3, 6, 6 * i + 1)
+			ax.contour(x1_grid, x2_grid, acq_list[i].data.numpy().reshape(x1_grid.shape))
+			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], '*')
+			if i == 0:
+				ax.set_ylabel('rect')
+			elif i == 1:
+				ax.set_ylabel('sphere')
+			elif i == 2:
+				ax.set_ylabel('sphere & shadow')
+			ax = fig.add_subplot(3, 6, 6 * i + 2, projection='3d')
+			ax.plot_surface(x1_grid, x2_grid, acq_list[i].data.numpy().reshape(x1_grid.shape))
+			if i == 0:
+				ax.set_title('acquistion')
+			ax = fig.add_subplot(3, 6, 6 * i + 3)
+			ax.contour(x1_grid, x2_grid, pred_mean_list[i].data.numpy().reshape(x1_grid.shape))
+			ax = fig.add_subplot(3, 6, 6 * i + 4, projection='3d')
+			ax.plot_surface(x1_grid, x2_grid, pred_mean_list[i].data.numpy().reshape(x1_grid.shape))
+			if i == 0:
+				ax.set_title('pred mean')
+			ax = fig.add_subplot(3, 6, 6 * i + 5)
+			ax.contour(x1_grid, x2_grid, pred_std_list[i].data.numpy().reshape(x1_grid.shape))
+			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], '*')
+			ax = fig.add_subplot(3, 6, 6 * i + 6, projection='3d')
+			ax.plot_surface(x1_grid, x2_grid, pred_std_list[i].data.numpy().reshape(x1_grid.shape))
+			if i == 0:
+				ax.set_title('pred std')
+
 	plt.show()

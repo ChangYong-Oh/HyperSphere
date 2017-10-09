@@ -47,7 +47,7 @@ def folder_name_list(path):
 		cube_folder_list = []
 		for sub_folder in [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm))]:
 			sub_folder_folder_list = [elm for elm in os.listdir(os.path.join(parent_dir, sub_folder)) if os.path.isdir(os.path.join(parent_dir, sub_folder, elm)) and prefix == elm[:len(prefix)]]
-			sphere_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'sphere' in elm]
+			sphere_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'grassmanian' in elm]
 			cube_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'cube' in elm]
 	else:
 		folder_list = [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm)) and prefix == elm[:len(prefix)]]

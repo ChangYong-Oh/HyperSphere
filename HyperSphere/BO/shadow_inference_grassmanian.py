@@ -13,41 +13,28 @@ class ShadowInference(Inference):
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
+			param_original = self.model.param_to_vec()
 			self.model.vec_to_param(hyper)
+		k_pred_train = self.model.kernel(pred_x, self.train_x)
 
-		n_pred, ndim = pred_x.size()
+		shared_part = k_pred_train.mm(self.K_noise_inv)
+		kernel_on_identical = torch.cat([self.model.kernel(pred_x[[i], :]) for i in range(pred_x.size(0))])
 
-		K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
-		K_noise_inv, _ = torch.gesv(Variable(torch.eye(self.train_x.size(0)).type_as(pred_x.data)), K_noise)
+		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
+		pred_var = kernel_on_identical - (shared_part * k_pred_train).sum(1, keepdim=True)
 
-		adjusted_y = self.train_y - self.model.mean(self.train_x)
+		satellite_weight = 1.0
+		satellite_weight_sqrt = satellite_weight ** 0.5
+		input_satellite = pred_x / torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True)) * pred_x.size(1) ** 0.5
 
-		k_star = self.model.kernel(pred_x, self.train_x)
-		Ainv_p = K_noise_inv.mm(k_star.t())
-		Ainv_q = K_noise_inv.mm(adjusted_y)
-		pt_Ainv_q = k_star.mm(Ainv_q)
-		diag_pt_Ainv_p = (k_star * Ainv_p.t()).sum(1, keepdim=True)
-
-		pred_x_radius = torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True))
-		normalized_pred_x = pred_x / pred_x_radius
-		input_stationary_satellite = normalized_pred_x * ndim ** 0.5
-
-		K_nonzero_stationary_satellite = self.model.kernel(self.train_x, input_stationary_satellite)
-
-		pred_var_list = [None] * n_pred
-		for i in range(n_pred):
-
-			quad_added_input = input_stationary_satellite[i:i + 1]
-			quad_K_nonzero_zero = K_nonzero_stationary_satellite[:, i:i + 1]
-			quad_k_star = self.model.kernel(pred_x[i:i + 1], input_stationary_satellite[i:i + 1])
-			quad_K_noise = self.model.kernel(quad_added_input) + torch.diag(self.model.likelihood(quad_added_input))
-			quad_BtAinvp_p0 = quad_K_nonzero_zero.t().mm(Ainv_p[:, i:i+1]) - quad_k_star.t()
-			quad_D_BtAinvB = quad_K_noise - quad_K_nonzero_zero.t().mm(K_noise_inv).mm(quad_K_nonzero_zero)
-
-			quad_linear_solver, _ = torch.gesv(quad_BtAinvp_p0, quad_D_BtAinvB)
-			pred_var_list[i] = self.model.kernel(pred_x[i:i + 1]) - (diag_pt_Ainv_p[i:i + 1] + quad_BtAinvp_p0.t().mm(quad_linear_solver))
-
-		return pt_Ainv_q, torch.cat(pred_var_list, 0)
+		K_train_satellite = self.model.kernel(self.train_x, input_satellite)
+		Ainv_B = self.K_noise_inv.mm(K_train_satellite)
+		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
+		k_satellite_diag = torch.cat([self.model.kernel(input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
+		satellite_reduction = ((Ainv_B * k_pred_train.t()).sum(0).view(-1, 1) - k_satellite_pred_diag * satellite_weight_sqrt) ** 2 / (k_satellite_diag - (Ainv_B * K_train_satellite).sum(0).view(-1, 1))
+		if hyper is not None:
+			self.model.vec_to_param(param_original)
+		return pred_mean, pred_var - satellite_reduction
 
 
 if __name__ == '__main__':
@@ -58,53 +45,69 @@ if __name__ == '__main__':
 	from HyperSphere.GP.kernels.modules.matern52 import Matern52
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	from HyperSphere.BO.acquisition_maximization import acquisition
-	from HyperSphere.feature_map.functionals import phi_reflection, phi_reflection_threshold
+	from HyperSphere.feature_map.functionals import phi_reflection, phi_smooth, id_transform
+	from HyperSphere.test_functions.benchmarks import levy
 
 	ndata = 10
-	train_x = Variable(torch.FloatTensor(ndata, 2).uniform_(0, 1))
-	train_x.data[0, :] = 0
-	train_y = torch.cos(train_x[:, 0:1] + (train_x[:, 1:2] / math.pi * 0.5) + torch.prod(train_x, 1, keepdim=True))
-	reference = torch.min(train_y).data.squeeze()[0]
-	train_data = (train_x, train_y)
+	ndim = 2
+	search_radius = ndim ** 0.5
+	x_input = Variable(torch.FloatTensor(ndata, ndim).uniform_(-1, 1))
+	x_input.data[0, :] = 0
+	x_input.data[1, :] = 1
+	output = torch.cos(x_input[:, 0:1] + (x_input[:, 1:2] / math.pi * 0.5) + torch.prod(x_input, 1, keepdim=True))
+	reference = torch.min(output).data.squeeze()[0]
+	train_data = (x_input, output)
 
-	model1 = GPRegression(kernel=Matern52(3, phi_reflection))
-	model2 = GPRegression(kernel=Matern52(3, phi_reflection))
+	model_normal = GPRegression(kernel=Matern52(ndim, id_transform))
+	model_shadow = GPRegression(kernel=Matern52(ndim, id_transform))
 
-	# n_added = 5
-	# added_x = Variable(torch.stack([torch.zeros(n_added), torch.linspace(0, 1, n_added)], 0).t())
-	# added_y = train_y[0:1, 0:1].repeat(n_added, 1)
-	# added_data = (torch.cat([train_x[1:], added_x], 0), torch.cat([train_y[1:], added_y], 0))
+	inference_normal = Inference((x_input, output), model_normal)
+	inference_shadow = ShadowInference((x_input, output), model_shadow)
+	inference_normal.model_param_init()
+	inference_shadow.model_param_init()
 
-	inference1 = Inference(train_data, model1)
-	inference2 = ShadowInference(train_data, model2)
-	model1.mean.const_mean.data[:] = train_y[0].data.squeeze()[0]
-	model1.kernel.log_amp.data[:] = torch.log(torch.std(train_y)).data.squeeze()[0]
-	learned_params = inference1.learning(n_restarts=10)
-	model2.vec_to_param(model1.param_to_vec())
-	x_grid, y_grid = np.meshgrid(np.linspace(0, 1, 50), np.linspace(0, 1, 50))
-	pred_points = Variable(torch.from_numpy(np.vstack([x_grid.flatten(), y_grid.flatten()]).astype(np.float32)).t())
-	# acq1 = acquisition(pred_points, inference1, learned_params, reference=reference)
-	start_time = time.time()
-	_, acq1 = inference1.predict(pred_points, learned_params.squeeze())
-	print(time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
-	start_time = time.time()
-	_, acq2 = inference2.predict(pred_points, learned_params.squeeze())
-	print(time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
-	acq1 = acq1.data.numpy().reshape(x_grid.shape)
-	acq2 = acq2.data.numpy().reshape(x_grid.shape)
+	params_normal = inference_normal.learning(n_restarts=10)
+	inference_shadow.matrix_update(model_normal.param_to_vec())
 
-	ax1 = plt.subplot(221)
-	ax1.contour(x_grid, y_grid, acq1)
-	ax1.plot(train_x.data.numpy()[:, 0], train_x.data.numpy()[:, 1], '*')
-	ax2 = plt.subplot(222, sharex=ax1, sharey=ax1)
-	ax2.contour(x_grid, y_grid, acq2)
-	ax2.plot(train_x.data.numpy()[:, 0], train_x.data.numpy()[:, 1], '*')
-	ax3 = plt.subplot(223, projection='3d')
-	ax3.plot_surface(x_grid, y_grid, acq1)
-	ax3.set_title('inference')
-	ax3.set_zlim(0, np.max(acq1))
-	ax4 = plt.subplot(224, projection='3d')
-	ax4.plot_surface(x_grid, y_grid, acq2)
-	ax4.set_title('shadow inference')
-	ax4.set_zlim(0, np.max(acq1))
+	if ndim == 2:
+		x1_grid, x2_grid = np.meshgrid(np.linspace(-1, 1, 50), np.linspace(-1, 1, 50))
+		x_pred_points = Variable(torch.from_numpy(np.vstack([x1_grid.flatten(), x2_grid.flatten()]).astype(np.float32)).t())
+		pred_mean_normal, pred_var_normal = inference_normal.predict(x_pred_points)
+		pred_std_normal = pred_var_normal ** 0.5
+		acq_normal = acquisition(x_pred_points, inference_normal, params_normal, reference=reference)
+
+		pred_mean_shadow, pred_var_shadow = inference_shadow.predict(x_pred_points)
+		pred_std_shadow = pred_var_shadow ** 0.5
+		acq_shadow = acquisition(x_pred_points, inference_shadow, params_normal, reference=reference)
+
+		fig = plt.figure()
+		acq_list = [acq_normal, acq_shadow]
+		pred_mean_list = [pred_mean_normal, pred_mean_shadow]
+		pred_std_list = [pred_std_normal, pred_std_shadow]
+		for i in range(2):
+			ax = fig.add_subplot(2, 6, 6 * i + 1)
+			ax.contour(x1_grid, x2_grid, acq_list[i].data.numpy().reshape(x1_grid.shape))
+			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], '*')
+			if i == 0:
+				ax.set_ylabel('normal')
+			elif i == 1:
+				ax.set_ylabel('shadow')
+			ax = fig.add_subplot(2, 6, 6 * i + 2, projection='3d')
+			ax.plot_surface(x1_grid, x2_grid, acq_list[i].data.numpy().reshape(x1_grid.shape))
+			if i == 0:
+				ax.set_title('acquistion')
+			ax = fig.add_subplot(2, 6, 6 * i + 3)
+			ax.contour(x1_grid, x2_grid, pred_mean_list[i].data.numpy().reshape(x1_grid.shape))
+			ax = fig.add_subplot(2, 6, 6 * i + 4, projection='3d')
+			ax.plot_surface(x1_grid, x2_grid, pred_mean_list[i].data.numpy().reshape(x1_grid.shape))
+			if i == 0:
+				ax.set_title('pred mean')
+			ax = fig.add_subplot(2, 6, 6 * i + 5)
+			ax.contour(x1_grid, x2_grid, pred_std_list[i].data.numpy().reshape(x1_grid.shape))
+			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], '*')
+			ax = fig.add_subplot(2, 6, 6 * i + 6, projection='3d')
+			ax.plot_surface(x1_grid, x2_grid, pred_std_list[i].data.numpy().reshape(x1_grid.shape))
+			if i == 0:
+				ax.set_title('pred std')
+
 	plt.show()

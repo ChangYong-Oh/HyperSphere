@@ -30,16 +30,13 @@ class Inference(nn.Module):
 		self.model.reset_parameters()
 
 	def model_param_init(self):
-		if self.train_x.size(0) < 5:
-			log_std = torch.std(self.train_y).log().data + 1e-4
-			self.model.kernel.log_amp.data = log_std
-			self.model.kernel.log_ls.data.fill_(0)
-			if isinstance(self.model.kernel.input_map, Module):
-				self.model.kernel.input_map.model_param_init()
-			self.model.mean.const_mean.data.fill_(torch.mean(self.train_y.data))
-			self.model.likelihood.log_noise_var.data.fill_(-3)
-		else:
-			raise RuntimeError('Initialization is called after long training')
+		log_std = torch.std(self.train_y).log().data + 1e-4
+		self.model.kernel.log_amp.data = log_std
+		self.model.kernel.log_ls.data.fill_(0)
+		if isinstance(self.model.kernel.input_map, Module):
+			self.model.kernel.input_map.model_param_init()
+		self.model.mean.const_mean.data.fill_(torch.mean(self.train_y.data))
+		self.model.likelihood.log_noise_var.data.fill_(-3)
 
 	def matrix_update(self, hyper=None):
 		if hyper is not None:
@@ -110,6 +107,7 @@ class Inference(nn.Module):
 		except ValueError:
 			print(nll_list)
 		self.model.vec_to_param(vec_list[best_ind])
+		self.matrix_update(vec_list[best_ind])
 		print('')
 		return vec_list[best_ind].unsqueeze(0)
 
@@ -129,6 +127,7 @@ class Inference(nn.Module):
 		samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
 		###--------------------------------------------------###
 		self.model.vec_to_param(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
+		self.matrix_update(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
 		return torch.stack([torch.from_numpy(elm[0]) for elm in samples], 0).type_as(type_as_arg)
 
 

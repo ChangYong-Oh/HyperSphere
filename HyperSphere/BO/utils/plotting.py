@@ -8,7 +8,7 @@ import torch
 
 from HyperSphere.BO.utils.datafile_utils import folder_name_list
 
-color_matrix = np.random.uniform(0, 1, [10, 3])
+color_matrix = np.random.uniform(0, 1, [100, 3])
 
 
 def optimum_plot(path):
@@ -125,7 +125,7 @@ def mean_std(sample_tensor):
 
 
 if __name__ == '__main__':
-	optimum_plot('/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D20')
+	optimum_plot('/home/coh1/Experiments/Hypersphere_ALL/levy_D40')
 	# rosenbrock
 	# levy
 	# styblinskitang

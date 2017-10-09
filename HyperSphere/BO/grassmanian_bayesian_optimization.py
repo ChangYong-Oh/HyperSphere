@@ -14,12 +14,6 @@ from HyperSphere.feature_map.functionals import id_transform
 from HyperSphere.test_functions.benchmarks import *
 
 
-def radial_bounds(radius):
-	def func(x):
-		return torch.sum(x.data ** 2) > radius ** 2
-	return func
-
-
 def grassmanian_BO(n_eval=200, **kwargs):
 	if 'path' in kwargs.keys():
 		path = kwargs['path']
