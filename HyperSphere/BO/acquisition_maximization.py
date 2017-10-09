@@ -8,7 +8,8 @@ from torch.autograd import Variable, grad
 import torch.optim as optim
 
 from HyperSphere.GP.inference.inference import Inference
-from HyperSphere.BO.shadow_inference_grassmanian import ShadowInference
+from HyperSphere.BO.shadow_inference import ShadowInference
+# from HyperSphere.BO.shadow_inference_grassmanian import ShadowInference
 from HyperSphere.BO.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
