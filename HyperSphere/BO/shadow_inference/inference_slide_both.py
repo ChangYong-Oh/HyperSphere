@@ -4,6 +4,7 @@ import torch
 from torch.autograd import Variable
 
 from HyperSphere.GP.inference.inference import Inference
+from HyperSphere.feature_map.functionals import id_transform
 
 
 class ShadowInference(Inference):
