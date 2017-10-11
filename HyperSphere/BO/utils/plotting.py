@@ -3,157 +3,125 @@ import os.path
 import pickle
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 import torch
 
 from HyperSphere.BO.utils.datafile_utils import folder_name_list
 
-color_matrix = np.random.uniform(0, 1, [100, 3])
+color_list = ['b', 'g', 'r', 'tab:brown', 'm', 'p', 'k', 'w']
 
 
 def optimum_plot(path):
 	title = os.path.split(path)[1]
-	folder_category = folder_name_list(path)
-	grassmanian_folder_list = folder_category['grassmanian']
-	sphere_folder_list = folder_category['sphere']
-	cube_folder_list = folder_category['cube']
+	grouped_folder_list = folder_name_list(path)
+	group =  grouped_folder_list.keys()
+	n_group = len(group)
 
-	grassmanian_output_list = []
-	for folder in grassmanian_folder_list:
-		f = open(os.path.join(folder, 'data_config.pkl'))
-		output = pickle.load(f)['output'].squeeze(1)
-		grassmanian_output_list.append(output)
-		f.close()
-	grassmanian_n_eval = np.min([elm.size(0) for elm in grassmanian_output_list])
-	grassmanian_output_tensor = torch.stack([elm[:grassmanian_n_eval] for elm in grassmanian_output_list], 1)
-	grassmanian_best_history = grassmanian_output_tensor.clone()
-	for i in range(1, grassmanian_best_history.size(0)):
-		grassmanian_best_history[i], _ = torch.min(grassmanian_output_tensor[:i + 1], 0)
-	grassmanian_best_history_list = []
-	for elm in grassmanian_output_list:
-		grassmanian_best_history_list.append(np.array([torch.min(elm.data[:d]) for d in range(1, elm.numel() + 1)]))
+	output_list_dict = dict()
+	n_eval_dict = dict()
+	output_tensor_dict = dict()
+	best_history_dict = dict()
+	best_history_list_dict = dict()
 
-	sphere_output_list = []
-	for folder in sphere_folder_list:
-		f = open(os.path.join(folder, 'data_config.pkl'))
-		output = pickle.load(f)['output'].squeeze(1)
-		sphere_output_list.append(output)
-		f.close()
-	sphere_n_eval = np.min([elm.size(0) for elm in sphere_output_list])
-	sphere_output_tensor = torch.stack([elm[:sphere_n_eval] for elm in sphere_output_list], 1)
-	sphere_best_history = sphere_output_tensor.clone()
-	for i in range(1, sphere_best_history.size(0)):
-		sphere_best_history[i], _ = torch.min(sphere_output_tensor[:i+1], 0)
-	sphere_best_history_list = []
-	for elm in sphere_output_list:
-		sphere_best_history_list.append(np.array([torch.min(elm.data[:d]) for d in range(1, elm.numel()+1)]))
+	for g in group:
+		output_list_dict[g] = []
+		for folder in grouped_folder_list[g]:
+			f = open(os.path.join(folder, 'data_config.pkl'))
+			output = pickle.load(f)['output'].squeeze(1)
+			output_list_dict[g].append(output)
+			f.close()
+		n_eval_dict[g] = np.min([elm.size(0) for elm in output_list_dict[g]])
+		output_tensor_dict[g] = torch.stack([elm[:n_eval_dict[g]] for elm in output_list_dict[g]], 1)
+		best_history_dict[g] = output_tensor_dict[g].clone()
+		for i in range(1, best_history_dict[g].size(0)):
+			best_history_dict[g][i], _ = torch.min(output_tensor_dict[g][:i + 1], 0)
+		best_history_list_dict[g] = []
+		for elm in output_list_dict[g]:
+			best_history_list_dict[g].append(np.array([torch.min(elm.data[:d]) for d in range(1, elm.numel() + 1)]))
 
-	cube_output_list = []
-	for folder in cube_folder_list:
-		f = open(os.path.join(folder, 'data_config.pkl'))
-		output = pickle.load(f)['output'].squeeze(1)
-		cube_output_list.append(output)
-		f.close()
-	cube_n_eval = np.min([elm.size(0) for elm in cube_output_list])
-	cube_output_tensor = torch.stack([elm[:cube_n_eval] for elm in cube_output_list], 1)
-	cube_best_history = cube_output_tensor.clone()
-	for i in range(1, cube_best_history.size(0)):
-		cube_best_history[i], _ = torch.min(cube_output_tensor[:i + 1], 0)
-	cube_best_history_list = []
-	for elm in cube_output_list:
-		cube_best_history_list.append(np.array([torch.min(elm.data[:d]) for d in range(1, elm.numel()+1)]))
+	mean_dict = dict()
+	std_dict = dict()
+	for g in group:
+		mean_dict[g], std_dict[g] = mean_std(best_history_dict[g])
 
-	grassmaninan_mean, grassmanian_std = mean_std(grassmanian_best_history)
-	sphere_mean, sphere_std = mean_std(sphere_best_history)
-	cube_mean, cube_std = mean_std(cube_best_history)
+	gs = gridspec.GridSpec(n_group + 3, 1)
 
-	fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True, sharey=True)
-	axes[0].plot(np.arange(grassmanian_n_eval), grassmaninan_mean, 'g', label='grassmanian(' + str(len(sphere_output_list)) + ')')
-	axes[0].fill_between(np.arange(grassmanian_n_eval), grassmaninan_mean - grassmanian_std, grassmaninan_mean + grassmanian_std, color='g', alpha=0.25)
-	axes[0].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_output_list)) + ')')
-	axes[0].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
-	axes[0].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_output_list)) + ')')
-	axes[0].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
-	axes[0].set_title('Comparison', fontsize=10)
-	axes[0].legend()
+	ax_big = plt.subplot(gs[n_group:])
+	for i, g in enumerate(group):
+		ax_big.plot(np.arange(n_eval_dict[g]), mean_dict[g], color=color_list[i], label=g + '(' + str(len(output_list_dict[g])) + ')')
+		ax_big.fill_between(np.arange(n_eval_dict[g]), mean_dict[g] - std_dict[g], mean_dict[g] + std_dict[g], color=color_list[i], alpha=0.25)
+	ax_big.set_ylabel('Comparison', rotation=0, fontsize=8)
+	ax_big.yaxis.set_label_coords(-0.06, 0.85)
+	ax_big.legend()
 
-	plot_samples(axes[1], grassmanian_best_history_list, color_matrix, 'Radial')
-	plot_samples(axes[2], sphere_best_history_list, color_matrix, 'Spherical')
-	plot_samples(axes[3], cube_best_history_list, color_matrix, 'Rectangular')
+	for i, g in enumerate(group):
+		ax = plt.subplot(gs[i], sharex=ax_big, sharey=ax_big)
+		plot_samples(ax, best_history_list_dict[g], color_list, g)
 
-	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=2.0)
+	plt.subplots_adjust(hspace=0.02)
+
 	plt.suptitle(title)
 	plt.show()
 
 
 def radius_plot(path):
 	title = os.path.split(path)[1]
-	folder_category = folder_name_list(path)
-	grassmanian_folder_list = folder_category['grassmanian']
-	sphere_folder_list = folder_category['sphere']
-	cube_folder_list = folder_category['cube']
+	grouped_folder_list = folder_name_list(path)
+	group = grouped_folder_list.keys()
+	n_group = len(group)
 
-	grassmanian_radius_list = []
-	for folder in grassmanian_folder_list:
-		f = open(os.path.join(folder, 'data_config.pkl'))
-		input = pickle.load(f)['x_input'].squeeze(1)
-		grassmanian_radius_list.append(torch.sqrt(torch.sum(input ** 2, 1)))
-		f.close()
-	grassmanian_n_eval = np.min([elm.size(0) for elm in grassmanian_radius_list])
-	grassmanian_radius_tensor = torch.stack([elm[:grassmanian_n_eval] for elm in grassmanian_radius_list], 1)
-	grassmanian_radius_list = [(elm.data if hasattr(elm, 'data') else elm).numpy() for elm in grassmanian_radius_list]
+	radius_list_dict = dict()
+	n_eval_dict = dict()
+	radius_tensor_dict = dict()
 
-	sphere_radius_list = []
-	for folder in sphere_folder_list:
-		f = open(os.path.join(folder, 'data_config.pkl'))
-		input = pickle.load(f)['x_input'].squeeze(1)
-		sphere_radius_list.append(torch.sqrt(torch.sum(input ** 2, 1)))
-		f.close()
-	sphere_n_eval = np.min([elm.size(0) for elm in sphere_radius_list])
-	sphere_radius_tensor = torch.stack([elm[:sphere_n_eval] for elm in sphere_radius_list], 1)
-	sphere_radius_list = [(elm.data if hasattr(elm, 'data') else elm).numpy() for elm in sphere_radius_list]
+	for g in group:
+		radius_list_dict[g] = []
+		for folder in grouped_folder_list[g]:
+			f = open(os.path.join(folder, 'data_config.pkl'))
+			input = pickle.load(f)['x_input'].squeeze(1)
+			radius_list_dict[g].append(torch.sqrt(torch.sum(input ** 2, 1)))
+			f.close()
+		n_eval_dict[g] = np.min([elm.size(0) for elm in radius_list_dict[g]])
+		radius_tensor_dict[g] = torch.stack([elm[:n_eval_dict[g]] for elm in radius_list_dict[g]], 1)
+		radius_list_dict[g] = [(elm.data if hasattr(elm, 'data') else elm).numpy() for elm in radius_list_dict[g]]
 
-	cube_radius_list = []
-	for folder in cube_folder_list:
-		f = open(os.path.join(folder, 'data_config.pkl'))
-		input = pickle.load(f)['x_input'].squeeze(1)
-		cube_radius_list.append(torch.sqrt(torch.sum(input ** 2, 1)))
-		f.close()
-	cube_n_eval = np.min([elm.size(0) for elm in cube_radius_list])
-	cube_radius_tensor = torch.stack([elm[:cube_n_eval] for elm in cube_radius_list], 1)
-	cube_radius_list = [(elm.data if hasattr(elm, 'data') else elm).numpy() for elm in cube_radius_list]
+	mean_dict = dict()
+	std_dict = dict()
+	for g in group:
+		mean_dict[g], std_dict[g] = mean_std(radius_tensor_dict[g])
 
-	grassmaninan_mean, grassmanian_std = mean_std(grassmanian_radius_tensor)
-	sphere_mean, sphere_std = mean_std(sphere_radius_tensor)
-	cube_mean, cube_std = mean_std(cube_radius_tensor)
+	gs = gridspec.GridSpec(n_group + 3, 1)
 
-	fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True, sharey=True)
-	axes[0].plot(np.arange(grassmanian_n_eval), grassmaninan_mean, 'g', label='grassmanian(' + str(len(grassmanian_radius_list)) + ')')
-	axes[0].fill_between(np.arange(grassmanian_n_eval), grassmaninan_mean - grassmanian_std, grassmaninan_mean + grassmanian_std, color='g', alpha=0.25)
-	axes[0].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_radius_list)) + ')')
-	axes[0].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
-	axes[0].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_radius_list)) + ')')
-	axes[0].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
-	axes[0].set_title('Comparison', fontsize=10)
-	axes[0].legend()
+	ax_big = plt.subplot(gs[n_group:])
+	for i, g in enumerate(group):
+		ax_big.plot(np.arange(n_eval_dict[g]), mean_dict[g], color=color_list[i], label=g + '(' + str(len(radius_list_dict[g])) + ')')
+		ax_big.fill_between(np.arange(n_eval_dict[g]), mean_dict[g] - std_dict[g], mean_dict[g] + std_dict[g], color=color_list[i], alpha=0.25)
+	ax_big.set_ylabel('Comparison', rotation=0, fontsize=8)
+	ax_big.yaxis.set_label_coords(-0.06, 0.5)
+	ax_big.legend()
 
-	plot_samples(axes[1], grassmanian_radius_list, color_matrix, 'Radial')
-	plot_samples(axes[2], sphere_radius_list, color_matrix, 'Spherical')
-	plot_samples(axes[3], cube_radius_list, color_matrix, 'Rectangular')
+	for i, g in enumerate(group):
+		ax = plt.subplot(gs[i], sharex=ax_big, sharey=ax_big)
+		plot_samples(ax, radius_list_dict[g], color_list, g)
 
-	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=2.0)
+	plt.subplots_adjust(hspace=0.02)
+
 	plt.suptitle(title)
 	plt.show()
 
 
-def plot_samples(ax, sample_list, color_matrix, title_str):
+def plot_samples(ax, sample_list, color_list, title_str):
 	sample_len = [elm.size for elm in sample_list]
 	max_len = int(np.max(sample_len) * 1.1)
 	for i, sample in enumerate(sample_list):
-		ax.plot(np.arange(sample.size), sample, color=color_matrix[i])
-	ax.set_title(title_str, fontsize=10)
-	ax.set_xticks(np.arange(0, max_len, 50))
-	ax.set_xticks(np.arange(0, max_len, 10), minor=True)
+		ax.plot(np.arange(sample.size), sample, color=color_list[i])
+	ax.set_ylabel(title_str, rotation=0, fontsize=8)
+	ax.yaxis.set_label_coords(-0.06, 0.5)
+	# ax.set_xticks(np.arange(0, max_len, 50))
+	# ax.set_xticks(np.arange(0, max_len, 10), minor=True)
+	plt.setp([ax.get_xticklabels()], visible=False)
+
 	ax.grid(which='both')
 
 
@@ -164,7 +132,9 @@ def mean_std(sample_tensor):
 
 
 if __name__ == '__main__':
-	optimum_plot('/home/coh1/Experiments/Hypersphere_ALL/levy_D20')
+	path = '/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D20'
+	optimum_plot(path)
+	radius_plot(path)
 	# rosenbrock
 	# levy
 	# styblinskitang

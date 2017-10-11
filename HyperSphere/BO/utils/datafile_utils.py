@@ -43,23 +43,39 @@ def folder_name_list(path):
 		parent_dir = os.path.join(EXPERIMENT_DIR, parent_dir)
 	search_sub_dir = not np.any([os.path.isfile(os.path.join(parent_dir, elm)) for elm in os.listdir(parent_dir)])
 	if search_sub_dir:
-		grassmanian_folder_list = []
-		sphere_folder_list = []
-		cube_folder_list = []
-		for sub_folder in [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm))]:
+		experiment_type = set()
+		sub_dir_list = [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm))]
+		for sub_folder in sub_dir_list:
 			sub_folder_folder_list = [elm for elm in os.listdir(os.path.join(parent_dir, sub_folder)) if os.path.isdir(os.path.join(parent_dir, sub_folder, elm)) and prefix == elm[:len(prefix)]]
-			grassmanian_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'grassmanian' in elm]
-			sphere_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'sphere' in elm]
-			cube_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'cube' in elm]
+			experiment_type = experiment_type.union([remove_entailing_number(elm.split('_')[-1]) for elm in sub_folder_folder_list])
+		result_dict = dict()
+		for exp_type in experiment_type:
+			result_dict[exp_type] = []
+		for sub_folder in sub_dir_list:
+			sub_folder_folder_list = [elm for elm in os.listdir(os.path.join(parent_dir, sub_folder)) if os.path.isdir(os.path.join(parent_dir, sub_folder, elm)) and prefix == elm[:len(prefix)]]
+			for exp_type in experiment_type:
+				result_dict[exp_type] += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if exp_type in elm]
 	else:
 		folder_list = [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm)) and prefix == elm[:len(prefix)]]
+		experiment_type = set([remove_entailing_number(elm.split('_')[-1]) for elm in folder_list])
 		if len(folder_list) == 0:
 			print('No experimental result')
 			return
-		grassmanian_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'grassmanian' in elm]
-		sphere_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'sphere' in elm]
-		cube_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'cube' in elm]
-	return {'grassmanian': grassmanian_folder_list, 'sphere': sphere_folder_list, 'cube': cube_folder_list}
+		result_dict = dict()
+		for exp_type in experiment_type:
+			result_dict[exp_type] = []
+		for exp_type in experiment_type:
+			result_dict[exp_type] += [os.path.join(parent_dir, elm) for elm in folder_list if exp_type in elm]
+	return result_dict
+
+
+def remove_entailing_number(str):
+	result = str[:]
+	for i in range(len(result)-1, -1, -1):
+		if not result[i].isdigit():
+			result = result[:i+1]
+			break
+	return result
 
 
 def how_many_evaluations(path):
