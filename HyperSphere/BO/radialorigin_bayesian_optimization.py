@@ -90,7 +90,7 @@ def BO(n_eval=200, **kwargs):
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0 = optimization_init_points(x0_cand, inference, gp_hyper_params, reference=reference)
-		next_x_point = suggest(inference, gp_hyper_params, x0=x0, bounds=(-1, 1), reference=reference)
+		next_x_point = suggest(inference, gp_hyper_params, x0=x0, bounds=bnd, reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
