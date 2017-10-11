@@ -19,6 +19,12 @@ def x_radial(x):
 x_radial.dim_change = lambda x: x + 1
 
 
+def radial_bound(radius):
+	def func(x):
+		return torch.sum(x.data ** 2) > radius ** 2
+	return func
+
+
 def phi_reflection(phi):
 	f_phi0 = torch.cos(phi[:, :1] * math.pi)
 	f_phi_rest = torch.cat([torch.cos(phi[:, -1:] * 2 * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)

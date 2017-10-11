@@ -12,16 +12,10 @@ from HyperSphere.BO.shadow_inference.inference_slide_both import ShadowInference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.feature_map.functionals import x_radial
+from HyperSphere.feature_map.functionals import x_radial, radial_bound
 from HyperSphere.test_functions.benchmarks import *
 
 exp_str = 'radialboth'
-
-
-def radial_bound(radius):
-	def func(x):
-		return x.data ** 2 > radius ** 2
-	return func
 
 
 def BO(n_eval=200, **kwargs):
