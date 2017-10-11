@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import torch
 from torch.autograd import Variable
 
