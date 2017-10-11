@@ -1,16 +1,12 @@
-import progressbar
-
-import numpy as np
 import copy
 
+import numpy as np
+import progressbar
 import torch
-from torch.autograd import Variable, grad
 import torch.optim as optim
+from torch.autograd import Variable, grad
 
-from HyperSphere.GP.inference.inference import Inference
-from HyperSphere.BO.shadow_inference import ShadowInference
-# from HyperSphere.BO.shadow_inference_grassmanian import ShadowInference
-from HyperSphere.BO.acquisition_functions import expected_improvement
+from HyperSphere.BO.acquisition.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
 N_SOBOL = 10000
@@ -65,10 +61,7 @@ def deepcopy_inference(inference, param_samples):
 	for s in range(param_samples.size(0)):
 		model = copy.deepcopy(inference.model)
 		model.vec_to_param(param_samples[s])
-		if inference.__class__.__name__ == 'Inference':
-			inferences.append(Inference((inference.train_x, inference.train_y), model))
-		elif inference.__class__.__name__ == 'ShadowInference':
-			inferences.append(ShadowInference((inference.train_x, inference.train_y), model))
+		inferences.append(inference.__class__((inference.train_x, inference.train_y), model))
 	return inferences
 
 

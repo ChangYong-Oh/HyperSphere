@@ -43,25 +43,31 @@ def folder_name_list(path):
 		parent_dir = os.path.join(EXPERIMENT_DIR, parent_dir)
 	search_sub_dir = not np.any([os.path.isfile(os.path.join(parent_dir, elm)) for elm in os.listdir(parent_dir)])
 	if search_sub_dir:
+		grassmanian_folder_list = []
 		sphere_folder_list = []
 		cube_folder_list = []
 		for sub_folder in [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm))]:
 			sub_folder_folder_list = [elm for elm in os.listdir(os.path.join(parent_dir, sub_folder)) if os.path.isdir(os.path.join(parent_dir, sub_folder, elm)) and prefix == elm[:len(prefix)]]
-			sphere_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'grassmanian' in elm]
+			grassmanian_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'grassmanian' in elm]
+			sphere_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'sphere' in elm]
 			cube_folder_list += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if 'cube' in elm]
 	else:
 		folder_list = [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm)) and prefix == elm[:len(prefix)]]
 		if len(folder_list) == 0:
 			print('No experimental result')
 			return
+		grassmanian_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'grassmanian' in elm]
 		sphere_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'sphere' in elm]
 		cube_folder_list = [os.path.join(parent_dir, elm) for elm in folder_list if 'cube' in elm]
-	return sphere_folder_list, cube_folder_list
+	return {'grassmanian': grassmanian_folder_list, 'sphere': sphere_folder_list, 'cube': cube_folder_list}
 
 
 def how_many_evaluations(path):
-	sphere_folder_list, cube_folder_list = folder_name_list(path)
-	for folder in sphere_folder_list + cube_folder_list:
+	folder_category = folder_name_list(path)
+	grassmanian_folder_list = folder_category['grassmanian']
+	sphere_folder_list = folder_category['sphere']
+	cube_folder_list = folder_category['cube']
+	for folder in grassmanian_folder_list + sphere_folder_list + cube_folder_list:
 		f = open(os.path.join(folder, 'data_config.pkl'))
 		n_eval = pickle.load(f)['output'].numel()
 		f.close()

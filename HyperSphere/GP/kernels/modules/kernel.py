@@ -4,15 +4,19 @@ import sampyl as smp
 import torch
 from torch.nn.parameter import Parameter
 from HyperSphere.GP.modules.gp_modules import Module, GPModule
+from HyperSphere.feature_map.functionals import id_transform
 
 
 class Kernel(GPModule):
 
-	def __init__(self, ndim, input_map):
+	def __init__(self, ndim, input_map=None):
 		super(Kernel, self).__init__()
 		self.ndim = ndim
 		self.log_amp = Parameter(torch.FloatTensor(1))
-		self.input_map = input_map
+		if input_map is not None:
+			self.input_map = input_map
+		else:
+			self.input_map = id_transform
 
 	def reset_parameters(self):
 		self.log_amp.data.normal_()

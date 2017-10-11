@@ -6,15 +6,25 @@ import time
 import numpy as np
 
 # ShadowInference version should coincide with the one used in acquisition_maximization
-from HyperSphere.BO.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, ShadowInference
+from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, \
+	optimization_init_points
+from HyperSphere.BO.shadow_inference.inference_slide_both import ShadowInference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.feature_map.functionals import id_transform
+from HyperSphere.feature_map.functionals import x_radial
 from HyperSphere.test_functions.benchmarks import *
 
+exp_str = 'radialboth'
 
-def grassmanian_BO(n_eval=200, **kwargs):
+
+def radial_bound(radius):
+	def func(x):
+		return x.data ** 2 > radius ** 2
+	return func
+
+
+def BO(n_eval=200, **kwargs):
 	if 'path' in kwargs.keys():
 		path = kwargs['path']
 		if not os.path.exists(path):
@@ -36,7 +46,7 @@ def grassmanian_BO(n_eval=200, **kwargs):
 		else:
 			ndim = func.dim
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
-		folder_name_root = func.__name__ + '_D' + str(ndim) + '_grassmanian'
+		folder_name_root = func.__name__ + '_D' + str(ndim) + '_' + exp_str
 		folder_name_suffix = [elm[len(folder_name_root):] for elm in dir_list if elm[:len(folder_name_root)] == folder_name_root]
 		next_ind = 1 + np.max([int(elm) for elm in folder_name_suffix if elm.isdigit()] + [-1])
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind)))
@@ -51,7 +61,7 @@ def grassmanian_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = id_transform
+		kernel_input_map = x_radial
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2
@@ -66,6 +76,8 @@ def grassmanian_BO(n_eval=200, **kwargs):
 	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
 	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
+
+	bnd = radial_bound(search_sphere_radius)
 
 	for _ in range(3):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
@@ -112,8 +124,8 @@ if __name__ == '__main__':
 		func = locals()[sys.argv[1]]
 		if func.dim == 0:
 			n_eval = int(sys.argv[3]) if len(sys.argv) > 3 else 100
-			grassmanian_BO(n_eval=n_eval, func=func, dim=int(sys.argv[2]))
+			BO(n_eval=n_eval, func=func, dim=int(sys.argv[2]))
 		else:
-			grassmanian_BO(n_eval=int(sys.argv[2]), func=func)
+			BO(n_eval=int(sys.argv[2]), func=func)
 	else:
-		grassmanian_BO(n_eval=int(sys.argv[2]), path=sys.argv[1])
+		BO(n_eval=int(sys.argv[2]), path=sys.argv[1])

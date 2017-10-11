@@ -4,9 +4,8 @@ import pickle
 import sys
 import time
 
-import numpy as np
-
-from HyperSphere.BO.acquisition_maximization import suggest, optimization_candidates, optimization_init_points
+from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, \
+	optimization_init_points
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.GP.kernels.modules.matern52 import Matern52

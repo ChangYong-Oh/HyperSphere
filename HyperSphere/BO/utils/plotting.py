@@ -13,7 +13,25 @@ color_matrix = np.random.uniform(0, 1, [100, 3])
 
 def optimum_plot(path):
 	title = os.path.split(path)[1]
-	sphere_folder_list, cube_folder_list = folder_name_list(path)
+	folder_category = folder_name_list(path)
+	grassmanian_folder_list = folder_category['grassmanian']
+	sphere_folder_list = folder_category['sphere']
+	cube_folder_list = folder_category['cube']
+
+	grassmanian_output_list = []
+	for folder in grassmanian_folder_list:
+		f = open(os.path.join(folder, 'data_config.pkl'))
+		output = pickle.load(f)['output'].squeeze(1)
+		grassmanian_output_list.append(output)
+		f.close()
+	grassmanian_n_eval = np.min([elm.size(0) for elm in grassmanian_output_list])
+	grassmanian_output_tensor = torch.stack([elm[:grassmanian_n_eval] for elm in grassmanian_output_list], 1)
+	grassmanian_best_history = grassmanian_output_tensor.clone()
+	for i in range(1, grassmanian_best_history.size(0)):
+		grassmanian_best_history[i], _ = torch.min(grassmanian_output_tensor[:i + 1], 0)
+	grassmanian_best_history_list = []
+	for elm in grassmanian_output_list:
+		grassmanian_best_history_list.append(np.array([torch.min(elm.data[:d]) for d in range(1, elm.numel() + 1)]))
 
 	sphere_output_list = []
 	for folder in sphere_folder_list:
@@ -45,19 +63,23 @@ def optimum_plot(path):
 	for elm in cube_output_list:
 		cube_best_history_list.append(np.array([torch.min(elm.data[:d]) for d in range(1, elm.numel()+1)]))
 
+	grassmaninan_mean, grassmanian_std = mean_std(grassmanian_best_history)
 	sphere_mean, sphere_std = mean_std(sphere_best_history)
 	cube_mean, cube_std = mean_std(cube_best_history)
 
-	fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, sharey=True)
-	axes[1].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_output_list)) + ')')
-	axes[1].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
-	axes[1].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_output_list)) + ')')
-	axes[1].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
-	axes[1].set_title('Comparison', fontsize=10)
-	axes[1].legend()
+	fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True, sharey=True)
+	axes[0].plot(np.arange(grassmanian_n_eval), grassmaninan_mean, 'g', label='grassmanian(' + str(len(sphere_output_list)) + ')')
+	axes[0].fill_between(np.arange(grassmanian_n_eval), grassmaninan_mean - grassmanian_std, grassmaninan_mean + grassmanian_std, color='g', alpha=0.25)
+	axes[0].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_output_list)) + ')')
+	axes[0].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
+	axes[0].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_output_list)) + ')')
+	axes[0].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
+	axes[0].set_title('Comparison', fontsize=10)
+	axes[0].legend()
 
-	plot_samples(axes[0], sphere_best_history_list, color_matrix, 'Spherical')
-	plot_samples(axes[2], cube_best_history_list, color_matrix, 'Rectangular')
+	plot_samples(axes[1], grassmanian_best_history_list, color_matrix, 'Radial')
+	plot_samples(axes[2], sphere_best_history_list, color_matrix, 'Spherical')
+	plot_samples(axes[3], cube_best_history_list, color_matrix, 'Rectangular')
 
 	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=2.0)
 	plt.suptitle(title)
@@ -66,7 +88,20 @@ def optimum_plot(path):
 
 def radius_plot(path):
 	title = os.path.split(path)[1]
-	sphere_folder_list, cube_folder_list = folder_name_list(path)
+	folder_category = folder_name_list(path)
+	grassmanian_folder_list = folder_category['grassmanian']
+	sphere_folder_list = folder_category['sphere']
+	cube_folder_list = folder_category['cube']
+
+	grassmanian_radius_list = []
+	for folder in grassmanian_folder_list:
+		f = open(os.path.join(folder, 'data_config.pkl'))
+		input = pickle.load(f)['x_input'].squeeze(1)
+		grassmanian_radius_list.append(torch.sqrt(torch.sum(input ** 2, 1)))
+		f.close()
+	grassmanian_n_eval = np.min([elm.size(0) for elm in grassmanian_radius_list])
+	grassmanian_radius_tensor = torch.stack([elm[:grassmanian_n_eval] for elm in grassmanian_radius_list], 1)
+	grassmanian_radius_list = [(elm.data if hasattr(elm, 'data') else elm).numpy() for elm in grassmanian_radius_list]
 
 	sphere_radius_list = []
 	for folder in sphere_folder_list:
@@ -88,19 +123,23 @@ def radius_plot(path):
 	cube_radius_tensor = torch.stack([elm[:cube_n_eval] for elm in cube_radius_list], 1)
 	cube_radius_list = [(elm.data if hasattr(elm, 'data') else elm).numpy() for elm in cube_radius_list]
 
+	grassmaninan_mean, grassmanian_std = mean_std(grassmanian_radius_tensor)
 	sphere_mean, sphere_std = mean_std(sphere_radius_tensor)
 	cube_mean, cube_std = mean_std(cube_radius_tensor)
 
-	fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, sharey=True)
-	axes[1].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_radius_list)) + ')')
-	axes[1].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
-	axes[1].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_radius_list)) + ')')
-	axes[1].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
-	axes[1].set_title('Comparison', fontsize=10)
-	axes[1].legend()
+	fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True, sharey=True)
+	axes[0].plot(np.arange(grassmanian_n_eval), grassmaninan_mean, 'g', label='grassmanian(' + str(len(grassmanian_radius_list)) + ')')
+	axes[0].fill_between(np.arange(grassmanian_n_eval), grassmaninan_mean - grassmanian_std, grassmaninan_mean + grassmanian_std, color='g', alpha=0.25)
+	axes[0].plot(np.arange(sphere_n_eval), sphere_mean, 'r', label='sphere(' + str(len(sphere_radius_list)) + ')')
+	axes[0].fill_between(np.arange(sphere_n_eval), sphere_mean - sphere_std, sphere_mean + sphere_std, color='r', alpha=0.25)
+	axes[0].plot(np.arange(cube_n_eval), cube_mean, 'b', label='cube(' + str(len(cube_radius_list)) + ')')
+	axes[0].fill_between(np.arange(cube_n_eval), cube_mean - cube_std, cube_mean + cube_std, color='b', alpha=0.25)
+	axes[0].set_title('Comparison', fontsize=10)
+	axes[0].legend()
 
-	plot_samples(axes[0], sphere_radius_list, color_matrix, 'Spherical')
-	plot_samples(axes[2], cube_radius_list, color_matrix, 'Rectangular')
+	plot_samples(axes[1], grassmanian_radius_list, color_matrix, 'Radial')
+	plot_samples(axes[2], sphere_radius_list, color_matrix, 'Spherical')
+	plot_samples(axes[3], cube_radius_list, color_matrix, 'Rectangular')
 
 	plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=2.0)
 	plt.suptitle(title)
@@ -125,7 +164,7 @@ def mean_std(sample_tensor):
 
 
 if __name__ == '__main__':
-	optimum_plot('/home/coh1/Experiments/Hypersphere_ALL/levy_D40')
+	optimum_plot('/home/coh1/Experiments/Hypersphere_ALL/levy_D20')
 	# rosenbrock
 	# levy
 	# styblinskitang

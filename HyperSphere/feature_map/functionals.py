@@ -10,6 +10,15 @@ def id_transform(phi):
 id_transform.dim_change = lambda x: x
 
 
+def x_radial(x):
+	radius = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
+	normalizer = radius.clone()
+	normalizer[normalizer == 0] = 1
+	return torch.cat([radius, x/normalizer], 1)
+
+x_radial.dim_change = lambda x: x + 1
+
+
 def phi_reflection(phi):
 	f_phi0 = torch.cos(phi[:, :1] * math.pi)
 	f_phi_rest = torch.cat([torch.cos(phi[:, -1:] * 2 * math.pi), torch.sin(phi[:, -1:] * 2 * math.pi)], 1)

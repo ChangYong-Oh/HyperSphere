@@ -84,5 +84,22 @@ def test_speed_gesv_potrf(ndim=10):
 	print(torch.min(torch.diag(chol_from_upper)), torch.max(torch.diag(chol_from_upper)))
 	print(torch.min(torch.diag(chol_from_lower)), torch.max(torch.diag(chol_from_lower)))
 
+
+def object_comparison():
+	from HyperSphere.GP.models.gp_regression import GPRegression
+	from HyperSphere.GP.kernels.modules.matern52 import Matern52
+	from HyperSphere.GP.kernels.modules.squared_exponential import SquaredExponentialKernel
+	from HyperSphere.BO.shadow_inference.inference_slide_both import ShadowInference as si1
+	from HyperSphere.BO.shadow_inference.inference_slide_origin import ShadowInference as si2
+	from HyperSphere.BO.shadow_inference.inference_slide_origin import ShadowInference as si3
+	model1 = GPRegression(Matern52(3))
+	model2 = GPRegression(SquaredExponentialKernel(3))
+	a = si1((Variable(torch.randn(10, 3)), Variable(torch.randn(10, 3))), model1)
+	b = a.__class__((a.train_x, a.train_y), model1)
+	print(a.__class__ is b.__class__)
+	print(a.__class__)
+	print(b.__class__)
+
+
 if __name__ == '__main__':
-	test_speed_gesv_potrf(200)
+	object_comparison()

@@ -1,10 +1,7 @@
-import time
-from copy import deepcopy
-
 import torch
 from torch.autograd import Variable
+
 from HyperSphere.GP.inference.inference import Inference
-from HyperSphere.feature_map.functionals import id_transform
 
 
 class ShadowInference(Inference):
@@ -14,7 +11,7 @@ class ShadowInference(Inference):
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
-			self.model.vec_to_param(hyper)
+			self.matrix_update(hyper)
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 
 		shared_part = k_pred_train.mm(self.K_noise_inv)
@@ -30,10 +27,10 @@ class ShadowInference(Inference):
 		K_train_satellite = self.model.kernel(self.train_x, input_satellite)
 		Ainv_B = self.K_noise_inv.mm(K_train_satellite)
 		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
-		k_satellite_diag = torch.cat([self.model.kernel(input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
+		k_satellite_diag = torch.cat([self.model.kernel(input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0) + self.model.likelihood(input_satellite)
 		satellite_reduction = ((Ainv_B * k_pred_train.t()).sum(0).view(-1, 1) - k_satellite_pred_diag * satellite_weight_sqrt) ** 2 / (k_satellite_diag - (Ainv_B * K_train_satellite).sum(0).view(-1, 1))
 		if hyper is not None:
-			self.model.vec_to_param(param_original)
+			self.matrix_update(param_original)
 		return pred_mean, pred_var - satellite_reduction
 
 
@@ -41,12 +38,10 @@ if __name__ == '__main__':
 	import math
 	import numpy as np
 	import matplotlib.pyplot as plt
-	from mpl_toolkits.mplot3d import Axes3D
 	from HyperSphere.GP.kernels.modules.matern52 import Matern52
 	from HyperSphere.GP.models.gp_regression import GPRegression
-	from HyperSphere.BO.acquisition_maximization import acquisition
-	from HyperSphere.feature_map.functionals import phi_reflection, phi_smooth, id_transform
-	from HyperSphere.test_functions.benchmarks import levy
+	from HyperSphere.BO.acquisition.acquisition_maximization import acquisition
+	from HyperSphere.feature_map.functionals import id_transform
 
 	ndata = 10
 	ndim = 2
@@ -86,7 +81,8 @@ if __name__ == '__main__':
 		pred_std_list = [pred_std_normal, pred_std_shadow]
 		for i in range(2):
 			ax = fig.add_subplot(2, 6, 6 * i + 1)
-			ax.contour(x1_grid, x2_grid, acq_list[i].data.numpy().reshape(x1_grid.shape))
+			if torch.min(acq_list[i].data) < torch.max(acq_list[i].data):
+				ax.contour(x1_grid, x2_grid, acq_list[i].data.numpy().reshape(x1_grid.shape))
 			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], '*')
 			if i == 0:
 				ax.set_ylabel('normal')
