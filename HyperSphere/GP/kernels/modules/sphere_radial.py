@@ -26,10 +26,10 @@ class SphereRadialKernel(Kernel):
 	def init_parameters(self, amp):
 
 		self.log_amp0.data.fill_(-3)
-		# self.log_amp.data.fill_(np.log(amp / self.max_power))
-		# self.log_amps.data.fill_(np.log(amp / self.max_power))
-		self.log_amp.data.fill_(np.log(amp * 2 / (self.max_power + 1)))
-		self.log_amps.data = torch.log(amp * torch.arange(self.max_power - 1, 0, -1).type_as(self.log_amps.data) * 2 / (self.max_power * (self.max_power + 1)))
+		self.log_amp.data.fill_(np.log(amp / self.max_power))
+		self.log_amps.data.fill_(np.log(amp / self.max_power))
+		# self.log_amp.data.fill_(np.log(amp * 2 / (self.max_power + 1)))
+		# self.log_amps.data = torch.log(amp * torch.arange(self.max_power - 1, 0, -1).type_as(self.log_amps.data) * 2 / (self.max_power * (self.max_power + 1)))
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
