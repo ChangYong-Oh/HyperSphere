@@ -67,3 +67,6 @@ class Kernel(GPModule):
 		if isinstance(self.input_map, GPModule):
 			likelihood += self.input_map.prior(vec[1:])
 		return likelihood
+
+	def forward(self, input1, input2=None):
+		raise NotImplementedError

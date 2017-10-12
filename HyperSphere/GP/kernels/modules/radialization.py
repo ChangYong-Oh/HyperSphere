@@ -2,16 +2,16 @@ import math
 
 import torch
 from torch.autograd import Variable
-from HyperSphere.GP.kernels.modules.kernel import Kernel
+from HyperSphere.GP.modules.gp_modules import GPModule
 from HyperSphere.GP.kernels.modules.sphere_radial import SphereRadialKernel
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.feature_map.functionals import x2radial
 
 
-class RadializationKernel(Kernel):
+class RadializationKernel(GPModule):
 
 	def __init__(self, max_power):
-		super(RadializationKernel, self).__init__(None)
+		super(RadializationKernel, self).__init__()
 		self.radius_kernel = Matern52(1)
 		self.sphere_kernel = SphereRadialKernel(max_power)
 
