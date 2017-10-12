@@ -15,7 +15,7 @@ class ReduceLp(GPModule):
 	def reset_parameters(self):
 		self.log_p_minus_one.data.normal_()
 
-	def model_param_init(self):
+	def init_parameters(self):
 		self.log_p_minus_one.data.fill_(0.0)
 
 	def out_of_bounds(self, vec=None):

@@ -10,12 +10,12 @@ from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimiz
 	optimization_init_points
 from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
-from HyperSphere.GP.kernels.modules.matern52 import Matern52
+from HyperSphere.GP.kernels.modules.radialization import RadializationKernel
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.feature_map.functionals import x_radial, radial_bound
+from HyperSphere.feature_map.functionals import radial_bound
 from HyperSphere.test_functions.benchmarks import *
 
-exp_str = 'radialnone'
+exp_str = 'sphereradialnone'
 
 
 def BO(n_eval=200, **kwargs):
@@ -55,8 +55,7 @@ def BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = x_radial
-		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
+		model = GPRegression(kernel=RadializationKernel(max_power=3))
 
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]

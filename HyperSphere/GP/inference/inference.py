@@ -20,7 +20,6 @@ class Inference(nn.Module):
 		self.model = model
 		self.train_x = train_data[0]
 		self.train_y = train_data[1]
-		assert self.model.kernel.input_map(Variable(torch.ones(1, self.train_x.size(1)))).numel() == model.kernel.ndim
 		self.mean_vec = None
 		self.K_noise = None
 		self.K_noise_inv = None
@@ -29,12 +28,9 @@ class Inference(nn.Module):
 	def reset_parameters(self):
 		self.model.reset_parameters()
 
-	def model_param_init(self):
-		log_std = torch.std(self.train_y).log().data + 1e-4
-		self.model.kernel.log_amp.data = log_std
-		self.model.kernel.log_ls.data.fill_(0)
-		if isinstance(self.model.kernel.input_map, Module):
-			self.model.kernel.input_map.model_param_init()
+	def init_parameters(self):
+		amp = torch.std(self.train_y).data[0] * (1 + 1e-4)
+		self.model.kernel.init_parameters(amp)
 		self.model.mean.const_mean.data.fill_(torch.mean(self.train_y.data))
 		self.model.likelihood.log_noise_var.data.fill_(-3)
 
@@ -121,6 +117,7 @@ class Inference(nn.Module):
 			return prior + likelihood
 		hyper_torch = self.model.param_to_vec()
 		hyper_numpy = (hyper_torch.cpu() if hyper_torch.is_cuda else hyper_torch).numpy()
+
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
 		sampler = smp.Slice(logp=logp, start={'hyper': hyper_numpy}, compwise=True)

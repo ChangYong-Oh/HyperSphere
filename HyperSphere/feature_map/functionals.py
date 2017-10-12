@@ -10,13 +10,13 @@ def id_transform(phi):
 id_transform.dim_change = lambda x: x
 
 
-def x_radial(x):
+def x2radial(x):
 	radius = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
 	normalizer = radius.clone()
 	normalizer[normalizer == 0] = 1
 	return torch.cat([radius, x/normalizer], 1)
 
-x_radial.dim_change = lambda x: x + 1
+x2radial.dim_change = lambda x: x + 1
 
 
 def radial_bound(radius):

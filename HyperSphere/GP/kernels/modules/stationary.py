@@ -9,7 +9,8 @@ from HyperSphere.GP.kernels.modules.kernel import GPModule, Kernel
 class Stationary(Kernel):
 
 	def __init__(self, ndim, input_map=None):
-		super(Stationary, self).__init__(ndim, input_map)
+		super(Stationary, self).__init__(input_map)
+		self.ndim = ndim
 		self.log_ls = Parameter(torch.FloatTensor(ndim))
 
 	def reset_parameters(self):

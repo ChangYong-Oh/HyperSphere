@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import sampyl as smp
 
 import torch
@@ -6,12 +7,14 @@ from torch.nn.parameter import Parameter
 from HyperSphere.GP.modules.gp_modules import Module, GPModule
 from HyperSphere.feature_map.functionals import id_transform
 
+log_lower_bnd = -12.0
+log_upper_bnd = 20.0
+
 
 class Kernel(GPModule):
 
-	def __init__(self, ndim, input_map=None):
+	def __init__(self, input_map=None):
 		super(Kernel, self).__init__()
-		self.ndim = ndim
 		self.log_amp = Parameter(torch.FloatTensor(1))
 		if input_map is not None:
 			self.input_map = input_map
@@ -23,14 +26,19 @@ class Kernel(GPModule):
 		if isinstance(self.input_map, Module):
 			self.input_map.reset_parameters()
 
+	def init_parameters(self, amp):
+		self.log_amp.data.fill_(np.log(amp))
+		if isinstance(self.input_map, Module):
+			self.input_map.init_parameters()
+
 	def out_of_bounds(self, vec=None):
 		if vec is not None:
-			if vec[0] >= -12.0:
+			if vec[0] >= log_lower_bnd and vec[0] <= log_upper_bnd:
 				if isinstance(self.input_map, GPModule):
 					return self.input_map.out_of_bounds(vec[1:])
 				return False
 		else:
-			if (self.log_amp.data >= -12.0).all():
+			if (self.log_amp.data >= log_lower_bnd).all() and (self.log_amp.data <= log_upper_bnd).all():
 				if isinstance(self.input_map, GPModule):
 					return self.input_map.out_of_bounds()
 				return False

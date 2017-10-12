@@ -62,7 +62,7 @@ def BO(n_eval=200, **kwargs):
 		elapse_list = [0, 0]
 
 		inference = ShadowInference((x_input, output), model)
-		inference.model_param_init()
+		inference.init_parameters()
 		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
 	stored_variable_names = locals().keys()

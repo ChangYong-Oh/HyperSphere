@@ -19,7 +19,7 @@ class RadialThreshold(GPModule):
 	def reset_parameters(self):
 		self.sigmoid_inv_threshold.data.fill_(sigmoid_inv_numpy(stats.beta.rvs(a=self.alpha, b=self.beta)))
 
-	def model_param_init(self):
+	def init_parameters(self):
 		self.sigmoid_inv_threshold.data.fill_(sigmoid_inv_numpy((self.alpha - 1.0)/(self.alpha + self.beta - 2.0)))
 
 	def out_of_bounds(self, vec=None):
