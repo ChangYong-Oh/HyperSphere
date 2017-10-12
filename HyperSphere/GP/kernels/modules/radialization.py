@@ -48,7 +48,7 @@ class RadializationKernel(Kernel):
 		stabilizer = 0
 		if input2 is None:
 			input2 = input1
-			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.log_amp.data[0]))))
+			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.radius_kernel.log_amp.data[0]) * self.sphere_kernel.forward_on_identity())))
 		radial2 = x2radial(input2)
 		r1 = radial1[:, :1]
 		d1 = radial1[:, 1:]
