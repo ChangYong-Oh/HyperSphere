@@ -17,12 +17,6 @@ from HyperSphere.test_functions.benchmarks import *
 exp_str = __file__.split('/')[-1].split('_')[0]
 
 
-def radial_bound(radius):
-	def func(x):
-		return x.data ** 2 > radius ** 2
-	return func
-
-
 def BO(n_eval=200, **kwargs):
 	if 'path' in kwargs.keys():
 		path = kwargs['path']
@@ -75,8 +69,6 @@ def BO(n_eval=200, **kwargs):
 	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
 	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
-
-	bnd = radial_bound(search_sphere_radius)
 
 	for _ in range(3):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
