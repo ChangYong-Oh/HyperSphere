@@ -1,14 +1,10 @@
-import math
 import numpy as np
 import sampyl as smp
 
 import torch
 from torch.nn.parameter import Parameter
-from HyperSphere.GP.modules.gp_modules import Module, GPModule
+from HyperSphere.GP.modules.gp_modules import Module, GPModule, log_lower_bnd, log_upper_bnd
 from HyperSphere.feature_map.functionals import id_transform
-
-log_lower_bnd = -12.0
-log_upper_bnd = 20.0
 
 
 class Kernel(GPModule):

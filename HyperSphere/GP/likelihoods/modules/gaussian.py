@@ -2,7 +2,7 @@ import numpy as np
 
 import torch
 from torch.nn.parameter import Parameter
-from HyperSphere.GP.likelihoods.modules.likelihood import Likelihood
+from HyperSphere.GP.likelihoods.modules.likelihood import Likelihood, log_lower_bnd, log_upper_bnd
 from HyperSphere.GP.likelihoods.functions import gaussian
 
 
@@ -18,9 +18,9 @@ class GaussianLikelihood(Likelihood):
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
-			return (self.log_noise_var.data < -25).any() or (self.log_noise_var.data > 16 + np.log(self.noise_scale/0.1)).any()
+			return (self.log_noise_var.data < log_lower_bnd).any() or (self.log_noise_var.data > 16 + np.log(self.noise_scale/0.1)).any()
 		else:
-			return (vec < -25).any() or (vec > 16 + np.log(self.noise_scale/0.1)).any()
+			return (vec < log_lower_bnd).any() or (vec > 16 + np.log(self.noise_scale/0.1)).any()
 
 	def n_params(self):
 		return 1

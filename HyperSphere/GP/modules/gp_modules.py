@@ -1,5 +1,8 @@
 from torch.nn.modules.module import Module
 
+log_lower_bnd = -12.0
+log_upper_bnd = 20.0
+
 
 class GPModule(Module):
 

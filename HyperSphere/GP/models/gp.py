@@ -23,6 +23,7 @@ class GP(GPModule):
 				jump = m.n_params()
 				if m.out_of_bounds(vec[ind:ind + jump]):
 					return True
+				ind += jump
 			return False
 
 	def n_params(self):
