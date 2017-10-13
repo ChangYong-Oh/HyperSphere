@@ -24,24 +24,21 @@ class SphereRadialKernel(Kernel):
 	def init_parameters(self, amp):
 		super(SphereRadialKernel, self).init_parameters(amp)
 		self.log_amp_const.data.fill_(-5)
-		self.log_amp_power.data.fill_(np.log(1.0 / self.max_power))
-		# self.log_amp.data.fill_(np.log(amp * 2 / (self.max_power + 1)))
-		# if self.max_power > 1:
-		# self.log_amps.data = torch.log(amp * torch.arange(self.max_power - 1, 0, -1).type_as(self.log_amps.data) * 2 / (self.max_power * (self.max_power + 1)))
+		self.log_amp_power.data.fill_(0)
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
 			if not super(SphereRadialKernel, self).out_of_bounds(self.log_amp):
 				if (self.log_amp_power.data < log_lower_bnd).any() or (self.log_amp_power.data > log_upper_bnd).any():
 					return True
-				return (self.log_amp_const.data < log_lower_bnd).any() or (self.log_amp_const.data > log_upper_bnd).any()
+				return (self.log_amp_const.data < log_lower_bnd).any() or (self.log_amp_const.data > log_upper_bnd * 0.5).any()
 			return True
 		else:
 			n_super_param = super(SphereRadialKernel, self).n_params()
 			if not super(SphereRadialKernel, self).out_of_bounds(vec[:n_super_param]):
 				if (vec[n_super_param + 1:] < log_lower_bnd).any() or (vec[n_super_param + 1:] > log_upper_bnd).any():
 					return True
-				return (vec[n_super_param:n_super_param + 1] < log_lower_bnd).any() or (vec[n_super_param:n_super_param + 1] > log_upper_bnd).any()
+				return (vec[n_super_param:n_super_param + 1] < log_lower_bnd).any() or (vec[n_super_param:n_super_param + 1] > log_upper_bnd * 0.5).any()
 			return True
 
 	def n_params(self):
@@ -70,9 +67,10 @@ class SphereRadialKernel(Kernel):
 			input2 = input1
 			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * self.forward_on_identity())))
 		inner_prod = input1.mm(input2.t())
-		gram_mat = torch.exp(self.log_amp_const) + torch.exp(self.log_amp_power[0]) * inner_prod
+		sum_exp = torch.exp(self.log_amp_const) + torch.sum(torch.exp(self.log_amp_power))
+		gram_mat = (torch.exp(self.log_amp_const) / sum_exp) + (torch.exp(self.log_amp_power[0]) / sum_exp) * inner_prod
 		for p in range(1, self.max_power):
-			gram_mat += torch.exp(self.log_amp_power[p]) * inner_prod ** (p + 1)
+			gram_mat += (torch.exp(self.log_amp_power[p]) / sum_exp) * inner_prod ** (p + 1)
 		return torch.exp(self.log_amp) * gram_mat + stabilizer
 
 	def __repr__(self):

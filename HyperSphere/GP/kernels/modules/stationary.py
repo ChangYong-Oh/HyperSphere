@@ -3,7 +3,7 @@ import sampyl as smp
 
 import torch
 from torch.nn.parameter import Parameter
-from HyperSphere.GP.kernels.modules.kernel import GPModule, Kernel
+from HyperSphere.GP.kernels.modules.kernel import Kernel, log_lower_bnd
 
 
 class Stationary(Kernel):
@@ -20,10 +20,10 @@ class Stationary(Kernel):
 	def out_of_bounds(self, vec=None):
 		if vec is None:
 			if not super(Stationary, self).out_of_bounds():
-				return (self.log_ls.data > 0.5 * math.log(2.0 * self.ndim)).any() or (self.log_ls.data < -12).any()
+				return (self.log_ls.data > math.log(2.0 * self.ndim ** 0.5)).any() or (self.log_ls.data < log_lower_bnd).any()
 		else:
 			if not super(Stationary, self).out_of_bounds(vec[:super(Stationary, self).n_params()]):
-				return (vec[1:] > 0.5 * math.log(2.0 * self.ndim)).any() or (vec < -12).any()
+				return (vec[1:] > math.log(2.0 * self.ndim ** 0.5)).any() or (vec < log_lower_bnd).any()
 		return True
 
 	def n_params(self):

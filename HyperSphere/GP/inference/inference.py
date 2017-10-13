@@ -39,11 +39,8 @@ class Inference(nn.Module):
 			self.model.vec_to_param(hyper)
 		self.mean_vec = self.train_y - self.model.mean(self.train_x)
 		self.K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
-		if hasattr(self.K_noise, 'data'):
-			eye_mat = Variable(torch.eye(self.K_noise.size(0)).type_as(self.K_noise.data))
-		else:
-			eye_mat = torch.eye(self.K_noise.size(0)).type_as(self.K_noise)
-		self.K_noise_inv, _ = torch.gesv(eye_mat, self.K_noise)
+		eye_mat = Variable(torch.eye(self.K_noise.size(0)).type_as(self.K_noise.data))
+		self.K_noise_inv = torch.gesv(eye_mat, self.K_noise)[0]
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
@@ -113,7 +110,12 @@ class Inference(nn.Module):
 			if self.model.out_of_bounds(hyper):
 				return -np.inf
 			prior = self.model.prior(hyper)
-			likelihood = -self.negative_log_likelihood(torch.from_numpy(hyper).type_as(type_as_arg)).data.squeeze()[0]
+			try:
+				likelihood = -self.negative_log_likelihood(torch.from_numpy(hyper).type_as(type_as_arg)).data.squeeze()[0]
+			except RuntimeError:
+				for elm in self.model.named_parameters():
+					print(elm[0], '/'.join([('%.4E' % elm[1].data[p]) for p in range(elm[1].numel())]))
+				self.negative_log_likelihood(torch.from_numpy(hyper).type_as(type_as_arg))
 			return prior + likelihood
 		hyper_torch = self.model.param_to_vec()
 		hyper_numpy = (hyper_torch.cpu() if hyper_torch.is_cuda else hyper_torch).numpy()

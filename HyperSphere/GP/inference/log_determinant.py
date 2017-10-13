@@ -15,13 +15,8 @@ class LogDeterminant(Function):
 			chol_from_lower = torch.potrf(matrix, False)
 			return (torch.sum(torch.log(torch.diag(chol_from_upper)), 0, keepdim=True) + torch.sum(torch.log(torch.diag(chol_from_lower)), 0, keepdim=True)).view(1, 1)
 		except RuntimeError:
-			if hasattr(matrix, 'data'):
-				_, lu = torch.gesv(Variable(torch.ones(matrix.size(0), 1).type_as(matrix.data)), matrix)
-			else:
-				_, lu = torch.gesv(torch.ones(matrix.size(0), 1).type_as(matrix), matrix)
-			diag = torch.diag(lu)
-			diag = diag[diag > 0]
-			return torch.sum(torch.log(diag), 0, keepdim=True)
+			eigvals = torch.symeig(matrix)[0]
+			return torch.sum(torch.log(eigvals[eigvals > 0]), 0, keepdim=True)
 
 	@staticmethod
 	def backward(ctx, grad_output):
@@ -34,7 +29,7 @@ class LogDeterminant(Function):
 		grad_matrix = None
 
 		if ctx.needs_input_grad[0]:
-			logdet_grad, _ = torch.gesv(torch.diag(Variable(matrix.data.new(matrix.size(0)).fill_(1))), matrix)
+			logdet_grad = torch.gesv(torch.diag(Variable(matrix.data.new(matrix.size(0)).fill_(1))), matrix)[0]
 			grad_matrix = grad_output * logdet_grad
 
 		return grad_matrix

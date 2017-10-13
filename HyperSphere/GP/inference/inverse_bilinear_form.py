@@ -11,8 +11,7 @@ class InverseBilinearForm(Function):
 
 		ctx.save_for_backward(vec_left, matrix, vec_right)
 
-		#TODO inverse() is unstable
-		vec_right_sol, _ = torch.gesv(vec_right, matrix)
+		vec_right_sol = torch.gesv(vec_right, matrix)[0]
 		return torch.mm(vec_left.t(), vec_right_sol)
 
 	@staticmethod
