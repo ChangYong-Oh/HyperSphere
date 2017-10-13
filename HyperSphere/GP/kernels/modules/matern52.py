@@ -8,11 +8,8 @@ from HyperSphere.GP.kernels.functions import matern52
 
 class Matern52(Stationary):
 
-	def __init__(self, ndim, input_map=None):
-		super(Matern52, self).__init__(ndim, input_map)
-
-	def reset_parameters(self):
-		super(Matern52, self).reset_parameters()
+	def __init__(self, ndim, input_map=None, ls_upper_bound=None):
+		super(Matern52, self).__init__(ndim, input_map, ls_upper_bound)
 
 	def forward(self, input1, input2=None):
 		stabilizer = 0
