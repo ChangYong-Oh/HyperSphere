@@ -59,7 +59,7 @@ class Kernel(GPModule):
 			self.input_map.vec_to_param(vec[1:])
 
 	def prior(self, vec):
-		likelihood = smp.normal(vec[:1], mu=0.0, sig=1.0)
+		likelihood = 0
 		if isinstance(self.input_map, GPModule):
 			likelihood += self.input_map.prior(vec[1:])
 		return likelihood
