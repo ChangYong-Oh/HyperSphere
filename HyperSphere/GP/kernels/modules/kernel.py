@@ -58,10 +58,9 @@ class Kernel(GPModule):
 			self.input_map.vec_to_param(vec[1:])
 
 	def prior(self, vec):
-		likelihood = 0
 		if isinstance(self.input_map, GPModule):
-			likelihood += self.input_map.prior(vec[1:])
-		return likelihood
+			return self.input_map.prior(vec[1:])
+		return 0
 
 	def forward(self, input1, input2=None):
 		raise NotImplementedError

@@ -13,7 +13,7 @@ class RadializationKernel(GPModule):
 	def __init__(self, max_power, search_radius):
 		super(RadializationKernel, self).__init__()
 		self.search_radius = search_radius
-		self.radius_kernel = Matern52(1, ls_upper_bound=search_radius)
+		self.radius_kernel = Matern52(1, max_ls=search_radius)
 		self.sphere_kernel = SphereRadialKernel(max_power)
 
 	def reset_parameters(self):

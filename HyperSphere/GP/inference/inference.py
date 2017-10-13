@@ -107,7 +107,7 @@ class Inference(nn.Module):
 	def sampling(self, n_sample=10, n_burnin=100, n_thin=10):
 		type_as_arg = list(self.model.likelihood.parameters())[0].data
 		def logp(hyper):
-			if self.model.out_of_bounds(hyper):
+			if self.model.out_of_bounds(hyper) or self.model.mean.const_mean.data[0] < torch.min(self.train_y.data) or self.model.mean.const_mean.data[0] > torch.max(self.train_y.data):
 				return -np.inf
 			prior = self.model.prior(hyper)
 			try:

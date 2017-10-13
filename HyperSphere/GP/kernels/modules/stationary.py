@@ -9,21 +9,21 @@ from HyperSphere.GP.kernels.modules.kernel import Kernel, log_lower_bnd
 
 class Stationary(Kernel):
 
-	def __init__(self, ndim, input_map=None, ls_upper_bound=None):
+	def __init__(self, ndim, input_map=None, max_ls=None):
 		super(Stationary, self).__init__(input_map)
-		if ls_upper_bound is None:
-			self.ls_upper_bound = 2.0 * self.ndim ** 0.5
-		self.ls_upper_bound = ls_upper_bound
+		if max_ls is None:
+			self.max_ls = 2.0 * self.ndim ** 0.5
+		self.max_ls = max_ls
 		self.ndim = ndim
 		self.log_ls = Parameter(torch.FloatTensor(ndim))
 
 	def reset_parameters(self):
 		super(Stationary, self).reset_parameters()
-		self.log_ls.data.uniform_().mul_(self.ls_upper_bound).log_()
+		self.log_ls.data.uniform_().mul_(self.max_ls).log_()
 
 	def init_parameters(self, amp):
 		super(Stationary, self).init_parameters(amp)
-		self.log_ls.data.fill_(0)
+		self.log_ls.data.fill_(np.log(self.max_ls / 3.0))
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
@@ -53,7 +53,7 @@ class Stationary(Kernel):
 
 	def prior(self, vec):
 		n_param_super = super(Stationary, self).n_params()
-		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=0.0, upper=self.ls_upper_bound)
+		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=0.0, upper=self.max_ls)
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (' + 'dim=' + str(self.ndim) + ')'
