@@ -14,9 +14,11 @@ class Stationary(Kernel):
 		self.ndim = ndim
 		self.log_ls = Parameter(torch.FloatTensor(ndim))
 
-	def reset_parameters(self):
+	def reset_parameters(self, ls_upper_bound=None):
+		if ls_upper_bound is None:
+			ls_upper_bound = 2.0 * self.ndim ** 0.5
 		super(Stationary, self).reset_parameters()
-		self.log_ls.data.uniform_(0, 2).log()
+		self.log_ls.data.uniform_().mul_(ls_upper_bound).log_()
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
