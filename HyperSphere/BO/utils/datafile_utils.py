@@ -54,7 +54,7 @@ def folder_name_list(path):
 		for sub_folder in sub_dir_list:
 			sub_folder_folder_list = [elm for elm in os.listdir(os.path.join(parent_dir, sub_folder)) if os.path.isdir(os.path.join(parent_dir, sub_folder, elm)) and prefix == elm[:len(prefix)]]
 			for exp_type in experiment_type:
-				result_dict[exp_type] += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if exp_type in elm]
+				result_dict[exp_type] += [os.path.join(parent_dir, sub_folder, elm) for elm in sub_folder_folder_list if exp_type == elm.split('_')[-1][:len(exp_type)]]
 	else:
 		folder_list = [elm for elm in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, elm)) and prefix == elm[:len(prefix)]]
 		experiment_type = set([remove_entailing_number(elm.split('_')[-1]) for elm in folder_list])

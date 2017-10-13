@@ -13,6 +13,8 @@ from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.feature_map.functionals import *
 from HyperSphere.test_functions.benchmarks import *
 
+exp_str = __file__.split('/')[-1].split('_')[0]
+
 
 def cube_BO(n_eval=200, **kwargs):
 	if 'path' in kwargs.keys():
@@ -36,7 +38,7 @@ def cube_BO(n_eval=200, **kwargs):
 		else:
 			ndim = func.dim
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
-		folder_name_root = func.__name__ + '_D' + str(ndim) + '_cube'
+		folder_name_root = func.__name__ + '_D' + str(ndim) + '_' + exp_str
 		folder_name_suffix = [elm[len(folder_name_root):] for elm in dir_list if elm[:len(folder_name_root)] == folder_name_root]
 		next_ind = 1 + np.max([int(elm) for elm in folder_name_suffix if elm.isdigit()] + [-1])
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind)))

@@ -15,7 +15,7 @@ from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.feature_map.functionals import x_radial, radial_bound
 from HyperSphere.test_functions.benchmarks import *
 
-exp_str = 'radialboth'
+exp_str = __file__.split('/')[-1].split('_')[0]
 
 
 def BO(n_eval=200, **kwargs):

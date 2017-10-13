@@ -27,21 +27,21 @@ class ShadowInference(Inference):
 		K_train_satellite = self.model.kernel(self.train_x, input_satellite)
 		Ainv_B = self.K_noise_inv.mm(K_train_satellite)
 		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
-		k_satellite_diag = torch.cat([self.model.kernel(input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0) + self.model.likelihood(input_satellite)
-		satellite_reduction = ((Ainv_B * k_pred_train.t()).sum(0).view(-1, 1) - k_satellite_pred_diag * satellite_weight_sqrt) ** 2 / (k_satellite_diag - (Ainv_B * K_train_satellite).sum(0).view(-1, 1))
+		k_satellite_diag = torch.cat([self.model.kernel(input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0) + self.model.likelihood(input_satellite).view(-1, 1)
+		quad_satellite_reduction = ((Ainv_B * k_pred_train.t()).sum(0).view(-1, 1) - k_satellite_pred_diag * satellite_weight_sqrt) ** 2 / (k_satellite_diag - (Ainv_B * K_train_satellite).sum(0).view(-1, 1))
 		if hyper is not None:
 			self.matrix_update(param_original)
-		return pred_mean, pred_var - satellite_reduction
+		return pred_mean, pred_var - quad_satellite_reduction
 
 
 if __name__ == '__main__':
 	import math
 	import numpy as np
 	import matplotlib.pyplot as plt
-	from HyperSphere.GP.kernels.modules.matern52 import Matern52
+	from copy import deepcopy
+	from HyperSphere.GP.kernels.modules.radialization import RadializationKernel
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	from HyperSphere.BO.acquisition.acquisition_maximization import acquisition
-	from HyperSphere.feature_map.functionals import id_transform
 
 	ndata = 10
 	ndim = 2
@@ -53,13 +53,13 @@ if __name__ == '__main__':
 	reference = torch.min(output).data.squeeze()[0]
 	train_data = (x_input, output)
 
-	model_normal = GPRegression(kernel=Matern52(ndim, id_transform))
-	model_shadow = GPRegression(kernel=Matern52(ndim, id_transform))
+	model_normal = GPRegression(kernel=RadializationKernel(3))
+	model_shadow = GPRegression(kernel=RadializationKernel(3))
 
 	inference_normal = Inference((x_input, output), model_normal)
 	inference_shadow = ShadowInference((x_input, output), model_shadow)
-	inference_normal.model_param_init()
-	inference_shadow.model_param_init()
+	inference_normal.init_parameters()
+	inference_shadow.init_parameters()
 
 	params_normal = inference_normal.learning(n_restarts=10)
 	inference_shadow.matrix_update(model_normal.param_to_vec())
@@ -74,6 +74,20 @@ if __name__ == '__main__':
 		pred_mean_shadow, pred_var_shadow = inference_shadow.predict(x_pred_points)
 		pred_std_shadow = pred_var_shadow ** 0.5
 		acq_shadow = acquisition(x_pred_points, inference_shadow, params_normal, reference=reference)
+
+		# ShadowInference unit test
+		satellite = x_pred_points / torch.sqrt(torch.sum(x_pred_points ** 2, dim=1)).view(-1, 1) * ndim ** 0.5
+		var_input_map_list = []
+		model_sanity = deepcopy(model_shadow)
+		output = torch.cat([output, output[:1]], 0)
+		for i in range(x_pred_points.size(0)):
+			inference_input_map = Inference((torch.cat([satellite[i:i + 1], x_input], 0), output), model_sanity)
+			_, var_input_map = inference_input_map.predict(x_pred_points[i:i + 1])
+			var_input_map_list.append(var_input_map)
+		print(pred_var_shadow.size())
+		print(torch.cat([pred_var_shadow, torch.cat(var_input_map_list, 0)], 1))
+		print(torch.dist(pred_var_shadow, torch.cat(var_input_map_list, 0)))
+		exit()
 
 		fig = plt.figure()
 		acq_list = [acq_normal, acq_shadow]

@@ -7,14 +7,14 @@ import numpy as np
 
 # ShadowInference version should coincide with the one used in acquisition_maximization
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points
-from HyperSphere.BO.shadow_inference.inference_boundary_satellite import ShadowInference
+from HyperSphere.BO.shadow_inference.inference_sphere_satellite import ShadowInference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.feature_map.functionals import id_transform
 from HyperSphere.test_functions.benchmarks import *
 
-exp_str = 'rectboundary'
+exp_str = __file__.split('/')[-1].split('_')[0]
 
 
 def radial_bound(radius):
