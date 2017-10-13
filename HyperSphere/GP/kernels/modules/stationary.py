@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import sampyl as smp
 
 import torch
@@ -43,9 +44,11 @@ class Stationary(Kernel):
 		super(Stationary, self).vec_to_param(vec[:n_param_super])
 		self.log_ls.data = func(vec[n_param_super:])
 
-	def prior(self, vec):
+	def prior(self, vec, ls_upper_bound=None):
+		if ls_upper_bound is None:
+			ls_upper_bound = 2.0 * self.ndim ** 0.5
 		n_param_super = super(Stationary, self).n_params()
-		return super(Stationary, self).prior(vec[:n_param_super]) + smp.normal(vec[n_param_super:], mu=0.0, sig=2.0)
+		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=0.0, upper=ls_upper_bound)
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (' + 'dim=' + str(self.ndim) + ')'

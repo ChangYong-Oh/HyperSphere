@@ -55,7 +55,7 @@ def BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		model = GPRegression(kernel=RadializationKernel(max_power=3))
+		model = GPRegression(kernel=RadializationKernel(max_power=3, search_radius=search_sphere_radius))
 
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]

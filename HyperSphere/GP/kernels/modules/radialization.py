@@ -10,8 +10,9 @@ from HyperSphere.feature_map.functionals import x2radial
 
 class RadializationKernel(GPModule):
 
-	def __init__(self, max_power):
+	def __init__(self, max_power, search_radius):
 		super(RadializationKernel, self).__init__()
+		self.search_radius = search_radius
 		self.radius_kernel = Matern52(1)
 		self.sphere_kernel = SphereRadialKernel(max_power)
 
@@ -41,7 +42,7 @@ class RadializationKernel(GPModule):
 		self.sphere_kernel.vec_to_param(vec[2:])
 
 	def prior(self, vec):
-		return self.radius_kernel.prior(vec[:2]) + self.sphere_kernel.prior(vec[2:])
+		return self.radius_kernel.prior(vec[:2], ls_upper_bound=self.search_radius) + self.sphere_kernel.prior(vec[2:])
 
 	def forward(self, input1, input2=None):
 		radial1 = x2radial(input1)
