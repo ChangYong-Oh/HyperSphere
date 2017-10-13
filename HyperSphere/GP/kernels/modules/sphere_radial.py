@@ -31,14 +31,14 @@ class SphereRadialKernel(Kernel):
 			if not super(SphereRadialKernel, self).out_of_bounds(self.log_amp):
 				if (self.log_amp_power.data < log_lower_bnd).any() or (self.log_amp_power.data > log_upper_bnd).any():
 					return True
-				return (self.log_amp_const.data < log_lower_bnd).any() or (self.log_amp_const.data > log_upper_bnd * 0.5).any()
+				return (self.log_amp_const.data < log_lower_bnd).any() or (self.log_amp_const.data > log_upper_bnd).any()
 			return True
 		else:
 			n_super_param = super(SphereRadialKernel, self).n_params()
 			if not super(SphereRadialKernel, self).out_of_bounds(vec[:n_super_param]):
 				if (vec[n_super_param + 1:] < log_lower_bnd).any() or (vec[n_super_param + 1:] > log_upper_bnd).any():
 					return True
-				return (vec[n_super_param:n_super_param + 1] < log_lower_bnd).any() or (vec[n_super_param:n_super_param + 1] > log_upper_bnd * 0.5).any()
+				return (vec[n_super_param:n_super_param + 1] < log_lower_bnd).any() or (vec[n_super_param:n_super_param + 1] > log_upper_bnd).any()
 			return True
 
 	def n_params(self):

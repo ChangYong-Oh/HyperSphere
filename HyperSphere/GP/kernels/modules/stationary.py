@@ -53,7 +53,7 @@ class Stationary(Kernel):
 
 	def prior(self, vec):
 		n_param_super = super(Stationary, self).n_params()
-		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=0.0, upper=np.exp(self.max_log_ls))
+		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (' + 'dim=' + str(self.ndim) + ')'

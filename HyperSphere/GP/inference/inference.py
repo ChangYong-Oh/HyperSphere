@@ -107,15 +107,18 @@ class Inference(nn.Module):
 	def sampling(self, n_sample=10, n_burnin=100, n_thin=10):
 		type_as_arg = list(self.model.likelihood.parameters())[0].data
 		def logp(hyper):
-			if self.model.out_of_bounds(hyper) or self.model.mean.const_mean.data[0] < torch.min(self.train_y.data) or self.model.mean.const_mean.data[0] > torch.max(self.train_y.data):
+			hyper_tensor = torch.from_numpy(hyper).type_as(type_as_arg)
+			if self.model.out_of_bounds(hyper):
+				return -np.inf
+			param_original = self.model.param_to_vec()
+			self.model.vec_to_param(hyper_tensor)
+			const_mean = self.model.mean.const_mean.data[0]
+			self.model.vec_to_param(param_original)
+			if const_mean < torch.min(self.train_y.data) or const_mean > torch.max(self.train_y.data):
 				return -np.inf
 			prior = self.model.prior(hyper)
-			try:
-				likelihood = -self.negative_log_likelihood(torch.from_numpy(hyper).type_as(type_as_arg)).data.squeeze()[0]
-			except RuntimeError:
-				for elm in self.model.named_parameters():
-					print(elm[0], '/'.join([('%.4E' % elm[1].data[p]) for p in range(elm[1].numel())]))
-				self.negative_log_likelihood(torch.from_numpy(hyper).type_as(type_as_arg))
+			likelihood = -self.negative_log_likelihood(param_original).data.squeeze()[0]
+
 			return prior + likelihood
 		hyper_torch = self.model.param_to_vec()
 		hyper_numpy = (hyper_torch.cpu() if hyper_torch.is_cuda else hyper_torch).numpy()
