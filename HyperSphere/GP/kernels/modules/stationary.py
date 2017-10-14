@@ -1,4 +1,3 @@
-import math
 import numpy as np
 import sampyl as smp
 
@@ -16,6 +15,7 @@ class Stationary(Kernel):
 		self.max_log_ls = np.log(max_ls)
 		self.ndim = ndim
 		self.log_ls = Parameter(torch.FloatTensor(ndim))
+		self.n_param_super = super(Stationary, self).n_params()
 
 	def reset_parameters(self):
 		super(Stationary, self).reset_parameters()
@@ -30,8 +30,8 @@ class Stationary(Kernel):
 			if not super(Stationary, self).out_of_bounds():
 				return (self.log_ls.data > self.max_log_ls).any() or (self.log_ls.data < log_lower_bnd).any()
 		else:
-			if not super(Stationary, self).out_of_bounds(vec[:super(Stationary, self).n_params()]):
-				return (vec[1:] > self.max_log_ls).any() or (vec < log_lower_bnd).any()
+			if not super(Stationary, self).out_of_bounds(vec[:self.n_param_super]):
+				return (vec[self.n_param_super:] > self.max_log_ls).any() or (vec[self.n_param_super:] < log_lower_bnd).any()
 		return True
 
 	def n_params(self):
@@ -42,18 +42,15 @@ class Stationary(Kernel):
 		return torch.cat([super(Stationary, self).param_to_vec(), self.log_ls.data])
 
 	def vec_to_param(self, vec):
-		n_param_super = super(Stationary, self).n_params()
-		super(Stationary, self).vec_to_param(vec[:n_param_super])
-		self.log_ls.data = vec[n_param_super:]
+		super(Stationary, self).vec_to_param(vec[:self.n_param_super])
+		self.log_ls.data = vec[self.n_param_super:]
 
 	def elastic_vec_to_param(self, vec, func):
-		n_param_super = super(Stationary, self).n_params()
-		super(Stationary, self).vec_to_param(vec[:n_param_super])
-		self.log_ls.data = func(vec[n_param_super:])
+		super(Stationary, self).vec_to_param(vec[:self.n_param_super])
+		self.log_ls.data = func(vec[self.n_param_super:])
 
 	def prior(self, vec):
-		n_param_super = super(Stationary, self).n_params()
-		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))
+		return super(Stationary, self).prior(vec[:self.n_param_super]) + smp.uniform(np.exp(vec[self.n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))
 
 	def __repr__(self):
-		return self.__class__.__name__ + ' (' + 'dim=' + str(self.ndim) + ')'
+		return self.__class__.__name__ + ' (dim=' + str(self.ndim) + ')'

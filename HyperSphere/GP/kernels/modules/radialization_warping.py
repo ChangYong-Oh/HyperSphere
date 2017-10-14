@@ -6,14 +6,15 @@ from HyperSphere.GP.modules.gp_modules import GPModule
 from HyperSphere.GP.kernels.modules.sphere_radial import SphereRadialKernel
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.feature_map.functionals import x2radial
+from HyperSphere.feature_map.modules.kumaraswamy import Kumaraswamy
 
 
-class RadializationKernel(GPModule):
+class RadializationWarpingKernel(GPModule):
 
 	def __init__(self, max_power, search_radius):
-		super(RadializationKernel, self).__init__()
+		super(RadializationWarpingKernel, self).__init__()
 		self.search_radius = search_radius
-		self.radius_kernel = Matern52(1, max_ls=2.0 * search_radius)
+		self.radius_kernel = Matern52(1, input_map=Kumaraswamy(ndim=1, max_input=search_radius), max_ls=2.0 * search_radius)
 		self.sphere_kernel = SphereRadialKernel(max_power)
 		self.n_param_radial = self.radius_kernel.n_params()
 

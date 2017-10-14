@@ -91,24 +91,26 @@ def radius_plot(path):
 	for g in group:
 		mean_dict[g], std_dict[g] = mean_std(radius_tensor_dict[g])
 
-	gs = gridspec.GridSpec(n_group + 3, 1)
-
-	ax_big = plt.subplot(gs[n_group:])
-	for i, g in enumerate(group):
-		ax_big.plot(np.arange(n_eval_dict[g]), mean_dict[g], color=color_list[i], label=g + '(' + str(len(radius_list_dict[g])) + ')')
-		ax_big.fill_between(np.arange(n_eval_dict[g]), mean_dict[g] - std_dict[g], mean_dict[g] + std_dict[g], color=color_list[i], alpha=0.25)
-	ax_big.set_ylabel('Comparison', rotation=0, fontsize=8)
-	ax_big.yaxis.set_label_coords(-0.06, 0.5)
-	ax_big.legend()
+	fig, axes = plt.subplots(n_group, 2, sharex='col')
 
 	for i, g in enumerate(group):
-		ax = plt.subplot(gs[i], sharex=ax_big, sharey=ax_big)
-		plot_samples(ax, radius_list_dict[g], color_list, g)
+		plot_samples(axes[i, 0], radius_list_dict[g], color_list, g)
+		hist_samples(axes[i, 1], radius_list_dict[g], color_list)
+
+	plt.setp([axes[-1, 0].get_xticklabels()], visible=True)
+	plt.setp([axes[-1, 1].get_xticklabels()], visible=True)
 
 	plt.subplots_adjust(hspace=0.02)
 
 	plt.suptitle(title)
 	plt.show()
+
+
+def hist_samples(ax, sample_list, color_list):
+	for i, sample in enumerate(sample_list):
+		ax.hist(sample, color=color_list[i], alpha=0.25)
+	ax.yaxis.set_label_coords(-0.06, 0.5)
+	plt.setp([ax.get_xticklabels()], visible=False)
 
 
 def plot_samples(ax, sample_list, color_list, title_str):
@@ -132,7 +134,7 @@ def mean_std(sample_tensor):
 
 
 if __name__ == '__main__':
-	path = '/home/coh1/Experiments/Hypersphere_ALL/levy_D20'
+	path = '/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D20'
 	optimum_plot(path)
 	radius_plot(path)
 	# rosenbrock

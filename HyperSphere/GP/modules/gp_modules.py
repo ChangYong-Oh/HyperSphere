@@ -12,6 +12,9 @@ class GPModule(Module):
 	def reset_parameters(self):
 		raise NotImplementedError
 
+	def init_parameters(self):
+		raise NotImplementedError
+
 	def out_of_bounds(self, vec=None):
 		raise NotImplementedError
 

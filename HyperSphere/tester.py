@@ -101,5 +101,21 @@ def object_comparison():
 	print(b.__class__)
 
 
+def kumaraswamy():
+	import matplotlib.pyplot as plt
+	n_value = 10
+	a_pool = np.linspace(0.5, 5, n_value)
+	b_pool = np.linspace(0.5, 5, n_value)
+	x = np.linspace(0, 1, 100)
+	for i in range(n_value):
+		# y = 1 - (1 - x ** 1.0) ** b_pool[i]
+		# label = '%.4f' % b_pool[i]
+		y = 1 - (1 - x ** a_pool[i]) ** 2.0
+		label = '%.4f' % a_pool[i]
+		plt.plot(x, y, label=label)
+	plt.legend()
+	plt.show()
+
+
 if __name__ == '__main__':
-	object_comparison()
+	kumaraswamy()

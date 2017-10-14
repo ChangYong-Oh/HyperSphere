@@ -116,7 +116,10 @@ class Inference(nn.Module):
 			self.model.vec_to_param(param_original)
 			if const_mean < torch.min(self.train_y.data) or const_mean > torch.max(self.train_y.data):
 				return -np.inf
-			prior = self.model.prior(hyper)
+			try:
+				prior = self.model.prior(hyper)
+			except AssertionError:
+				self.model.out_of_bounds(hyper)
 			likelihood = -self.negative_log_likelihood(param_original).data.squeeze()[0]
 
 			return prior + likelihood
