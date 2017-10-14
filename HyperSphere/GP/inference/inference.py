@@ -116,12 +116,8 @@ class Inference(nn.Module):
 			self.model.vec_to_param(param_original)
 			if const_mean < torch.min(self.train_y.data) or const_mean > torch.max(self.train_y.data):
 				return -np.inf
-			try:
-				prior = self.model.prior(hyper)
-			except AssertionError:
-				self.model.out_of_bounds(hyper)
+			prior = self.model.prior(hyper)
 			likelihood = -self.negative_log_likelihood(param_original).data.squeeze()[0]
-
 			return prior + likelihood
 		hyper_torch = self.model.param_to_vec()
 		hyper_numpy = (hyper_torch.cpu() if hyper_torch.is_cuda else hyper_torch).numpy()
@@ -129,7 +125,12 @@ class Inference(nn.Module):
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
 		sampler = smp.Slice(logp=logp, start={'hyper': hyper_numpy}, compwise=True)
-		samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
+		try:
+			samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
+		except Exception as e:
+			print(e)
+			print(self.model.kernel.radius_kernel.log_amp + self.model.kernel.sphere_kernel.log_amp)
+			exit()
 		###--------------------------------------------------###
 		self.model.vec_to_param(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
 		self.matrix_update(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))

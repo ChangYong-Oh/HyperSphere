@@ -28,7 +28,7 @@ class SphereRadialKernel(Kernel):
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
-			if not super(SphereRadialKernel, self).out_of_bounds(self.log_amp):
+			if not super(SphereRadialKernel, self).out_of_bounds():
 				if (self.log_amp_power.data < log_lower_bnd).any() or (self.log_amp_power.data > log_upper_bnd).any():
 					return True
 				return (self.log_amp_const.data < log_lower_bnd).any() or (self.log_amp_const.data > log_upper_bnd).any()
