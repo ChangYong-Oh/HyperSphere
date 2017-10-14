@@ -127,12 +127,7 @@ class Inference(nn.Module):
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
 		sampler = smp.Slice(logp=logp, start={'hyper': hyper_numpy}, compwise=True)
-		try:
-			samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
-		except Exception as e:
-			print(e)
-			print(self.model.kernel.radius_kernel.log_amp + self.model.kernel.sphere_kernel.log_amp)
-			exit()
+		samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
 		###--------------------------------------------------###
 		self.model.vec_to_param(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
 		self.matrix_update(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
