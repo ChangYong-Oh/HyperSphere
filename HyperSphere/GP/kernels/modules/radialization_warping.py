@@ -33,7 +33,7 @@ class RadializationWarpingKernel(GPModule):
 			return self.radius_kernel.out_of_bounds() or self.sphere_kernel.out_of_bounds() or (self.log_amp().data < -6).any() or (self.log_amp().data > log_upper_bnd).any()
 		else:
 			n_param_super = self.radius_kernel.n_params()
-			sum_log_amp = vec[0] + vec[self.n_param_radial]
+			sum_log_amp = vec[0] + vec[n_param_super]
 			return self.radius_kernel.out_of_bounds(vec[:n_param_super]) or self.sphere_kernel.out_of_bounds(vec[n_param_super:]) or (sum_log_amp < -6).any() or (sum_log_amp > log_upper_bnd).any()
 
 	def n_params(self):
