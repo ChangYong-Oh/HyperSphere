@@ -16,7 +16,6 @@ class RadializationWarpingKernel(GPModule):
 		self.search_radius = search_radius
 		self.radius_kernel = Matern52(1, input_map=Kumaraswamy(ndim=1, max_input=search_radius), max_ls=2.0 * search_radius)
 		self.sphere_kernel = SphereRadialKernel(max_power)
-		self.n_param_radial = self.radius_kernel.n_params()
 
 	def reset_parameters(self):
 		self.radius_kernel.reset_parameters()
@@ -33,8 +32,9 @@ class RadializationWarpingKernel(GPModule):
 		if vec is None:
 			return self.radius_kernel.out_of_bounds() or self.sphere_kernel.out_of_bounds() or (self.log_amp().data < -6).any() or (self.log_amp().data > log_upper_bnd).any()
 		else:
+			n_param_super = self.radius_kernel.n_params()
 			sum_log_amp = vec[0] + vec[self.n_param_radial]
-			return self.radius_kernel.out_of_bounds(vec[:self.n_param_radial]) or self.sphere_kernel.out_of_bounds(vec[self.n_param_radial:]) or (sum_log_amp < -6).any() or (sum_log_amp > log_upper_bnd).any()
+			return self.radius_kernel.out_of_bounds(vec[:n_param_super]) or self.sphere_kernel.out_of_bounds(vec[n_param_super:]) or (sum_log_amp < -6).any() or (sum_log_amp > log_upper_bnd).any()
 
 	def n_params(self):
 		return self.radius_kernel.n_params() + self.sphere_kernel.n_params()
@@ -44,11 +44,13 @@ class RadializationWarpingKernel(GPModule):
 		return vec
 
 	def vec_to_param(self, vec):
-		self.radius_kernel.vec_to_param(vec[:self.n_param_radial])
-		self.sphere_kernel.vec_to_param(vec[self.n_param_radial:])
+		n_param_super = self.radius_kernel.n_params()
+		self.radius_kernel.vec_to_param(vec[:n_param_super])
+		self.sphere_kernel.vec_to_param(vec[n_param_super:])
 
 	def prior(self, vec):
-		return self.radius_kernel.prior(vec[:self.n_param_radial]) + self.sphere_kernel.prior(vec[self.n_param_radial:])
+		n_param_super = self.radius_kernel.n_params()
+		return self.radius_kernel.prior(vec[:n_param_super]) + self.sphere_kernel.prior(vec[n_param_super:])
 
 	def forward(self, input1, input2=None):
 		radial1 = x2radial(input1)
