@@ -26,10 +26,12 @@ class RadializationWarpingKernel(GPModule):
 		self.radius_kernel.init_parameters(amp ** 0.5)
 		self.sphere_kernel.init_parameters(amp ** 0.5)
 
+	def log_amp(self):
+		return self.radius_kernel.log_amp.data + self.sphere_kernel.log_amp.data
+
 	def out_of_bounds(self, vec=None):
 		if vec is None:
-			sum_log_amp = self.radius_kernel.log_amp.data + self.sphere_kernel.log_amp.data
-			return self.radius_kernel.out_of_bounds() or self.sphere_kernel.out_of_bounds() or (sum_log_amp < -6).any() or (sum_log_amp > log_upper_bnd).any()
+			return self.radius_kernel.out_of_bounds() or self.sphere_kernel.out_of_bounds() or (self.log_amp() < -6).any() or (self.log_amp() > log_upper_bnd).any()
 		else:
 			sum_log_amp = vec[0] + vec[self.n_param_radial]
 			return self.radius_kernel.out_of_bounds(vec[:self.n_param_radial]) or self.sphere_kernel.out_of_bounds(vec[self.n_param_radial:]) or (sum_log_amp < -6).any() or (sum_log_amp > log_upper_bnd).any()
