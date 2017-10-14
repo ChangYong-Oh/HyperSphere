@@ -2,7 +2,7 @@ import math
 
 import torch
 from torch.autograd import Variable
-from HyperSphere.GP.modules.gp_modules import GPModule, log_lower_bnd, log_upper_bnd
+from HyperSphere.GP.modules.gp_modules import GPModule, log_upper_bnd
 from HyperSphere.GP.kernels.modules.sphere_radial import SphereRadialKernel
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.feature_map.functionals import x2radial
@@ -29,10 +29,10 @@ class RadializationWarpingKernel(GPModule):
 	def out_of_bounds(self, vec=None):
 		if vec is None:
 			sum_log_amp = self.radius_kernel.log_amp.data + self.sphere_kernel.log_amp.data
-			return self.radius_kernel.out_of_bounds() or self.sphere_kernel.out_of_bounds() or (sum_log_amp < log_lower_bnd).any() or (sum_log_amp > log_upper_bnd).any()
+			return self.radius_kernel.out_of_bounds() or self.sphere_kernel.out_of_bounds() or (sum_log_amp < -6).any() or (sum_log_amp > log_upper_bnd).any()
 		else:
 			sum_log_amp = vec[0] + vec[self.n_param_radial]
-			return self.radius_kernel.out_of_bounds(vec[:self.n_param_radial]) or self.sphere_kernel.out_of_bounds(vec[self.n_param_radial:]) or (sum_log_amp < log_lower_bnd).any() or (sum_log_amp > log_upper_bnd).any()
+			return self.radius_kernel.out_of_bounds(vec[:self.n_param_radial]) or self.sphere_kernel.out_of_bounds(vec[self.n_param_radial:]) or (sum_log_amp < -6).any() or (sum_log_amp > log_upper_bnd).any()
 
 	def n_params(self):
 		return self.radius_kernel.n_params() + self.sphere_kernel.n_params()
