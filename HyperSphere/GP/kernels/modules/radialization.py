@@ -2,7 +2,7 @@ import math
 
 import torch
 from torch.autograd import Variable
-from HyperSphere.GP.modules.gp_modules import GPModule
+from HyperSphere.GP.modules.gp_modules import GPModule, log_upper_bnd
 from HyperSphere.GP.kernels.modules.sphere_radial import SphereRadialKernel
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.feature_map.functionals import x2radial
