@@ -76,11 +76,12 @@ def acquisition(x, inference, param_samples, acquisition_function=expected_impro
 
 def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	ndim = input.size(1)
-	_, min_ind = torch.min(output.data, 0)
-	x0_spray_best = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
-	# x0_spray_new = input.data[-1].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
-	# x0_spray = torch.cat([x0_spray_best, x0_spray_new], 0)
-	x0_spray = x0_spray_best
+	min_ind = torch.min(output.data, 0)[1]
+	x0_spray_short = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
+	x0_spray_mid = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.01 * (upper_bnd - lower_bnd)
+	x0_spray_long = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.1 * (upper_bnd - lower_bnd)
+
+	x0_spray = torch.cat([x0_spray_short, x0_spray_mid, x0_spray_long], 0)
 	if hasattr(lower_bnd, 'size'):
 		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
 	else:
@@ -90,8 +91,9 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	else:
 		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd - x0_spray[x0_spray > upper_bnd]
 
-	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
-	x0 = torch.cat([x0_spray, input.data, x0_sobol], 0)
+	# x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
+	# x0 = torch.cat([x0_spray, input.data, x0_sobol], 0)
+	x0 = x0_spray
 
 	return Variable(x0)
 
