@@ -91,7 +91,7 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd - x0_spray[x0_spray > upper_bnd]
 
 	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
-	x0 = torch.cat([x0_spray, x0_sobol], 0)
+	x0 = torch.cat([x0_spray, input, x0_sobol], 0)
 
 	return Variable(x0)
 
@@ -148,6 +148,7 @@ def one_dim_plotting(ax1, ax2, inference, param_samples, color, ls='-', label=''
 if __name__ == '__main__':
 	from HyperSphere.GP.kernels.modules.squared_exponential import SquaredExponentialKernel
 	from HyperSphere.GP.models.gp_regression import GPRegression
+	from HyperSphere.GP.inference.inference import Inference
 	import matplotlib.pyplot as plt
 
 	ndata = 6
