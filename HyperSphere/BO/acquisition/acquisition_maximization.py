@@ -10,7 +10,7 @@ from HyperSphere.BO.acquisition.acquisition_functions import expected_improvemen
 from HyperSphere.BO.utils.sobol import sobol_generate
 
 N_SOBOL = 10000
-N_SPRAY = 10
+N_SPRAY = 100
 N_INIT = 20
 
 
@@ -77,11 +77,10 @@ def acquisition(x, inference, param_samples, acquisition_function=expected_impro
 def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
-	x0_spray_short = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
-	x0_spray_mid = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.01 * (upper_bnd - lower_bnd)
-	x0_spray_long = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.1 * (upper_bnd - lower_bnd)
+	x0_spray = input.data.new(0, ndim)
+	for std in [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]:
+		x0_spray = torch.cat([x0_spray, input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * std * (upper_bnd - lower_bnd)])
 
-	x0_spray = torch.cat([x0_spray_short, x0_spray_mid, x0_spray_long], 0)
 	if hasattr(lower_bnd, 'size'):
 		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
 	else:
