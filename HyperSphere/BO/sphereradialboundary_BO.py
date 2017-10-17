@@ -59,6 +59,13 @@ def BO(n_eval=200, **kwargs):
 
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]
+		pred_mean_list = [0, 0]
+		pred_std_list = [0, 0]
+		pred_var_list = [0, 0]
+		pred_varmax_list = [1, 1]
+		reference_list = [output.data.squeeze()[0]] * 2
+		refind_list = [1, 1]
+		dist_to_ref_list = [0, 0]
 
 		inference = ShadowInference((x_input, output), model)
 		inference.init_parameters()
@@ -78,23 +85,45 @@ def BO(n_eval=200, **kwargs):
 	for _ in range(n_eval):
 		inference = ShadowInference((x_input, output), model)
 
-		reference = torch.min(output)[0]
+		reference, ref_ind = torch.min(output, 0)
+		reference = reference.data.squeeze()[0]
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0 = optimization_init_points(x0_cand, inference, gp_hyper_params, reference=reference)
-		next_x_point = suggest(inference, gp_hyper_params, x0=x0, bounds=bnd, reference=reference)
+		next_x_point, pred_mean, pred_std, pred_var, pred_varmax = suggest(inference, gp_hyper_params, x0=x0, bounds=bnd, reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
+		pred_mean_list.append(pred_mean.squeeze()[0])
+		pred_std_list.append(pred_std.squeeze()[0])
+		pred_var_list.append(pred_var.squeeze()[0])
+		pred_varmax_list.append(pred_varmax.squeeze()[0])
+		reference_list.append(reference)
+		refind_list.append(ref_ind.data.squeeze()[0] + 1)
+		dist_to_ref_list.append(torch.sum((next_x_point - x_input[ref_ind].data) ** 2) ** 0.5)
 
 		x_input = torch.cat([x_input, Variable(next_x_point)], 0)
 		output = torch.cat([output, func(x_input[-1])])
 
-		radius_str = ('(%.4f)' % np.sqrt(torch.sum(x_input.data[-1] ** 2)))
-		rect_str = '/'.join(['%+.4f' % x_input.data[-1, i] for i in range(0, x_input.size(1))])
-		time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[-1])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[-1])) +')  '
-		print(('\n%4d : ' % (x_input.size(0))) + time_str + rect_str + radius_str + '    =>' + ('%12.6f (%12.6f)' % (output.data[-1].squeeze()[0], torch.min(output.data))))
+		min_ind = torch.min(output, 0)[1]
+		min_loc = x_input[min_ind]
+		min_val = output[min_ind]
+		dist_to_suggest = torch.sum((x_input - x_input[-1]).data ** 2, 1) ** 0.5
+		dist_to_min = torch.sum((x_input - min_loc).data ** 2, 1) ** 0.5
+		out_of_box = torch.sum((torch.abs(x_input.data) > 1), 1)
+		print('')
+		for i in range(x_input.size(0)):
+			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[-1])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[-1])) + ')  '
+			data_str = ('%3d-th : %+14.4f(R:%8.4f[%4d]/ref:[%3d]%8.4f), '
+			            'mean : %+.4E, std : %.4E, var : %.4E(%5.4f), '
+			            '2ownMIN : %8.4f, 2curMIN : %8.4f, 2new : %8.4f' %
+			            (i + 1, output.data.squeeze()[i], torch.sum(x_input.data[i] ** 2) ** 0.5, out_of_box[i], refind_list[i], reference_list[i],
+			             pred_mean_list[i], pred_std_list[i], pred_var_list[i], pred_var_list[i] / pred_varmax_list[i],
+			             dist_to_ref_list[i], dist_to_min[i], dist_to_suggest[i]))
+			min_str = '  <========= MIN' if i == min_ind.data.squeeze()[0] else ''
+			print(time_str + data_str + min_str)
+		print(model.kernel.__class__.__name__)
 
 		torch.save(model, model_filename)
 		stored_variable = dict()

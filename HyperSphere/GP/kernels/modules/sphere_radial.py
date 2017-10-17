@@ -58,8 +58,7 @@ class SphereRadialKernel(Kernel):
 		return super(SphereRadialKernel, self).prior(vec[:n_super_param]) + smp.normal(vec[n_super_param:n_super_param + 1], -2, 2) + smp.normal(vec[n_super_param + 1:], 0, 2)
 
 	def forward_on_identity(self):
-		value = torch.exp(self.log_amp_const.data)[0] + torch.sum(torch.exp(self.log_amp_power.data))
-		return value * torch.exp(self.log_amp.data)[0]
+		return torch.exp(self.log_amp.data)[0]
 
 	def forward(self, input1, input2=None):
 		stabilizer = 0

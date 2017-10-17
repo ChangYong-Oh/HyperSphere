@@ -2,19 +2,22 @@ import numpy as np
 import sampyl as smp
 
 import torch
+from torch.autograd import Variable
 from torch.nn.parameter import Parameter
 from HyperSphere.GP.kernels.modules.kernel import Kernel, log_lower_bnd
 
 
 class Stationary(Kernel):
 
-	def __init__(self, ndim, input_map=None, max_ls=None):
+	def __init__(self, ndim, ard=True, input_map=None, max_ls=None):
 		super(Stationary, self).__init__(input_map)
-		if max_ls is None:
-			self.max_log_ls = np.log(2.0 * self.ndim ** 0.5)
-		self.max_log_ls = np.log(max_ls)
+		self.max_log_ls = np.log(2.0 * ndim ** 0.5) if max_ls is None else np.log(max_ls)
 		self.ndim = ndim
-		self.log_ls = Parameter(torch.FloatTensor(ndim))
+		self.ard = ard
+		if ard:
+			self.log_ls = Parameter(torch.FloatTensor(ndim))
+		else:
+			self.log_ls = Parameter(torch.FloatTensor(1))
 
 	def reset_parameters(self):
 		super(Stationary, self).reset_parameters()
@@ -35,7 +38,7 @@ class Stationary(Kernel):
 		return True
 
 	def n_params(self):
-		cnt = super(Stationary, self).n_params() + self.ndim
+		cnt = super(Stationary, self).n_params() + (self.ndim if self.ard else 1)
 		return cnt
 
 	def param_to_vec(self):
@@ -56,4 +59,4 @@ class Stationary(Kernel):
 		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))
 
 	def __repr__(self):
-		return self.__class__.__name__ + ' (dim=' + str(self.ndim) + ')'
+		return self.__class__.__name__ + ' (dim=' + str(self.ndim) + ', ARD=' + ('TRUE' if self.ard else 'FALSE') + ')'

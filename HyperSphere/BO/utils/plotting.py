@@ -134,6 +134,9 @@ def mean_std(sample_tensor):
 
 
 if __name__ == '__main__':
+	# boundary repelling
+	# path = '/home/coh1/Experiments/Hypersphere_archive8/rosenbrock_D20'
+	# recent data
 	path = '/home/coh1/Experiments/Hypersphere_ALL/levy_D20'
 	optimum_plot(path)
 	radius_plot(path)

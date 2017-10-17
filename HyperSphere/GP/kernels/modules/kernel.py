@@ -26,6 +26,9 @@ class Kernel(GPModule):
 		if isinstance(self.input_map, Module):
 			self.input_map.init_parameters()
 
+	def log_kernel_amp(self):
+		return self.log_amp
+
 	def out_of_bounds(self, vec=None):
 		if vec is not None:
 			if vec[0] >= log_lower_bnd and vec[0] <= log_upper_bnd:

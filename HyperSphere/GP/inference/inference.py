@@ -34,6 +34,9 @@ class Inference(nn.Module):
 		self.model.mean.const_mean.data.fill_(torch.mean(self.train_y.data))
 		self.model.likelihood.log_noise_var.data.fill_(-3)
 
+	def log_kernel_amp(self):
+		return self.model.log_kernel_amp()
+
 	def matrix_update(self, hyper=None):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)
@@ -113,7 +116,7 @@ class Inference(nn.Module):
 			param_original = self.model.param_to_vec()
 			self.model.vec_to_param(hyper_tensor)
 			const_mean = self.model.mean.const_mean.data[0]
-			kernel_log_amp = self.model.kernel.log_amp().data[0]
+			kernel_log_amp = self.model.kernel.log_kernel_amp().data[0]
 			log_noise_var = self.model.likelihood.log_noise_var.data[0]
 			self.model.vec_to_param(param_original)
 			if const_mean < torch.min(self.train_y.data) or const_mean > torch.max(self.train_y.data) or kernel_log_amp < log_noise_var:

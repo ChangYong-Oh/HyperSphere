@@ -10,7 +10,7 @@ from HyperSphere.BO.acquisition.acquisition_functions import expected_improvemen
 from HyperSphere.BO.utils.sobol import sobol_generate
 
 N_SOBOL = 10000
-N_SPRAY = 100
+N_SPRAY = 10
 N_INIT = 20
 
 
@@ -53,7 +53,9 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		bar.update(i+1)
 		local_optima.append(x.data.clone())
 		optima_value.append(-acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
-	return local_optima[np.nanargmin(optima_value)]
+	suggestion = local_optima[np.nanargmin(optima_value)]
+	mean, std, var, varmax = mean_std_var(Variable(suggestion), inference, param_samples)
+	return suggestion, mean, std, var, varmax
 
 
 def deepcopy_inference(inference, param_samples):
@@ -74,12 +76,34 @@ def acquisition(x, inference, param_samples, acquisition_function=expected_impro
 	return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
 
 
+def mean_std_var(x, inference, param_samples):
+	inferences = deepcopy_inference(inference, param_samples)
+	mean_sample_list = []
+	std_sample_list = []
+	var_sample_list = []
+	varmax_sample_list = []
+	for s in range(len(inferences)):
+		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
+		pred_std_sample = pred_var_sample.clamp(min=0) ** 0.5
+		varmax_sample = torch.exp(inferences[s].log_kernel_amp())
+		mean_sample_list.append(pred_mean_sample.data)
+		std_sample_list.append(pred_std_sample.data)
+		var_sample_list.append(pred_var_sample.data)
+		varmax_sample_list.append(varmax_sample.data)
+	return torch.cat(mean_sample_list, 1).mean(1, keepdim=True),  \
+	       torch.cat(std_sample_list, 1).mean(1, keepdim=True), \
+	       torch.cat(var_sample_list, 1).mean(1, keepdim=True), \
+	       torch.cat(varmax_sample_list).mean(0, keepdim=True)
+
+
 def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
-	x0_spray = input.data.new(0, ndim)
-	for std in [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]:
-		x0_spray = torch.cat([x0_spray, input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * std * (upper_bnd - lower_bnd)])
+	# x0_spray = input.data.new(0, ndim)
+	# for std in [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]:
+	# 	x0_spray = torch.cat([x0_spray, input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * std * (upper_bnd - lower_bnd)])
+
+	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
 
 	if hasattr(lower_bnd, 'size'):
 		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
@@ -90,9 +114,8 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	else:
 		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd - x0_spray[x0_spray > upper_bnd]
 
-	# x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
-	# x0 = torch.cat([x0_spray, input.data, x0_sobol], 0)
-	x0 = x0_spray
+	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
+	x0 = torch.cat([x0_spray, x0_sobol], 0)
 
 	return Variable(x0)
 

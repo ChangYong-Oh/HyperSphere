@@ -1,5 +1,3 @@
-import math
-
 import torch
 from torch.autograd import Variable
 from HyperSphere.GP.modules.gp_modules import GPModule, log_upper_bnd
@@ -14,7 +12,7 @@ class RadializationWarpingKernel(GPModule):
 	def __init__(self, max_power, search_radius):
 		super(RadializationWarpingKernel, self).__init__()
 		self.search_radius = search_radius
-		self.radius_kernel = Matern52(1, input_map=Kumaraswamy(ndim=1, max_input=search_radius), max_ls=2.0 * search_radius)
+		self.radius_kernel = Matern52(ndim=1, input_map=Kumaraswamy(ndim=1, max_input=search_radius), max_ls=2.0 * search_radius)
 		self.sphere_kernel = SphereRadialKernel(max_power)
 
 	def reset_parameters(self):
@@ -25,7 +23,7 @@ class RadializationWarpingKernel(GPModule):
 		self.radius_kernel.init_parameters(amp ** 0.5)
 		self.sphere_kernel.init_parameters(amp ** 0.5)
 
-	def log_amp(self):
+	def log_kernel_amp(self):
 		return self.radius_kernel.log_amp + self.sphere_kernel.log_amp
 
 	def out_of_bounds(self, vec=None):
@@ -57,7 +55,7 @@ class RadializationWarpingKernel(GPModule):
 		stabilizer = 0
 		if input2 is None:
 			input2 = input1
-			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.radius_kernel.log_amp.data[0]) * self.sphere_kernel.forward_on_identity())))
+			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * torch.exp(self.log_kernel_amp()).data.squeeze()[0])))
 		radial2 = x2radial(input2)
 		r1 = radial1[:, :1]
 		d1 = radial1[:, 1:]
