@@ -94,7 +94,8 @@ def rosenbrock(x):
 	else:
 		x = x * 7.5 + 2.5
 
-	output = ((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)
+	normalizer = 50000.0 / ((90 ** 2 + 9 ** 2) * (x.size(1) - 1))
+	output = (((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)) * normalizer
 	if flat:
 		return output.squeeze(0)
 	else:
