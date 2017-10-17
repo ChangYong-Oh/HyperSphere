@@ -43,10 +43,9 @@ class ShadowInference(Inference):
 		k_pred_other = kernel_on_input_map(pred_x_input_map, train_x_other_input_map)
 
 		shared_part = k_pred_other.mm(K_other_noise_inv)
-		kernel_on_identical = torch.cat([kernel_on_input_map(pred_x_input_map[i:i + 1]) for i in range(pred_x.size(0))])
 
 		pred_mean = torch.mm(shared_part, mean_vec_other) + self.model.mean(pred_x)
-		pred_var = kernel_on_identical - (shared_part * k_pred_other).sum(1, keepdim=True)
+		pred_var = self.model.kernel.forward_on_identical() - (shared_part * k_pred_other).sum(1, keepdim=True)
 
 		slide_origin = pred_x_input_map.clone()
 		slide_origin[:, 0] = 0
@@ -55,7 +54,7 @@ class ShadowInference(Inference):
 		Ainv_B = K_other_noise_inv.mm(K_other_origin)
 
 		identity_part = self.model.likelihood(self.train_x[:1] * 0)
-		onemat_part = torch.cat([kernel_on_input_map(slide_origin[i:i + 1]) for i in range(pred_x.size(0))], 0) - (Ainv_B * K_other_origin).sum(0).view(-1, 1)
+		onemat_part = self.model.kernel.forward_on_identical() - (Ainv_B * K_other_origin).sum(0).view(-1, 1)
 		identity_const = 1.0 / identity_part
 		onemat_const = -onemat_part / identity_part / (identity_part + onemat_part * n_train_origin)
 
@@ -69,7 +68,7 @@ class ShadowInference(Inference):
 		slide_boundary = pred_x_input_map.clone()
 		slide_boundary[:, 0] = pred_x.size(1) ** 0.5
 
-		k_boundary = torch.cat([kernel_on_input_map(slide_boundary[i:i + 1]) for i in range(pred_x.size(0))], 0) + self.model.likelihood(slide_boundary[:, 1:] * slide_boundary[:, :1]).view(-1, 1)
+		k_boundary = self.model.kernel.forward_on_identical() + self.model.likelihood(slide_boundary[:, 1:] * slide_boundary[:, :1]).view(-1, 1)
 		k_boundary_other = kernel_on_input_map(slide_boundary, train_x_other_input_map)
 		k_boundary_origin = torch.cat([kernel_on_input_map(slide_boundary[i:i + 1], slide_origin[i:i + 1]) for i in range(pred_x.size(0))], 0)
 		k_vec_boundary_inner = (k_boundary_other * Ainv_B.t()).sum(1).view(-1, 1) - k_boundary_origin

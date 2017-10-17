@@ -57,14 +57,14 @@ class SphereRadialKernel(Kernel):
 		n_super_param = super(SphereRadialKernel, self).n_params()
 		return super(SphereRadialKernel, self).prior(vec[:n_super_param]) + smp.normal(vec[n_super_param:n_super_param + 1], -2, 2) + smp.normal(vec[n_super_param + 1:], 0, 2)
 
-	def forward_on_identity(self):
-		return torch.exp(self.log_amp.data)[0]
+	def forward_on_identical(self):
+		return torch.exp(self.log_amp)
 
 	def forward(self, input1, input2=None):
 		stabilizer = 0
 		if input2 is None:
 			input2 = input1
-			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * self.forward_on_identity())))
+			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * self.forward_on_identical().data[0])))
 		inner_prod = input1.mm(input2.t())
 		sum_exp = torch.exp(self.log_amp_const) + torch.sum(torch.exp(self.log_amp_power))
 		gram_mat = (torch.exp(self.log_amp_const) / sum_exp) + (torch.exp(self.log_amp_power[0]) / sum_exp) * inner_prod

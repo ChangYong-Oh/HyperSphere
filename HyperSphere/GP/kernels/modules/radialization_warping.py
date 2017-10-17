@@ -50,6 +50,9 @@ class RadializationWarpingKernel(GPModule):
 		n_param_super = self.radius_kernel.n_params()
 		return self.radius_kernel.prior(vec[:n_param_super]) + self.sphere_kernel.prior(vec[n_param_super:])
 
+	def forward_on_identical(self):
+		return self.radius_kernel.forward_on_identical() * self.sphere_kernel.forward_on_identical()
+
 	def forward(self, input1, input2=None):
 		radial1 = x2radial(input1)
 		stabilizer = 0
@@ -61,10 +64,10 @@ class RadializationWarpingKernel(GPModule):
 		d1 = radial1[:, 1:]
 		r2 = radial2[:, :1]
 		d2 = radial2[:, 1:]
-		radial_gram = self.radius_kernel.forward(r1, r2)
-		sphere_gram = self.sphere_kernel.forward(d1, d2)
+		radial_gram = self.radius_kernel(r1, r2)
+		sphere_gram = self.sphere_kernel(d1, d2)
 		only_radial_ind = ((r1 == 0) + (r2 == 0).t()).clamp(max=1)
-		sphere_gram[only_radial_ind] = self.sphere_kernel.forward_on_identity()
+		sphere_gram[only_radial_ind] = self.sphere_kernel.forward_on_identical().data[0]
 		return radial_gram * sphere_gram + stabilizer
 
 	def __repr__(self):

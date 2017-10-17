@@ -1,3 +1,5 @@
+import numpy as np
+
 import torch
 from torch.autograd import Variable
 
@@ -15,10 +17,9 @@ class ShadowInference(Inference):
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 
 		shared_part = k_pred_train.mm(self.K_noise_inv)
-		kernel_on_identical = torch.cat([self.model.kernel(pred_x[[i], :]) for i in range(pred_x.size(0))])
 
 		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
-		pred_var = kernel_on_identical - (shared_part * k_pred_train).sum(1, keepdim=True)
+		pred_var = self.model.kernel.forward_on_identical() - (shared_part * k_pred_train).sum(1, keepdim=True)
 
 		satellite_weight = 1.0
 		satellite_weight_sqrt = satellite_weight ** 0.5
@@ -26,8 +27,9 @@ class ShadowInference(Inference):
 
 		K_train_satellite = self.model.kernel(self.train_x, input_satellite)
 		Ainv_B = self.K_noise_inv.mm(K_train_satellite)
+
 		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
-		k_satellite_diag = torch.cat([self.model.kernel(input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0) + self.model.likelihood(input_satellite).view(-1, 1)
+		k_satellite_diag = self.model.kernel.forward_on_identical() + self.model.likelihood(input_satellite).view(-1, 1)
 		quad_satellite_reduction = ((Ainv_B * k_pred_train.t()).sum(0).view(-1, 1) - k_satellite_pred_diag * satellite_weight_sqrt) ** 2 / (k_satellite_diag - (Ainv_B * K_train_satellite).sum(0).view(-1, 1))
 		if hyper is not None:
 			self.matrix_update(param_original)

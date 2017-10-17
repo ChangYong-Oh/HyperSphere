@@ -55,7 +55,7 @@ class Kumaraswamy(GPModule):
 	def forward(self, input):
 		a = torch.exp(self.log_a)
 		b = torch.exp(self.log_b)
-		return self.max_input.type_as(input) * (1 - (1 - (input / self.max_input.type_as(input)) ** a) ** b)
+		return self.max_input.type_as(input) * (1 - (1 - (input / self.max_input.type_as(input)).clamp(min=0, max=1) ** a) ** b)
 
 
 if __name__ == '__main__':

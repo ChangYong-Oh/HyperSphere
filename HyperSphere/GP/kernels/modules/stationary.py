@@ -2,7 +2,6 @@ import numpy as np
 import sampyl as smp
 
 import torch
-from torch.autograd import Variable
 from torch.nn.parameter import Parameter
 from HyperSphere.GP.kernels.modules.kernel import Kernel, log_lower_bnd
 
@@ -57,6 +56,9 @@ class Stationary(Kernel):
 	def prior(self, vec):
 		n_param_super = super(Stationary, self).n_params()
 		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))
+
+	def forward_on_identical(self):
+		return torch.exp(self.log_amp)
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (dim=' + str(self.ndim) + ', ARD=' + ('TRUE' if self.ard else 'FALSE') + ')'

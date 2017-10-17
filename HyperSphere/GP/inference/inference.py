@@ -52,10 +52,9 @@ class Inference(nn.Module):
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 
 		shared_part = k_pred_train.mm(self.K_noise_inv)
-		kernel_on_identical = torch.cat([self.model.kernel(pred_x[[i], :]) for i in range(pred_x.size(0))])
 
 		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
-		pred_var = kernel_on_identical - (shared_part * k_pred_train).sum(1, keepdim=True)
+		pred_var = self.model.kernel.forward_on_identical() - (shared_part * k_pred_train).sum(1, keepdim=True)
 		if hyper is not None:
 			self.model.vec_to_param(param_original)
 		return pred_mean, pred_var

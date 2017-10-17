@@ -26,10 +26,9 @@ class ShadowInference(Inference):
 		k_pred_train = kernel_on_input_map(pred_x_input_map, train_x_input_map)
 
 		shared_part = k_pred_train.mm(self.K_noise_inv)
-		kernel_on_identical = torch.cat([kernel_on_input_map(pred_x_input_map[i:i + 1]) for i in range(pred_x.size(0))])
 
 		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
-		pred_var = kernel_on_identical - (shared_part * k_pred_train).sum(1, keepdim=True)
+		pred_var = self.model.kernel.forward_on_identical() - (shared_part * k_pred_train).sum(1, keepdim=True)
 
 		slide_boundary = pred_x_input_map.clone()
 		slide_boundary[:, 0] = pred_x.size(1) ** 0.5
@@ -37,7 +36,7 @@ class ShadowInference(Inference):
 		K_train_boundary = kernel_on_input_map(train_x_input_map, slide_boundary)
 		Ainv_B = self.K_noise_inv.mm(K_train_boundary)
 		k_pred_boundary = torch.cat([kernel_on_input_map(pred_x_input_map[i:i + 1], slide_boundary[i:i + 1]) for i in range(pred_x.size(0))], 0)
-		k_boundary = torch.cat([kernel_on_input_map(slide_boundary[i:i + 1]) for i in range(pred_x.size(0))], 0) + self.model.likelihood(slide_boundary[:, 1:] * slide_boundary[:, :1]).view(-1, 1)
+		k_boundary = self.model.kernel.forward_on_identical() + self.model.likelihood(slide_boundary[:, 1:] * slide_boundary[:, :1]).view(-1, 1)
 		pT_Ainv_B = (k_pred_train.t() * Ainv_B).sum(0).view(-1, 1)
 		slide_boundary_quad_adjustment = (pT_Ainv_B - k_pred_boundary) ** 2 / (k_boundary - (K_train_boundary * Ainv_B).sum(0).view(-1, 1))
 

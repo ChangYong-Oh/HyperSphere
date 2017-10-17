@@ -49,6 +49,9 @@ class RadializationKernel(GPModule):
 		n_param_super = self.radius_kernel.n_params()
 		return self.radius_kernel.prior(vec[:n_param_super]) + self.sphere_kernel.prior(vec[n_param_super:])
 
+	def forward_on_identical(self):
+		return self.radius_kernel.forward_on_identical() * self.sphere_kernel.forward_on_identical()
+
 	def forward(self, input1, input2=None):
 		radial1 = x2radial(input1)
 		stabilizer = 0
