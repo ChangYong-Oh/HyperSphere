@@ -20,7 +20,7 @@ class Stationary(Kernel):
 
 	def reset_parameters(self):
 		super(Stationary, self).reset_parameters()
-		self.log_ls.data.uniform_().mul_(self.max_ls).log_()
+		self.log_ls.data.uniform_().mul_(np.exp(self.max_log_ls)).log_()
 
 	def init_parameters(self, amp):
 		super(Stationary, self).init_parameters(amp)
@@ -58,7 +58,7 @@ class Stationary(Kernel):
 		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))
 
 	def forward_on_identical(self):
-		return torch.exp(self.log_amp)
+		return torch.exp(self.log_amp) + (1 + 1e-6)
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (dim=' + str(self.ndim) + ', ARD=' + ('TRUE' if self.ard else 'FALSE') + ')'

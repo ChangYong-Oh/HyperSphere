@@ -72,7 +72,7 @@ def BO(n_eval=200, **kwargs):
 		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
 	stored_variable_names = locals().keys()
-	ignored_variable_names = ['kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',
+	ignored_variable_names = ['n_eval', 'kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',
 	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
 	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
@@ -114,7 +114,7 @@ def BO(n_eval=200, **kwargs):
 		out_of_box = torch.sum((torch.abs(x_input.data) > 1), 1)
 		print('')
 		for i in range(x_input.size(0)):
-			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[-1])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[-1])) + ')  '
+			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[i])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[i])) + ')  '
 			data_str = ('%3d-th : %+14.4f(R:%8.4f[%4d]/ref:[%3d]%8.4f), '
 			            'mean : %+.4E, std : %.4E, var : %.4E(%5.4f), '
 			            '2ownMIN : %8.4f, 2curMIN : %8.4f, 2new : %8.4f' %

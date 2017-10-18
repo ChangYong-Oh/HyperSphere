@@ -1,4 +1,5 @@
 import copy
+import time
 
 import numpy as np
 import progressbar
@@ -23,6 +24,8 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		else:
 			out_of_bounds = bounds
 
+	inferences = deepcopy_inference(inference, param_samples)
+
 	# for multi process, https://discuss.pytorch.org/t/copying-nn-modules-without-shared-memory/113
 	bar = progressbar.ProgressBar(max_value=x0.size(0))
 	bar.update(0)
@@ -37,7 +40,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		optimizer = optim.Adam([x], lr=0.01)
 		for _ in range(n_step):
 			optimizer.zero_grad()
-			loss = -acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs)
+			loss = -acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs)
 			curr_loss = loss.data.squeeze()[0]
 			x.grad = grad([loss], [x], retain_graph=True)[0]
 			ftol = (prev_loss - curr_loss)/max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
@@ -52,7 +55,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		###--------------------------------------------------###
 		bar.update(i+1)
 		local_optima.append(x.data.clone())
-		optima_value.append(-acquisition(x, inference, param_samples, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
+		optima_value.append(-acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
 	suggestion = local_optima[np.nanargmin(optima_value)]
 	mean, std, var, varmax = mean_std_var(Variable(suggestion), inference, param_samples)
 	return suggestion, mean, std, var, varmax
@@ -63,12 +66,13 @@ def deepcopy_inference(inference, param_samples):
 	for s in range(param_samples.size(0)):
 		model = copy.deepcopy(inference.model)
 		model.vec_to_param(param_samples[s])
-		inferences.append(inference.__class__((inference.train_x, inference.train_y), model))
+		deepcopied_inference = inference.__class__((inference.train_x, inference.train_y), model)
+		deepcopied_inference.matrix_update()
+		inferences.append(deepcopied_inference)
 	return inferences
 
 
-def acquisition(x, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
-	inferences = deepcopy_inference(inference, param_samples)
+def acquisition(x, inferences, acquisition_function=expected_improvement, **kwargs):
 	acquisition_sample_list = []
 	for s in range(len(inferences)):
 		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
@@ -84,7 +88,7 @@ def mean_std_var(x, inference, param_samples):
 	varmax_sample_list = []
 	for s in range(len(inferences)):
 		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
-		pred_std_sample = pred_var_sample.clamp(min=0) ** 0.5
+		pred_std_sample = pred_var_sample ** 0.5
 		varmax_sample = torch.exp(inferences[s].log_kernel_amp())
 		mean_sample_list.append(pred_mean_sample.data)
 		std_sample_list.append(pred_std_sample.data)
@@ -121,14 +125,16 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 
 
 def optimization_init_points(candidates, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
+	start_time = time.time()
 	ndim = candidates.size(1)
-	acq_value = acquisition(candidates, inference, param_samples, acquisition_function, **kwargs).data
+	acq_value = acquisition(candidates, deepcopy_inference(inference, param_samples), acquisition_function, **kwargs).data
 	nonnan_ind = acq_value == acq_value
 	acq_value = acq_value[nonnan_ind]
 	init_points = candidates.data[nonnan_ind.view(-1, 1).repeat(1, ndim)].view(-1, ndim)
 	_, sort_ind = torch.sort(acq_value, 0, descending=True)
 	is_maximum = acq_value == acq_value[sort_ind[0]]
 	n_equal_maximum = torch.sum(is_maximum)
+	print('Initial points selection ' + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
 	if n_equal_maximum > N_INIT:
 		shuffled_ind = torch.sort(torch.randn(n_equal_maximum), 0)[1]
 		return init_points[is_maximum.view(-1, 1).repeat(1, ndim)].view(-1, ndim)[(shuffled_ind < N_INIT).view(-1, 1).repeat(1, ndim)].view(-1, ndim)

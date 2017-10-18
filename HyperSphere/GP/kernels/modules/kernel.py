@@ -2,7 +2,7 @@ import numpy as np
 
 import torch
 from torch.nn.parameter import Parameter
-from HyperSphere.GP.modules.gp_modules import Module, GPModule, log_lower_bnd, log_upper_bnd
+from HyperSphere.GP.modules.gp_modules import GPModule, log_lower_bnd, log_upper_bnd
 from HyperSphere.feature_map.functionals import id_transform
 
 
@@ -18,33 +18,33 @@ class Kernel(GPModule):
 
 	def reset_parameters(self):
 		self.log_amp.data.normal_()
-		if isinstance(self.input_map, Module):
+		if isinstance(self.input_map, GPModule):
 			self.input_map.reset_parameters()
 
 	def init_parameters(self, amp):
 		self.log_amp.data.fill_(np.log(amp))
-		if isinstance(self.input_map, Module):
+		if isinstance(self.input_map, GPModule):
 			self.input_map.init_parameters()
 
 	def log_kernel_amp(self):
 		return self.log_amp
 
 	def out_of_bounds(self, vec=None):
-		if vec is not None:
-			if vec[0] >= log_lower_bnd and vec[0] <= log_upper_bnd:
-				if isinstance(self.input_map, GPModule):
-					return self.input_map.out_of_bounds(vec[1:])
-				return False
-		else:
-			if (self.log_amp.data >= log_lower_bnd).all() and (self.log_amp.data <= log_upper_bnd).all():
+		if vec is None:
+			if (log_lower_bnd <= self.log_amp.data).all() and (self.log_amp.data <= log_upper_bnd).all():
 				if isinstance(self.input_map, GPModule):
 					return self.input_map.out_of_bounds()
+				return False
+		else:
+			if log_lower_bnd <= vec[0] and vec[0] <= log_upper_bnd:
+				if isinstance(self.input_map, GPModule):
+					return self.input_map.out_of_bounds(vec[1:])
 				return False
 		return True
 
 	def n_params(self):
 		cnt = 1
-		if isinstance(self.input_map, Module):
+		if isinstance(self.input_map, GPModule):
 			for p in self.input_map.parameters():
 				cnt += p.numel()
 		return cnt

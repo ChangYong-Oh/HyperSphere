@@ -49,10 +49,11 @@ if __name__ == '__main__':
 	import math
 	import numpy as np
 	import matplotlib.pyplot as plt
+	from mpl_toolkits.mplot3d import Axes3D
 	from HyperSphere.GP.kernels.modules.matern52 import Matern52
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	from HyperSphere.BO.acquisition.acquisition_maximization import acquisition
-	from HyperSphere.feature_map.functionals import x_radial, id_transform
+	from HyperSphere.feature_map.functionals import id_transform
 
 	ndata = 10
 	ndim = 2

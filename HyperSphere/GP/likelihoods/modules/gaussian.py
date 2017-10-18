@@ -3,7 +3,6 @@ import numpy as np
 import torch
 from torch.nn.parameter import Parameter
 from HyperSphere.GP.likelihoods.modules.likelihood import Likelihood, log_lower_bnd, log_upper_bnd
-from HyperSphere.GP.likelihoods.functions import gaussian
 
 
 class GaussianLikelihood(Likelihood):
@@ -20,7 +19,7 @@ class GaussianLikelihood(Likelihood):
 		if vec is None:
 			return (self.log_noise_var.data < log_lower_bnd).any() or (self.log_noise_var.data > 16 + np.log(self.noise_scale/0.1)).any()
 		else:
-			return (vec < log_lower_bnd).any() or (vec > 16 + np.log(self.noise_scale/0.1)).any()
+			return (vec < log_lower_bnd).any() or (vec > 16 + np.log(self.noise_scale / 0.1)).any()
 
 	def n_params(self):
 		return 1
@@ -32,13 +31,12 @@ class GaussianLikelihood(Likelihood):
 		self.log_noise_var.data = vec
 
 	def prior(self, vec):
-		if (vec < -25).any() or (vec > 16 + np.log(self.noise_scale/0.1)).any():
+		if (vec < log_lower_bnd).any() or (vec > 16 + np.log(self.noise_scale/0.1)).any():
 			return -np.inf
 		return np.log(np.log(1 + 2 * (self.noise_scale / np.exp(vec)) ** 2)).sum()
 
-
 	def forward(self, input):
-		return gaussian.GaussianLikelihood.apply(input, self.log_noise_var)
+		return torch.exp(self.log_noise_var).repeat(input.size(0), 1)
 
 	def __repr__(self):
 		return self.__class__.__name__
