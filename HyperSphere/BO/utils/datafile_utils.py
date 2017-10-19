@@ -7,7 +7,11 @@ import numpy as np
 from torch.autograd import Variable
 
 
-EXPERIMENT_DIR = os.path.join('/'.join(os.path.realpath(__file__).split('/')[:-6]), 'Experiments/Hypersphere')
+file_path = os.path.realpath(__file__)
+if 'anaconda' in file_path.lower():
+	EXPERIMENT_DIR = os.path.join('/'.join(file_path.split('/')[:-7]), 'Experiments/Hypersphere')
+else:
+	EXPERIMENT_DIR = os.path.join('/'.join(file_path.split('/')[:-6]), 'Experiments/Hypersphere')
 
 
 def remove_last_evaluation(path):
