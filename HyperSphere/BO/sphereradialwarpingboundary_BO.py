@@ -4,7 +4,6 @@ import sys
 import time
 
 import numpy as np
-import scipy as sp
 
 # ShadowInference version should coincide with the one used in acquisition_maximization
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, \
@@ -139,7 +138,6 @@ def BO(n_eval=200, **kwargs):
 
 
 if __name__ == '__main__':
-	sp.random.rand(10000, 10000)
 	run_new = False
 	path, suffix = os.path.split(sys.argv[1])
 	if path == '' and not ('_D' in suffix):
