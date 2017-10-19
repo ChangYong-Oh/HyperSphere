@@ -1,8 +1,11 @@
-#
+#!/bin/bash
 
-VENV_ROOT_DIR = "`which python | xargs dirname | xargs dirname`/envs/HyperSphere"
+VENV_ROOT_DIR="`which python | xargs dirname | xargs dirname`/envs/HyperSphere"
 cd "$VENV_ROOT_DIR"
+echo "$VENV_ROOT_DIR/.git"
+echo [ ! -d "$VENV_ROOT_DIR/.git" ] 
 if [ ! -d "$VENV_ROOT_DIR/.git" ]; then
+	echo "Data in HyperSphere is moved to virtual environment root directory."
   mv HyperSphere HyperSphere_TBR
   cp -a HyperSphere_TBR/. ./
   rm -rf HyperSphere_TBR
