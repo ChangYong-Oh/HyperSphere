@@ -14,6 +14,7 @@ numpy==1.13.0
 olefile==0.44
 pbr==3.1.1
 Pillow==4.1.1
+progressbar2
 protobuf==3.3.0
 py==1.4.34
 pyparsing==2.2.0
@@ -21,11 +22,10 @@ pytest==3.1.2
 python-dateutil==2.6.0
 pytz==2017.2
 PyYAML==3.12
+-e git+https://github.com/mcleonard/sampyl
 scipy==0.19.1
 si-prefix==0.4.post10
 six==1.10.0
 subprocess32==3.2.7
 tabulate==0.7.7
-tensorflow==1.2.0
-Theano==0.9.0
 Werkzeug==0.12.2
