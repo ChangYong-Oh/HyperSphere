@@ -16,4 +16,6 @@ if [ -d "$VENV_ROOT_DIR" ]; then
 	pip install -r requirements.txt
 else
 	echo "Already in virtual environment"
+	conda install --yes pytorch torchvision -c soumith -n HyperSphere
+	pip install -r requirements.tx
 fi
