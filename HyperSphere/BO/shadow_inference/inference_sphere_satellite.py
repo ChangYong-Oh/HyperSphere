@@ -16,15 +16,15 @@ class ShadowInference(Inference):
 			param_original = self.model.param_to_vec()
 			self.matrix_update(hyper)
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
+		input_satellite = pred_x / torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True)) * pred_x.size(1) ** 0.5
+		K_train_satellite = self.model.kernel(self.train_x, input_satellite)
 
-		shared_part = k_pred_train.mm(self.K_noise_inv)
+		linear_solver = torch.gesv(torch.cat([k_pred_train.t(), K_train_satellite], 1), self.K_noise)[0]
+		shared_part = linear_solver[:, :pred_x.size(0)].t()
+		Ainv_B = linear_solver[:, pred_x.size(0):]
+
 		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
 		pred_var = (self.model.kernel.forward_on_identical() - (shared_part * k_pred_train).sum(1, keepdim=True).clamp(min=0)).clamp(min=1e-8)
-
-		input_satellite = pred_x / torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True)) * pred_x.size(1) ** 0.5
-
-		K_train_satellite = self.model.kernel(self.train_x, input_satellite)
-		Ainv_B = self.K_noise_inv.mm(K_train_satellite)
 
 		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
 		K_satellite = self.model.kernel.forward_on_identical()

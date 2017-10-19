@@ -1,6 +1,7 @@
 import progressbar
 import sys
 import math
+import time
 
 import numpy as np
 import scipy as sp
@@ -27,7 +28,6 @@ class Inference(nn.Module):
 		self.K_noise = None
 		self.K_noise_inv = None
 		self.K_noise_chol_U = None
-		self.linalg_stabilizer = 0
 
 	def reset_parameters(self):
 		self.model.reset_parameters()
@@ -52,7 +52,6 @@ class Inference(nn.Module):
 			self.model.vec_to_param(hyper)
 		self.mean_vec = self.train_y - self.model.mean(self.train_x)
 		self.K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
-		self.K_noise_inv = torch.gesv(Variable(torch.eye(self.K_noise.size(0)).type_as(self.K_noise.data)), self.K_noise)[0]
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
@@ -60,7 +59,7 @@ class Inference(nn.Module):
 			self.matrix_update(hyper)
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 
-		shared_part = k_pred_train.mm(self.K_noise_inv)
+		shared_part = torch.gesv(k_pred_train.t(), self.K_noise)[0].t()
 		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
 		pred_var = (self.model.kernel.forward_on_identical() - (shared_part * k_pred_train).sum(1, keepdim=True).clamp(min=0)).clamp(min=1e-8)
 
@@ -134,8 +133,10 @@ class Inference(nn.Module):
 
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
+		start_time = time.time()
 		sampler = smp.Slice(logp=logp, start={'hyper': hyper_numpy}, compwise=True)
 		samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
+		print('Sampling : ' + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
 		###--------------------------------------------------###
 		self.model.vec_to_param(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
 		self.matrix_update(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))

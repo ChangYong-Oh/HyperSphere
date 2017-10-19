@@ -24,8 +24,9 @@ class InverseBilinearForm(Function):
 		vec_left, matrix, vec_right = ctx.saved_variables
 		grad_vec_left = grad_matrix = grad_vec_right = None
 
-		vec_left_sol, _ = torch.gesv(vec_left, matrix)
-		vec_right_sol, _ = torch.gesv(vec_right, matrix)
+		linear_solver = torch.gesv(torch.cat([vec_left, vec_right], 1), matrix)[0]
+		vec_left_sol = linear_solver[:, :vec_left.size(1)]
+		vec_right_sol = linear_solver[:, vec_left.size(1):]
 		if ctx.needs_input_grad[0]:
 			grad_vec_left = grad_output * vec_right_sol
 		if ctx.needs_input_grad[1]:

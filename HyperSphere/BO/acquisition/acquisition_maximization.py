@@ -57,8 +57,8 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		local_optima.append(x.data.clone())
 		optima_value.append(-acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
 	suggestion = local_optima[np.nanargmin(optima_value)]
-	mean, std, var, varmax = mean_std_var(Variable(suggestion), inference, param_samples)
-	return suggestion, mean, std, var, varmax
+	mean, std, var, stdmax, varmax = mean_std_var(Variable(suggestion), inference, param_samples)
+	return suggestion, mean, std, var, stdmax, varmax
 
 
 def deepcopy_inference(inference, param_samples):
