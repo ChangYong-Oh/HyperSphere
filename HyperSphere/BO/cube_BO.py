@@ -71,7 +71,7 @@ def cube_BO(n_eval=200, **kwargs):
 
 		inference = Inference((x_input, output), model)
 		inference.init_parameters()
-		inference.sampling(n_sample=100, n_burnin=0, n_thin=1)
+		inference.sampling(n_sample=1, n_burnin=9, n_thin=1)
 
 	stored_variable_names = locals().keys()
 	ignored_variable_names = ['n_eval', 'kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',
@@ -87,7 +87,7 @@ def cube_BO(n_eval=200, **kwargs):
 
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
-		sampled_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
+		sampled_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
 
 		x0_cand = optimization_candidates(x_input, output, 0, 1)
 		x0 = optimization_init_points(x0_cand, inference, sampled_params, reference=reference)

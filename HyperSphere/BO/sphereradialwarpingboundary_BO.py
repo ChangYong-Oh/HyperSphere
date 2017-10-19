@@ -88,7 +88,7 @@ def BO(n_eval=200, **kwargs):
 
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
-		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
+		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0 = optimization_init_points(x0_cand, inference, gp_hyper_params, reference=reference)

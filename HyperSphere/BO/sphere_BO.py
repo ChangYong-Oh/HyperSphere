@@ -66,7 +66,7 @@ def sphere_BO(n_eval=200, **kwargs):
 
 		inference = Inference((phi_input, output), model)
 		inference.init_parameters()
-		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
+		inference.sampling(n_sample=1, n_burnin=9, n_thin=1)
 
 	stored_variable_names = locals().keys()
 	ignored_variable_names = ['n_eval', 'kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',
@@ -93,7 +93,7 @@ def sphere_BO(n_eval=200, **kwargs):
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
 		# gp_hyper_params = inference.learning(n_restarts=20)
-		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=10)
+		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		rphi0_cand = rect2spherical(x0_cand, rotation_mat)
