@@ -62,6 +62,7 @@ def BO(n_eval=200, **kwargs):
 		pred_mean_list = [0, 0]
 		pred_std_list = [0, 0]
 		pred_var_list = [0, 0]
+		pred_stdmax_list = [1, 1]
 		pred_varmax_list = [1, 1]
 		reference_list = [output.data.squeeze()[0]] * 2
 		refind_list = [1, 1]
@@ -91,13 +92,14 @@ def BO(n_eval=200, **kwargs):
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0 = optimization_init_points(x0_cand, inference, gp_hyper_params, reference=reference)
-		next_x_point, pred_mean, pred_std, pred_var, pred_varmax = suggest(inference, gp_hyper_params, x0=x0, bounds=bnd, reference=reference)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inference, gp_hyper_params, x0=x0, bounds=bnd, reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
 		pred_mean_list.append(pred_mean.squeeze()[0])
 		pred_std_list.append(pred_std.squeeze()[0])
 		pred_var_list.append(pred_var.squeeze()[0])
+		pred_stdmax_list.append(pred_stdmax.squeeze()[0])
 		pred_varmax_list.append(pred_varmax.squeeze()[0])
 		reference_list.append(reference)
 		refind_list.append(ref_ind.data.squeeze()[0] + 1)
@@ -116,10 +118,10 @@ def BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[i])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[i])) + ')  '
 			data_str = ('%3d-th : %+14.4f(R:%8.4f[%4d]/ref:[%3d]%8.4f), '
-			            'mean : %+.4E, std : %.4E, var : %.4E(%5.4f), '
+			            'mean : %+.4E, std : %.4E(%5.4f), var : %.4E(%5.4f), '
 			            '2ownMIN : %8.4f, 2curMIN : %8.4f, 2new : %8.4f' %
 			            (i + 1, output.data.squeeze()[i], torch.sum(x_input.data[i] ** 2) ** 0.5, out_of_box[i], refind_list[i], reference_list[i],
-			             pred_mean_list[i], pred_std_list[i], pred_var_list[i], pred_var_list[i] / pred_varmax_list[i],
+			             pred_mean_list[i], pred_std_list[i], pred_std_list[i] / pred_stdmax_list[i], pred_var_list[i], pred_var_list[i] / pred_varmax_list[i],
 			             dist_to_ref_list[i], dist_to_min[i], dist_to_suggest[i]))
 			min_str = '  <========= MIN' if i == min_ind.data.squeeze()[0] else ''
 			print(time_str + data_str + min_str)

@@ -16,8 +16,7 @@ source setup_pip.sh
 conda create -n HyperSphere python=2.7.14 anaconda --yes
 cd "`which python | xargs dirname | xargs dirname`/envs/HyperSphere"
 git clone https://github.com/ChangYong-Oh/HyperSphere.git
-cd HyperSphere
-source setup_conda.sh
+source HyperSphere/setup_conda.sh
 ```
 
 Default python should be the anaconda python.

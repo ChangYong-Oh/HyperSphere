@@ -85,18 +85,22 @@ def mean_std_var(x, inference, param_samples):
 	mean_sample_list = []
 	std_sample_list = []
 	var_sample_list = []
+	stdmax_sample_list = []
 	varmax_sample_list = []
 	for s in range(len(inferences)):
 		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
 		pred_std_sample = pred_var_sample ** 0.5
 		varmax_sample = torch.exp(inferences[s].log_kernel_amp())
+		stdmax_sample = varmax_sample ** 0.5
 		mean_sample_list.append(pred_mean_sample.data)
 		std_sample_list.append(pred_std_sample.data)
 		var_sample_list.append(pred_var_sample.data)
+		stdmax_sample_list.append(stdmax_sample.data)
 		varmax_sample_list.append(varmax_sample.data)
 	return torch.cat(mean_sample_list, 1).mean(1, keepdim=True),  \
 	       torch.cat(std_sample_list, 1).mean(1, keepdim=True), \
 	       torch.cat(var_sample_list, 1).mean(1, keepdim=True), \
+	       torch.cat(stdmax_sample_list).mean(0, keepdim=True), \
 	       torch.cat(varmax_sample_list).mean(0, keepdim=True)
 
 
