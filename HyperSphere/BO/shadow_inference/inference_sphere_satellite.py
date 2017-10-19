@@ -42,6 +42,7 @@ class ShadowInference(Inference):
 if __name__ == '__main__':
 	import math
 	from mpl_toolkits.mplot3d import Axes3D
+	from copy import deepcopy
 	import matplotlib.pyplot as plt
 	from HyperSphere.GP.kernels.modules.radialization import RadializationKernel
 	from HyperSphere.GP.models.gp_regression import GPRegression
@@ -90,6 +91,8 @@ if __name__ == '__main__':
 		# 	_, var_input_map = inference_input_map.predict(x_pred_points[i:i + 1])
 		# 	var_input_map_list.append(var_input_map)
 		# print(torch.min(pred_var_shadow).data[0], torch.max(pred_var_shadow).data[0])
+		# assert (pred_var_shadow > 0).data.all()
+		# assert (torch.cat(var_input_map_list, 0).data > 0).all()
 		# print('l2 distance', torch.dist(pred_var_shadow, torch.cat(var_input_map_list, 0)).data[0])
 		# print('l inf distance', torch.max(torch.abs(pred_var_shadow - torch.cat(var_input_map_list, 0))).data[0])
 		# exit()

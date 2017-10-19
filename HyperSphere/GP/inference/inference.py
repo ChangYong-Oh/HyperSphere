@@ -51,6 +51,10 @@ class Inference(nn.Module):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)
 		self.mean_vec = self.train_y - self.model.mean(self.train_x)
+		try:
+			self.model.kernel(self.train_x)
+		except RuntimeError:
+			self.model.kernel.forward(self.train_x)
 		self.K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
 
 	def predict(self, pred_x, hyper=None):

@@ -17,8 +17,7 @@ class Matern52(Stationary):
 		if input2 is None:
 			input2 = input1
 			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.log_amp.data[0]))))
-		log_ls = self.log_ls.repeat(self.ndim) if self.ard else self.log_ls
-		gram_mat = matern52.Matern52.apply(self.input_map(input1), self.input_map(input2), self.log_amp, log_ls)
+		gram_mat = matern52.Matern52.apply(self.input_map(input1), self.input_map(input2), self.log_amp, self.log_ls)
 		return gram_mat + stabilizer
 
 	def __repr__(self):
