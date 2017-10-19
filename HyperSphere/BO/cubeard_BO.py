@@ -116,7 +116,7 @@ def cube_BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[i])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[i])) + ')  '
 			data_str = ('%3d-th : %+14.4f(R:%8.4f/ref:[%3d]%8.4f), '
-			            'mean : %+.4E, std : %.4E, var : %.4E(%5.4f), '
+			            'mean : %+.4E, std : %.4E(%5.4f), var : %.4E(%5.4f), '
 			            '2ownMIN : %8.4f, 2curMIN : %8.4f, 2new : %8.4f' %
 			            (i + 1, output.data.squeeze()[i], torch.sum(x_input.data[i] ** 2) ** 0.5, refind_list[i], reference_list[i],
 			             pred_mean_list[i], pred_std_list[i], pred_std_list[i] / pred_stdmax_list[i], pred_var_list[i], pred_var_list[i] / pred_varmax_list[i],
