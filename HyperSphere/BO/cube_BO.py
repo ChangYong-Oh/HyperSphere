@@ -91,7 +91,7 @@ def cube_BO(n_eval=200, **kwargs):
 
 		x0_cand = optimization_candidates(x_input, output, 0, 1)
 		x0 = optimization_init_points(x0_cand, inference, sampled_params, reference=reference)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inference, sampled_params, x0=x0, reference=reference)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inference, sampled_params, x0=x0, bounds=(-1, 1), reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])

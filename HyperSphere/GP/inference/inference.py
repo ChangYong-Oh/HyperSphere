@@ -11,6 +11,7 @@ import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
+from torch.autograd._functions.linalg import Potrf
 from HyperSphere.GP.inference.inverse_bilinear_form import InverseBilinearForm
 from HyperSphere.GP.inference.log_determinant import LogDeterminant
 
@@ -25,9 +26,9 @@ class Inference(nn.Module):
 		self.output_min = torch.min(self.train_y.data)
 		self.output_max = torch.max(self.train_y.data)
 		self.mean_vec = None
-		self.K_noise = None
-		self.K_noise_inv = None
-		self.K_noise_chol_U = None
+		self.gram_mat = None
+		self.cholesky = None
+		self.jitter = 0
 
 	def reset_parameters(self):
 		self.model.reset_parameters()
@@ -42,37 +43,60 @@ class Inference(nn.Module):
 		const_mean = self.model.mean.const_mean.data[0]
 		kernel_log_amp = self.model.kernel.log_kernel_amp().data[0]
 		log_noise_var = self.model.likelihood.log_noise_var.data[0]
-		return self.output_min <= const_mean <= self.output_max
+		return self.output_min <= const_mean <= self.output_max# and log_noise_var >= kernel_log_amp + np.log(0.05)
 
 	def log_kernel_amp(self):
 		return self.model.log_kernel_amp()
 
-	def matrix_update(self, hyper=None):
+	def gram_mat_update(self, hyper=None):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)
 		self.mean_vec = self.train_y - self.model.mean(self.train_x)
 		self.model.kernel(self.train_x)
-		self.K_noise = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
+		self.gram_mat = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
+
+	def smallest_eigenvalue(self):
+		n = self.gram_mat.size(0)
+		norm_E_sqr = torch.sum(self.gram_mat.data ** 2)
+		norm_F_sqr = torch.max(torch.symeig(self.gram_mat.data)[0]) ** 2
+		gram_det_upper_bound = torch.mean(torch.diag(self.gram_mat.data)) ** n
+		return ((norm_E_sqr - n * norm_F_sqr) / (n * (1 - norm_F_sqr / gram_det_upper_bound ** (2.0 / n)))) ** 0.5
+
+	def cholesky_update(self, hyper=None):
+		if hyper is not None or self.gram_mat is None:
+			self.gram_mat_update(hyper)
+
+		eigval = torch.symeig(self.gram_mat.data, eigenvectors=True)[0]
+		assert eigval[1] > 0
+		eye_mat = Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data))
+		self.jitter = self.smallest_eigenvalue() - eigval[0]
+		self.cholesky = Potrf.apply(self.gram_mat + eye_mat * self.jitter, False)
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
-			self.matrix_update(hyper)
+			self.cholesky_update(hyper)
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 
-		shared_part = torch.gesv(k_pred_train.t(), self.K_noise)[0].t()
-		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
-		pred_var = (self.model.kernel.forward_on_identical() - (shared_part * k_pred_train).sum(1, keepdim=True).clamp(min=0)).clamp(min=1e-8)
+		cho_solver = torch.gesv(torch.cat([k_pred_train.t(), self.mean_vec], 1), self.cholesky)[0]
+		cho_solve_k = cho_solver[:, :-1]
+		cho_solve_y = cho_solver[:, -1:]
+		pred_mean = torch.mm(cho_solve_k.t(), cho_solve_y) + self.model.mean(pred_x)
+		pred_quad = (cho_solve_k ** 2).sum(0).view(-1, 1)
+		pred_var = (self.model.kernel.forward_on_identical() - pred_quad)
+
+		assert (pred_quad >= 0).data.all()
+		assert (pred_var >= 0).data.all()
 
 		if hyper is not None:
 			self.model.vec_to_param(param_original)
-		return pred_mean, pred_var
+		return pred_mean, pred_var.clamp(min=1e-8)
 
 	def negative_log_likelihood(self, hyper=None):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
-			self.matrix_update(hyper)
-		nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.K_noise, self.mean_vec) + 0.5 * LogDeterminant.apply(self.K_noise) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
+			self.gram_mat_update(hyper)
+		nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.gram_mat, self.mean_vec) + 0.5 * LogDeterminant.apply(self.gram_mat) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 		if hyper is not None:
 			self.model.vec_to_param(param_original)
 		return nll
@@ -110,8 +134,7 @@ class Inference(nn.Module):
 			vec_list.append(self.model.param_to_vec())
 			nll_list.append(self.negative_log_likelihood().data.squeeze()[0])
 		best_ind = np.nanargmin(nll_list)
-		self.model.vec_to_param(vec_list[best_ind])
-		self.matrix_update(vec_list[best_ind])
+		self.cholesky_update(vec_list[best_ind])
 		print('')
 		return vec_list[best_ind].unsqueeze(0)
 
@@ -139,8 +162,7 @@ class Inference(nn.Module):
 		samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
 		print('Sampling : ' + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
 		###--------------------------------------------------###
-		self.model.vec_to_param(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
-		self.matrix_update(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
+		self.cholesky_update(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
 		return torch.stack([torch.from_numpy(elm[0]) for elm in samples], 0).type_as(type_as_arg)
 
 

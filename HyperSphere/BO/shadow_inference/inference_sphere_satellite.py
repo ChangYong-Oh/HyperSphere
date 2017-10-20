@@ -14,29 +14,35 @@ class ShadowInference(Inference):
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
-			self.matrix_update(hyper)
+			self.cholesky_update(hyper)
+		n_pred = pred_x.size(0)
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
 		input_satellite = pred_x / torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True)) * pred_x.size(1) ** 0.5
 		K_train_satellite = self.model.kernel(self.train_x, input_satellite)
 
-		linear_solver = torch.gesv(torch.cat([k_pred_train.t(), K_train_satellite], 1), self.K_noise)[0]
-		shared_part = linear_solver[:, :pred_x.size(0)].t()
-		Ainv_B = linear_solver[:, pred_x.size(0):]
-
-		pred_mean = torch.mm(shared_part, self.mean_vec) + self.model.mean(pred_x)
-		pred_var = (self.model.kernel.forward_on_identical() - (shared_part * k_pred_train).sum(1, keepdim=True).clamp(min=0)).clamp(min=1e-8)
+		cho_solver = torch.gesv(torch.cat([k_pred_train.t(), self.mean_vec, K_train_satellite], 1), self.cholesky)[0]
+		cho_solve_k = cho_solver[:, :n_pred]
+		cho_solve_y = cho_solver[:, n_pred:n_pred + 1]
+		cho_solve_B = cho_solver[:, n_pred + 1:]
+		pred_mean = torch.mm(cho_solve_k.t(), cho_solve_y) + self.model.mean(pred_x)
+		pred_var = self.model.kernel.forward_on_identical() - (cho_solve_k ** 2).sum(0).view(-1, 1)
 
 		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], input_satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
-		K_satellite = self.model.kernel.forward_on_identical()
-		reduction_numer = ((Ainv_B * k_pred_train.t()).sum(0).view(-1, 1) - k_satellite_pred_diag) ** 2
-		Bt_Ainv_B = (Ainv_B * K_train_satellite).sum(0).view(-1, 1)
-		reduction_denom = (K_satellite - Bt_Ainv_B.clamp(min=0)).clamp(min=1e-8) + self.model.likelihood(pred_x).view(-1, 1)
+		reduction_numer = ((cho_solve_k * cho_solve_B).sum(0).view(-1, 1) - k_satellite_pred_diag) ** 2
+		Bt_Ainv_B = (cho_solve_B ** 2).sum(0).view(-1, 1)
+		satellite_pred_var = self.model.kernel.forward_on_identical() - Bt_Ainv_B
+
+		# By adding jitter, result is the same as using inference but reduction effect becomes very small
+		reduction_denom = satellite_pred_var + self.model.likelihood(pred_x).view(-1, 1)# + self.jitter
 		reduction = reduction_numer / reduction_denom
-		pred_var_reduced = (pred_var - reduction).clamp(min=1e-8)
+		pred_var_reduced = (pred_var - reduction)
+
+		assert (satellite_pred_var >= 0).data.all()
+		assert (pred_var_reduced >= 0).data.all()
 
 		if hyper is not None:
 			self.matrix_update(param_original)
-		return pred_mean, pred_var_reduced
+		return pred_mean, pred_var_reduced.clamp(min=1e-8)
 
 
 if __name__ == '__main__':
@@ -44,11 +50,12 @@ if __name__ == '__main__':
 	from mpl_toolkits.mplot3d import Axes3D
 	from copy import deepcopy
 	import matplotlib.pyplot as plt
+	from torch.autograd._functions.linalg import Potrf
 	from HyperSphere.GP.kernels.modules.radialization import RadializationKernel
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	from HyperSphere.BO.acquisition.acquisition_maximization import acquisition
 
-	ndata = 10
+	ndata = 3
 	ndim = 2
 	search_radius = ndim ** 0.5
 	x_input = Variable(torch.FloatTensor(ndata, ndim).uniform_(-1, 1))
@@ -67,7 +74,7 @@ if __name__ == '__main__':
 	inference_shadow.init_parameters()
 
 	params_normal = inference_normal.learning(n_restarts=5)
-	inference_shadow.matrix_update(model_normal.param_to_vec())
+	inference_shadow.cholesky_update(model_normal.param_to_vec())
 
 	if ndim == 2:
 		x1_grid, x2_grid = np.meshgrid(np.linspace(-1, 1, 50), np.linspace(-1, 1, 50))
@@ -81,20 +88,40 @@ if __name__ == '__main__':
 		acq_shadow = acquisition(x_pred_points, deepcopy_inference(inference_shadow, params_normal), reference=reference)
 
 		# ShadowInference unit test
-		# satellite = x_pred_points / torch.sqrt(torch.sum(x_pred_points ** 2, dim=1)).view(-1, 1) * ndim ** 0.5
-		# var_input_map_list = []
-		# model_sanity = deepcopy(model_shadow)
-		# output = torch.cat([output, output[:1]], 0)
-		# for i in range(x_pred_points.size(0)):
-		# 	inference_input_map = Inference((torch.cat([satellite[i:i + 1], x_input], 0), output), model_sanity)
-		# 	inference_input_map.matrix_update()
-		# 	_, var_input_map = inference_input_map.predict(x_pred_points[i:i + 1])
-		# 	var_input_map_list.append(var_input_map)
-		# print(torch.min(pred_var_shadow).data[0], torch.max(pred_var_shadow).data[0])
-		# assert (pred_var_shadow > 0).data.all()
-		# assert (torch.cat(var_input_map_list, 0).data > 0).all()
-		# print('l2 distance', torch.dist(pred_var_shadow, torch.cat(var_input_map_list, 0)).data[0])
-		# print('l inf distance', torch.max(torch.abs(pred_var_shadow - torch.cat(var_input_map_list, 0))).data[0])
+		satellite = x_pred_points / torch.sqrt(torch.sum(x_pred_points ** 2, dim=1)).view(-1, 1) * ndim ** 0.5
+		var_input_map_list = []
+		jitter_list = []
+		model_sanity = deepcopy(model_shadow)
+		output = torch.cat([output, output[:1]], 0)
+		for i in range(x_pred_points.size(0)):
+			inference_input_map = Inference((torch.cat([satellite[i:i + 1], x_input], 0), output), model_sanity)
+			inference_input_map.cholesky_update()
+
+			# inference_input_map.gram_mat_update()
+			# inference_input_map.jitter = inference_shadow.jitter
+			# eye_mat = Variable(torch.eye(inference_input_map.gram_mat.size(0)).type_as(inference_input_map.gram_mat.data))
+			# inference_input_map.cholesky = Potrf.apply(inference_input_map.gram_mat + eye_mat * inference_input_map.jitter, False)
+
+			jitter_list.append(inference_input_map.jitter)
+			_, var_input_map = inference_input_map.predict(x_pred_points[i:i + 1])
+			var_input_map_list.append(var_input_map)
+		pred_var_input_map = torch.cat(var_input_map_list, 0)
+		jitter = torch.from_numpy(np.array(jitter_list)).view(-1, 1).type_as(x_pred_points.data)
+		shadow_jitter = jitter.clone().fill_(inference_shadow.jitter)
+		data = torch.cat([pred_var_shadow.data, pred_var_input_map.data, jitter, shadow_jitter], 1)
+		print(torch.min(pred_var_shadow).data[0], torch.max(pred_var_shadow).data[0])
+		print('l2 distance', torch.dist(pred_var_shadow, pred_var_input_map).data[0])
+		print('l-inf distance', torch.max(torch.abs(pred_var_shadow - pred_var_input_map)).data[0])
+
+		mask_more = (pred_var_shadow < pred_var_input_map).data
+		print('fake data var < element wise var', torch.sum(mask_more))
+		ind_differ = torch.sort(mask_more, 0, descending=True)[1][:torch.sum(mask_more)].squeeze()
+		print('decreased jitter', torch.sum(jitter < shadow_jitter))
+
+		mask_less = (pred_var_shadow > pred_var_input_map).data
+		print('fake data var > element wise var', torch.sum(mask_less))
+		if torch.sum(mask_less) > 0:
+			ind_less = torch.sort(mask_less, 0, descending=True)[1][:torch.sum(mask_less)].squeeze()
 		# exit()
 
 		fig = plt.figure()
@@ -105,7 +132,7 @@ if __name__ == '__main__':
 			ax = fig.add_subplot(2, 6, 6 * i + 1)
 			if torch.min(acq_list[i].data) < torch.max(acq_list[i].data):
 				ax.contour(x1_grid, x2_grid, acq_list[i].data.numpy().reshape(x1_grid.shape))
-			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], '*')
+			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], 'rx')
 			if i == 0:
 				ax.set_ylabel('normal')
 			elif i == 1:
@@ -121,8 +148,9 @@ if __name__ == '__main__':
 			if i == 0:
 				ax.set_title('pred mean')
 			ax = fig.add_subplot(2, 6, 6 * i + 5)
-			ax.contour(x1_grid, x2_grid, pred_std_list[i].data.numpy().reshape(x1_grid.shape))
-			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], '*')
+			if torch.min(pred_std_list[i].data) != torch.max(pred_std_list[i].data):
+				ax.contour(x1_grid, x2_grid, pred_std_list[i].data.numpy().reshape(x1_grid.shape))
+			ax.plot(x_input.data.numpy()[:, 0], x_input.data.numpy()[:, 1], 'rx')
 			ax = fig.add_subplot(2, 6, 6 * i + 6, projection='3d')
 			ax.plot_surface(x1_grid, x2_grid, pred_std_list[i].data.numpy().reshape(x1_grid.shape))
 			if i == 0:

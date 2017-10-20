@@ -91,7 +91,7 @@ def cube_BO(n_eval=200, **kwargs):
 
 		x0_cand = optimization_candidates(x_input, output, 0, 1)
 		x0 = optimization_init_points(x0_cand, inference, sampled_params, reference=reference)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inference, sampled_params, x0=x0, reference=reference)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inference, sampled_params, x0=x0, bounds=(-1, 1), reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
@@ -112,13 +112,14 @@ def cube_BO(n_eval=200, **kwargs):
 		min_val = output[min_ind]
 		dist_to_suggest = torch.sum((x_input - x_input[-1]).data ** 2, 1) ** 0.5
 		dist_to_min = torch.sum((x_input - min_loc).data ** 2, 1) ** 0.5
+		out_of_box = torch.sum((torch.abs(x_input.data) > 1), 1)
 		print('')
 		for i in range(x_input.size(0)):
 			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[i])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[i])) + ')  '
-			data_str = ('%3d-th : %+14.4f(R:%8.4f/ref:[%3d]%8.4f), '
+			data_str = ('%3d-th : %+14.4f(R:%8.4f[%4d]/ref:[%3d]%8.4f), '
 			            'mean : %+.4E, std : %.4E(%5.4f), var : %.4E(%5.4f), '
 			            '2ownMIN : %8.4f, 2curMIN : %8.4f, 2new : %8.4f' %
-			            (i + 1, output.data.squeeze()[i], torch.sum(x_input.data[i] ** 2) ** 0.5, refind_list[i], reference_list[i],
+			            (i + 1, output.data.squeeze()[i], torch.sum(x_input.data[i] ** 2) ** 0.5, out_of_box[i], refind_list[i], reference_list[i],
 			             pred_mean_list[i], pred_std_list[i], pred_std_list[i] / pred_stdmax_list[i], pred_var_list[i], pred_var_list[i] / pred_varmax_list[i],
 			             dist_to_ref_list[i], dist_to_min[i], dist_to_suggest[i]))
 			min_str = '  <========= MIN' if i == min_ind.data.squeeze()[0] else ''
