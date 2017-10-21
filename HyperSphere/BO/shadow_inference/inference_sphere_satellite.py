@@ -39,8 +39,9 @@ class ShadowInference(Inference):
 		pred_var_reduced = (pred_var - reduction)
 
 		if not (satellite_pred_var >= 0).data.all():
-			print('n data', n_pred.size(0))
+			print('n data', n_pred)
 			print(satellite_pred_var[satellite_pred_var < 0].data / self.model.kernel.forward_on_identical().data[0])
+			exit()
 		assert (satellite_pred_var >= 0).data.all()
 		# TODO : this assertion can be broken by relatively small negative value less then 0.01 ratio, possibly due to jitter, how to make this more stable?
 		# TODO : this happens when prediction is made at the location close to training data point, this is much rare in high dimensional cases.
