@@ -39,6 +39,11 @@ class ShadowInference(Inference):
 		pred_var_reduced = (pred_var - reduction)
 
 		assert (satellite_pred_var >= 0).data.all()
+		if not (pred_var_reduced >= 0).data.all():
+			print(pred_x.size(0))
+			print(self.model.kernel.forward_on_identical().data[0])
+			print(pred_var_reduced[pred_var_reduced < 0].data)
+			print(pred_var_reduced[pred_var_reduced < 0].data / self.model.kernel.forward_on_identical().data[0])
 		assert (pred_var_reduced >= 0).data.all()
 
 		if hyper is not None:
