@@ -55,22 +55,21 @@ class Inference(nn.Module):
 		self.model.kernel(self.train_x)
 		self.gram_mat = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
 
-	def smallest_eigenvalue(self):
-		n = self.gram_mat.size(0)
+	def eigval_lower_bound(self):
+		n_data = self.gram_mat.size(0)
+		eigvals = torch.symeig(self.gram_mat.data)[0]
 		norm_E_sqr = torch.sum(self.gram_mat.data ** 2)
-		norm_F_sqr = torch.max(torch.symeig(self.gram_mat.data)[0]) ** 2
-		gram_det_upper_bound = torch.mean(torch.diag(self.gram_mat.data)) ** n
-		return ((norm_E_sqr - n * norm_F_sqr) / (n * (1 - norm_F_sqr / gram_det_upper_bound ** (2.0 / n)))) ** 0.5
+		norm_F_sqr = torch.max(eigvals) ** 2
+		gram_det_upper_bound_n_root = torch.mean(torch.diag(self.gram_mat.data))
+		lower_bound_of_lower_bound = ((norm_E_sqr - n_data * norm_F_sqr) / (n_data * (1 - norm_F_sqr / gram_det_upper_bound_n_root ** 2.0))) ** 0.5
+		return lower_bound_of_lower_bound, torch.min(eigvals)
 
 	def cholesky_update(self, hyper=None):
 		if hyper is not None or self.gram_mat is None:
 			self.gram_mat_update(hyper)
-
-		eigval = torch.symeig(self.gram_mat.data, eigenvectors=True)[0]
-		assert eigval[1] > 0
-		eye_mat = Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data))
-		self.jitter = self.smallest_eigenvalue() - eigval[0]
-		self.cholesky = Potrf.apply(self.gram_mat + eye_mat * self.jitter, False)
+		lower_bound, min_eigval = self.eigval_lower_bound()
+		self.jitter = self.smallest_eigenvalue() - min_eigval if lower_bound > min_eigval else 0
+		self.cholesky = Potrf.apply(self.gram_mat + Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data)) * self.jitter, False)
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
