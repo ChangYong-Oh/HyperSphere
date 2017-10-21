@@ -33,7 +33,7 @@ class ShadowInference(Inference):
 		satellite_pred_var = self.model.kernel.forward_on_identical() - Bt_Ainv_B
 
 		# By adding jitter, result is the same as using inference but reduction effect becomes very small
-		reduction_denom = satellite_pred_var + self.model.likelihood(pred_x).view(-1, 1)# + self.jitter
+		reduction_denom = satellite_pred_var + self.model.likelihood(pred_x).view(-1, 1) + self.jitter
 		reduction = reduction_numer / reduction_denom
 		pred_var_reduced = (pred_var - reduction)
 
