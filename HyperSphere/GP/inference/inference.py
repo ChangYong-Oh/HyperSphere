@@ -64,9 +64,8 @@ class Inference(nn.Module):
 		lower_bound_of_lower_bound = (max(norm_E_sqr - n_data * norm_F_sqr, 0) / (n_data * (1 - norm_F_sqr / gram_det_upper_bound_n_root ** 2.0 + 1e-6))) ** 0.5
 		return lower_bound_of_lower_bound, torch.min(eigvals)
 
-	def cholesky_update(self, hyper=None):
-		if hyper is not None or self.gram_mat is None:
-			self.gram_mat_update(hyper)
+	def cholesky_update(self, hyper):
+		self.gram_mat_update(hyper)
 		lower_bound, min_eigval = self.eigval_lower_bound()
 		self.jitter = lower_bound - min_eigval if lower_bound > min_eigval else 0
 		self.cholesky = Potrf.apply(self.gram_mat + Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data)) * self.jitter, False)
@@ -88,7 +87,7 @@ class Inference(nn.Module):
 		assert (pred_var >= 0).data.all()
 
 		if hyper is not None:
-			self.model.vec_to_param(param_original)
+			self.cholesky_update(param_original)
 		return pred_mean, pred_var.clamp(min=1e-8)
 
 	def negative_log_likelihood(self, hyper=None):
@@ -97,7 +96,7 @@ class Inference(nn.Module):
 			self.gram_mat_update(hyper)
 		nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.gram_mat, self.mean_vec) + 0.5 * LogDeterminant.apply(self.gram_mat) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 		if hyper is not None:
-			self.model.vec_to_param(param_original)
+			self.gram_mat_update(param_original)
 		return nll
 
 	def learning(self, n_restarts=10):
@@ -106,6 +105,7 @@ class Inference(nn.Module):
 		vec_list = []
 		nll_list = []
 		for r in range(n_restarts):
+			# For the first optimization, parameter values optimized in previous BO is used.
 			if r != 0:
 				for m in self.model.children():
 					m.reset_parameters()
@@ -133,6 +133,7 @@ class Inference(nn.Module):
 			vec_list.append(self.model.param_to_vec())
 			nll_list.append(self.negative_log_likelihood().data.squeeze()[0])
 		best_ind = np.nanargmin(nll_list)
+		# Here, model parameters are updated and stored to model
 		self.cholesky_update(vec_list[best_ind])
 		print('')
 		return vec_list[best_ind].unsqueeze(0)
@@ -143,24 +144,24 @@ class Inference(nn.Module):
 			hyper_tensor = torch.from_numpy(hyper).type_as(type_as_arg)
 			if self.model.out_of_bounds(hyper):
 				return -np.inf
-			param_original = self.model.param_to_vec()
 			self.model.vec_to_param(hyper_tensor)
 			if not self.stable_parameters():
-				self.model.vec_to_param(param_original)
 				return -np.inf
 			prior = self.model.prior(hyper)
-			likelihood = -self.negative_log_likelihood(param_original).data.squeeze()[0]
+			likelihood = -self.negative_log_likelihood(hyper_tensor).data.squeeze()[0]
 			return prior + likelihood
-		hyper_torch = self.model.param_to_vec()
-		hyper_numpy = (hyper_torch.cpu() if hyper_torch.is_cuda else hyper_torch).numpy()
+		# Sampling is continued from the parameter values from previous BO step
+		hyper_numpy = self.model.param_to_vec().numpy()
 
+		start_time = time.time()
 		###--------------------------------------------------###
 		# This block can be modified to use other sampling method
-		start_time = time.time()
 		sampler = smp.Slice(logp=logp, start={'hyper': hyper_numpy}, compwise=True)
 		samples = sampler.sample(n_burnin + n_thin * n_sample, burn=n_burnin + n_thin - 1, thin=n_thin)
-		print('Sampling : ' + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
 		###--------------------------------------------------###
+		print('Sampling : ' + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
+
+		# Here, model parameters are updated and stored to model
 		self.cholesky_update(torch.from_numpy(samples[-1][0]).type_as(type_as_arg))
 		return torch.stack([torch.from_numpy(elm[0]) for elm in samples], 0).type_as(type_as_arg)
 

@@ -33,6 +33,7 @@ class ShadowInference(Inference):
 		satellite_pred_var = self.model.kernel.forward_on_identical() - Bt_Ainv_B
 
 		# By adding jitter, result is the same as using inference but reduction effect becomes very small
+		# TODO : the effect of maintaining jitter, having it is reasonable, if not more drastic effect in variance reduction
 		reduction_denom = satellite_pred_var + self.model.likelihood(pred_x).view(-1, 1) + self.jitter
 		reduction = reduction_numer / reduction_denom
 		pred_var_reduced = (pred_var - reduction)
@@ -41,7 +42,7 @@ class ShadowInference(Inference):
 		assert (pred_var_reduced >= 0).data.all()
 
 		if hyper is not None:
-			self.matrix_update(param_original)
+			self.cholesky_update(param_original)
 		return pred_mean, pred_var_reduced.clamp(min=1e-8)
 
 
@@ -95,7 +96,7 @@ if __name__ == '__main__':
 		output = torch.cat([output, output[:1]], 0)
 		for i in range(x_pred_points.size(0)):
 			inference_input_map = Inference((torch.cat([satellite[i:i + 1], x_input], 0), output), model_sanity)
-			inference_input_map.cholesky_update()
+			inference_input_map.cholesky_update(model_normal.param_to_vec())
 
 			# inference_input_map.gram_mat_update()
 			# inference_input_map.jitter = inference_shadow.jitter

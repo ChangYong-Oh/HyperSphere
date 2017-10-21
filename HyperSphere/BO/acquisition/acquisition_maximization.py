@@ -65,9 +65,8 @@ def deepcopy_inference(inference, param_samples):
 	inferences = []
 	for s in range(param_samples.size(0)):
 		model = copy.deepcopy(inference.model)
-		model.vec_to_param(param_samples[s])
 		deepcopied_inference = inference.__class__((inference.train_x, inference.train_y), model)
-		deepcopied_inference.cholesky_update()
+		deepcopied_inference.cholesky_update(param_samples[s])
 		inferences.append(deepcopied_inference)
 	return inferences
 
