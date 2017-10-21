@@ -39,6 +39,8 @@ class ShadowInference(Inference):
 		pred_var_reduced = (pred_var - reduction)
 
 		if not (satellite_pred_var >= 0).data.all():
+			print('kernel max', self.model.kernel.forward_on_identical().data[0])
+			print('jitter', self.jitter)
 			print('n data', n_pred)
 			print(satellite_pred_var[satellite_pred_var < 0].data / self.model.kernel.forward_on_identical().data[0])
 			exit()
