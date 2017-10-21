@@ -68,7 +68,7 @@ class Inference(nn.Module):
 		if hyper is not None or self.gram_mat is None:
 			self.gram_mat_update(hyper)
 		lower_bound, min_eigval = self.eigval_lower_bound()
-		self.jitter = self.smallest_eigenvalue() - min_eigval if lower_bound > min_eigval else 0
+		self.jitter = lower_bound - min_eigval if lower_bound > min_eigval else 0
 		self.cholesky = Potrf.apply(self.gram_mat + Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data)) * self.jitter, False)
 
 	def predict(self, pred_x, hyper=None):
