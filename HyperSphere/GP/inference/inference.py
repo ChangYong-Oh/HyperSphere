@@ -88,7 +88,7 @@ class Inference(nn.Module):
 		cho_solve_y = cho_solver[:, -1:]
 		pred_mean = torch.mm(cho_solve_k.t(), cho_solve_y) + self.model.mean(pred_x)
 		pred_quad = (cho_solve_k ** 2).sum(0).view(-1, 1)
-		pred_var = (self.model.kernel.forward_on_identical() - pred_quad)
+		pred_var = self.model.kernel.forward_on_identical() - pred_quad
 
 		assert (pred_quad >= 0).data.all()
 		assert (pred_var >= 0).data.all()
