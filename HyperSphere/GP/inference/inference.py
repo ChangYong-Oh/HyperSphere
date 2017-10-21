@@ -68,7 +68,14 @@ class Inference(nn.Module):
 		self.gram_mat_update(hyper)
 		lower_bound, min_eigval = self.eigval_lower_bound()
 		self.jitter = lower_bound - min_eigval if lower_bound > min_eigval else 0
-		self.cholesky = Potrf.apply(self.gram_mat + Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data)) * self.jitter, False)
+		chol_jitter = 0
+		while True:
+			try:
+				self.cholesky = Potrf.apply(self.gram_mat + Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data)) * (self.jitter + chol_jitter), False)
+				break
+			except RuntimeError:
+				chol_jitter = 1e-8 * torch.mean(torch.diag(self.gram_mat.data)) if chol_jitter == 0 else chol_jitter * 10.0
+		self.jitter += chol_jitter
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
