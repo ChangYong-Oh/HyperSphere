@@ -61,7 +61,7 @@ class Inference(nn.Module):
 		norm_E_sqr = torch.sum(self.gram_mat.data ** 2)
 		norm_F_sqr = torch.max(eigvals) ** 2
 		gram_det_upper_bound_n_root = torch.mean(torch.diag(self.gram_mat.data))
-		lower_bound_of_lower_bound = ((norm_E_sqr - n_data * norm_F_sqr) / (n_data * (1 - norm_F_sqr / gram_det_upper_bound_n_root ** 2.0))) ** 0.5
+		lower_bound_of_lower_bound = ((norm_E_sqr - n_data * norm_F_sqr) / (n_data * (1 - norm_F_sqr / gram_det_upper_bound_n_root ** 2.0 + 1e-6))) ** 0.5
 		return lower_bound_of_lower_bound, torch.min(eigvals)
 
 	def cholesky_update(self, hyper=None):
