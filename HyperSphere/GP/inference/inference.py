@@ -22,6 +22,7 @@ class Inference(nn.Module):
 		super(Inference, self).__init__()
 		self.model = model
 		self.train_x = train_data[0]
+		assert (self.train_x.data[0] == 0).all()
 		self.train_y = train_data[1]
 		self.output_min = torch.min(self.train_y.data)
 		self.output_max = torch.max(self.train_y.data)
@@ -55,47 +56,41 @@ class Inference(nn.Module):
 		self.model.kernel(self.train_x)
 		self.gram_mat = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
 
-	def eigval_lower_bound(self):
-		n_data = self.gram_mat.size(0)
-		eigvals = torch.symeig(self.gram_mat.data)[0]
-		norm_E_sqr = torch.sum(self.gram_mat.data ** 2)
-		norm_F_sqr = torch.max(eigvals) ** 2
-		gram_det_upper_bound_n_root = torch.mean(torch.diag(self.gram_mat.data))
-		lower_bound_of_lower_bound = (max(norm_E_sqr - n_data * norm_F_sqr, 0) / (n_data * (1 - norm_F_sqr / gram_det_upper_bound_n_root ** 2.0 + 1e-6))) ** 0.5
-		return lower_bound_of_lower_bound, torch.min(eigvals)
-
 	def cholesky_update(self, hyper):
 		self.gram_mat_update(hyper)
-		lower_bound, min_eigval = self.eigval_lower_bound()
-		self.jitter = lower_bound - min_eigval if lower_bound > min_eigval else 0
+		n_data = self.gram_mat.size(0)
+		eye_mat = torch.eye(n_data).type_as(self.gram_mat.data)
+		self.gram_mat_update(hyper)
 		chol_jitter = 0
 		while True:
 			try:
-				self.cholesky = Potrf.apply(self.gram_mat + Variable(torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data)) * (self.jitter + chol_jitter), False)
+				self.cholesky = Potrf.apply(self.gram_mat + Variable(eye_mat) * chol_jitter, False)
 				break
 			except RuntimeError:
-				chol_jitter = 1e-8 * torch.mean(torch.diag(self.gram_mat.data)) if chol_jitter == 0 else chol_jitter * 10.0
-		self.jitter += chol_jitter
+				chol_jitter = self.gram_mat.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
+		self.jitter = chol_jitter
 
 	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
 		k_pred_train = self.model.kernel(pred_x, self.train_x)
+		kernel_max = self.model.kernel.forward_on_identical()
 
-		cho_solver = torch.gesv(torch.cat([k_pred_train.t(), self.mean_vec], 1), self.cholesky)[0]
-		cho_solve_k = cho_solver[:, :-1]
-		cho_solve_y = cho_solver[:, -1:]
-		pred_mean = torch.mm(cho_solve_k.t(), cho_solve_y) + self.model.mean(pred_x)
-		pred_quad = (cho_solve_k ** 2).sum(0).view(-1, 1)
-		pred_var = self.model.kernel.forward_on_identical() - pred_quad
+		chol_solver = torch.gesv(torch.cat([k_pred_train.t(), self.mean_vec], 1), self.cholesky)[0]
+		chol_solve_k = chol_solver[:, :-1]
+		chol_solve_y = chol_solver[:, -1:]
 
-		assert (pred_quad >= 0).data.all()
-		assert (pred_var >= 0).data.all()
+		pred_mean = torch.mm(chol_solve_k.t(), chol_solve_y) + self.model.mean(pred_x)
+		pred_quad = (chol_solve_k ** 2).sum(0).view(-1, 1)
+		pred_var = kernel_max - pred_quad
+
+		numerically_stable = (pred_var.data >= 0).all()
+		zero_pred_var = (pred_var.data <= 0).all()
 
 		if hyper is not None:
 			self.cholesky_update(param_original)
-		return pred_mean, pred_var.clamp(min=1e-8)
+		return pred_mean, pred_var.clamp(min=1e-8), numerically_stable, zero_pred_var
 
 	def negative_log_likelihood(self, hyper=None):
 		if hyper is not None:

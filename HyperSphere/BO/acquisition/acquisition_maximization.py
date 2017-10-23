@@ -73,10 +73,20 @@ def deepcopy_inference(inference, param_samples):
 
 def acquisition(x, inferences, acquisition_function=expected_improvement, **kwargs):
 	acquisition_sample_list = []
+	numerically_stable_list = []
+	zero_pred_var_list = []
 	for s in range(len(inferences)):
-		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
+		pred_dist = inferences[s].predict(x)
+		pred_mean_sample = pred_dist[0]
+		pred_var_sample = pred_dist[1]
+		numerically_stable_list.append(pred_dist[2])
+		zero_pred_var_list.append(pred_dist[3])
 		acquisition_sample_list.append(acquisition_function(pred_mean_sample[:, 0], pred_var_sample[:, 0], **kwargs))
-	return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
+	sample_info = (np.sum(numerically_stable_list), np.sum(zero_pred_var_list), len(numerically_stable_list))
+	if x.size(0) == 1:
+		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
+	else:
+		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True), sample_info
 
 
 def mean_std_var(x, inference, param_samples):
@@ -87,7 +97,9 @@ def mean_std_var(x, inference, param_samples):
 	stdmax_sample_list = []
 	varmax_sample_list = []
 	for s in range(len(inferences)):
-		pred_mean_sample, pred_var_sample = inferences[s].predict(x)
+		pred_dist = inferences[s].predict(x)
+		pred_mean_sample = pred_dist[0]
+		pred_var_sample = pred_dist[1]
 		pred_std_sample = pred_var_sample ** 0.5
 		varmax_sample = torch.exp(inferences[s].log_kernel_amp())
 		stdmax_sample = varmax_sample ** 0.5
@@ -130,7 +142,8 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 def optimization_init_points(candidates, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
 	start_time = time.time()
 	ndim = candidates.size(1)
-	acq_value = acquisition(candidates, deepcopy_inference(inference, param_samples), acquisition_function, **kwargs).data
+	acq_value, sample_info = acquisition(candidates, deepcopy_inference(inference, param_samples), acquisition_function, **kwargs)
+	acq_value = acq_value.data
 	nonnan_ind = acq_value == acq_value
 	acq_value = acq_value[nonnan_ind]
 	init_points = candidates.data[nonnan_ind.view(-1, 1).repeat(1, ndim)].view(-1, ndim)
@@ -140,9 +153,9 @@ def optimization_init_points(candidates, inference, param_samples, acquisition_f
 	print('Initial points selection ' + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
 	if n_equal_maximum > N_INIT:
 		shuffled_ind = torch.sort(torch.randn(n_equal_maximum), 0)[1]
-		return init_points[is_maximum.view(-1, 1).repeat(1, ndim)].view(-1, ndim)[(shuffled_ind < N_INIT).view(-1, 1).repeat(1, ndim)].view(-1, ndim)
+		return init_points[is_maximum.view(-1, 1).repeat(1, ndim)].view(-1, ndim)[(shuffled_ind < N_INIT).view(-1, 1).repeat(1, ndim)].view(-1, ndim), sample_info
 	else:
-		return init_points[sort_ind][:N_INIT]
+		return init_points[sort_ind][:N_INIT], sample_info
 
 
 def one_dim_plotting(ax1, ax2, inference, param_samples, color, ls='-', label='', title_str=''):
