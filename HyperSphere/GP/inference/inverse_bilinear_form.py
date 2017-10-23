@@ -11,7 +11,15 @@ class InverseBilinearForm(Function):
 
 		ctx.save_for_backward(vec_left, matrix, vec_right)
 
-		vec_right_sol = torch.gesv(vec_right, matrix)[0]
+		jitter = 0
+		eye_mat = torch.diag(matrix[:1, :1].clone().repeat(matrix.size(1), 1).view(-1) * 0 + 1)
+		while True:
+			try:
+				vec_right_sol = torch.gesv(vec_right, matrix + eye_mat * jitter)[0]
+				break
+			except RuntimeError:
+				jitter = torch.mean(torch.diag(matrix)) * 1e-6 if jitter == 0 else jitter * 10
+
 		return torch.mm(vec_left.t(), vec_right_sol)
 
 	@staticmethod
