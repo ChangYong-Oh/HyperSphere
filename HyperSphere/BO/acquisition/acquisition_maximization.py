@@ -15,16 +15,14 @@ N_SPRAY = 10
 N_INIT = 20
 
 
-def suggest(inference, param_samples, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
-	x = Variable(inference.train_x.data.new(1, inference.train_x.size(1)), requires_grad=True)
+def suggest(inferences, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
+	x = Variable(inferences[0].train_x.data.new(1, inferences[0].train_x.size(1)), requires_grad=True)
 	if bounds is not None:
 		if not hasattr(bounds, '__call__'):
 			def out_of_bounds(x):
 				return (x.data < bounds[0]).any() or (x.data > bounds[1]).any()
 		else:
 			out_of_bounds = bounds
-
-	inferences = deepcopy_inference(inference, param_samples)
 
 	# for multi process, https://discuss.pytorch.org/t/copying-nn-modules-without-shared-memory/113
 	bar = progressbar.ProgressBar(max_value=x0.size(0))
@@ -57,7 +55,7 @@ def suggest(inference, param_samples, x0, acquisition_function=expected_improvem
 		local_optima.append(x.data.clone())
 		optima_value.append(-acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
 	suggestion = local_optima[np.nanargmin(optima_value)]
-	mean, std, var, stdmax, varmax = mean_std_var(Variable(suggestion), inference, param_samples)
+	mean, std, var, stdmax, varmax = mean_std_var(Variable(suggestion), inferences)
 	return suggestion, mean, std, var, stdmax, varmax
 
 
@@ -89,8 +87,7 @@ def acquisition(x, inferences, acquisition_function=expected_improvement, **kwar
 		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True), sample_info
 
 
-def mean_std_var(x, inference, param_samples):
-	inferences = deepcopy_inference(inference, param_samples)
+def mean_std_var(x, inferences):
 	mean_sample_list = []
 	std_sample_list = []
 	var_sample_list = []
@@ -139,10 +136,10 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	return Variable(x0)
 
 
-def optimization_init_points(candidates, inference, param_samples, acquisition_function=expected_improvement, **kwargs):
+def optimization_init_points(candidates, inferences, acquisition_function=expected_improvement, **kwargs):
 	start_time = time.time()
 	ndim = candidates.size(1)
-	acq_value, sample_info = acquisition(candidates, deepcopy_inference(inference, param_samples), acquisition_function, **kwargs)
+	acq_value, sample_info = acquisition(candidates, inferences, acquisition_function, **kwargs)
 	acq_value = acq_value.data
 	nonnan_ind = acq_value == acq_value
 	acq_value = acq_value[nonnan_ind]

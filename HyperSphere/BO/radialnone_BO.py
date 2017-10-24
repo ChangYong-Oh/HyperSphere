@@ -7,12 +7,12 @@ import numpy as np
 
 # ShadowInference version should coincide with the one used in acquisition_maximization
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, \
-	optimization_init_points
+	optimization_init_points, deepcopy_inference
 from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.feature_map.functionals import x_radial, radial_bound
+from HyperSphere.feature_map.functionals import x2radial, radial_bound
 from HyperSphere.test_functions.benchmarks import *
 
 exp_str = __file__.split('/')[-1].split('_')[0]
@@ -55,7 +55,7 @@ def BO(n_eval=200, **kwargs):
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = x_radial
+		kernel_input_map = x2radial
 		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2
@@ -90,10 +90,11 @@ def BO(n_eval=200, **kwargs):
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
+		inferences = deepcopy_inference(inference, gp_hyper_params)
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
-		x0 = optimization_init_points(x0_cand, inference, gp_hyper_params, reference=reference)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inference, gp_hyper_params, x0=x0, bounds=bnd, reference=reference)
+		x0, sample_info = optimization_init_points(x0_cand, inferences, reference=reference)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inferences, x0=x0, bounds=bnd, reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])

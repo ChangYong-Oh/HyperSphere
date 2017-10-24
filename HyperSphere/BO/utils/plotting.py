@@ -137,7 +137,7 @@ if __name__ == '__main__':
 	# boundary repelling
 	# path = '/home/coh1/Experiments/Hypersphere_archive8/rosenbrock_D20'
 	# recent data
-	path = '/home/coh1/Experiments/Hypersphere_ALL/levy_D20'
+	path = '/home/coh1/Experiments/Hypersphere_ALL/styblinskitang_D1000'
 	optimum_plot(path)
 	radius_plot(path)
 	# rosenbrock

@@ -65,8 +65,8 @@ class RadializationWarpingKernel(GPModule):
 		d2 = radial2[:, 1:]
 		radial_gram = self.radius_kernel(r1, r2)
 		sphere_gram = self.sphere_kernel(d1, d2)
-		only_radial_ind = ((r1 == 0) + (r2 == 0).t()).clamp(max=1)
-		sphere_gram[only_radial_ind] = 1.0
+		# only_radial_ind = ((r1 == 0) + (r2 == 0).t()).clamp(max=1)
+		# sphere_gram[only_radial_ind] = 1.0
 		return radial_gram * sphere_gram + stabilizer
 
 	def __repr__(self):

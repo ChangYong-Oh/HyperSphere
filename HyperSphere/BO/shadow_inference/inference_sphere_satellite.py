@@ -27,7 +27,29 @@ class ShadowInference(Inference):
 		pred_mean = torch.mm(cho_solve_k.t(), cho_solve_y) + self.model.mean(pred_x)
 		pred_var = self.model.kernel.forward_on_identical() - (cho_solve_k ** 2).sum(0).view(-1, 1)
 
-		# assert (pred_var.data >= 0).all()
+		# if not (pred_var.data >= 0).all():
+		# 	neg_pred_var_mask = pred_var.data < 0
+		# 	neg_pred_var_ind = torch.sort(pred_var.data, 0)[1][:torch.sum(neg_pred_var_mask)]
+		# 	neg_pred_x = pred_x.data.index_select(0, neg_pred_var_ind.squeeze())
+		# 	pred_x_train_x_dist = torch.sum((neg_pred_x.unsqueeze(1).repeat(1, self.train_x.size(0), 1) - self.train_x.data.unsqueeze(0).repeat(torch.sum(neg_pred_var_mask), 1, 1)) ** 2, 2) ** 0.5
+		# 	k_pred_train_radius_sqr = torch.sum(k_pred_train.data ** 2, 1, keepdim=True)
+		# 	neg_pred_x_radius = torch.sum(neg_pred_x ** 2, 1, keepdim=True) ** 0.5
+		# 	print(torch.cat([pred_x_train_x_dist[neg_pred_var_ind.squeeze()], neg_pred_x_radius, k_pred_train_radius_sqr[neg_pred_var_ind.squeeze()]], 1)[:100])
+		# 	negative_pred_var = pred_var.data[neg_pred_var_mask]
+		# 	min_negative_pred_var = torch.min(negative_pred_var)
+		# 	max_negative_pred_var = torch.max(negative_pred_var)
+		# 	kernel_max = self.model.kernel.forward_on_identical().data[0]
+		# 	print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_pred_var_mask), pred_var.numel(), min_negative_pred_var, min_negative_pred_var / kernel_max, max_negative_pred_var, max_negative_pred_var / kernel_max))
+		# 	print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
+		# 	eigvals = torch.symeig(self.gram_mat.data + torch.eye(self.gram_mat.size(0)) * self.jitter)[0]
+		# 	print('kernel_max sqr over eig %.4E~%.4E' % (kernel_max ** 2 / torch.max(eigvals), kernel_max ** 2 / torch.min(eigvals)))
+		# 	print('vec range               %.4E~%.4E' % (torch.min(k_pred_train_radius_sqr), torch.max(k_pred_train_radius_sqr)))
+		# 	print('jitter %.4E' % self.jitter)
+		# 	print('eigenvalues : ' + ('/'.join([('%.4E' % eigvals[i]) for i in range(eigvals.numel())])))
+		# 	print('-' * 50)
+		# 	print('-' * 50)
+		# 	print('-' * 50)
+		assert (pred_var.data >= 0).all()
 		numerically_stable = (pred_var.data >= 0).all()
 
 		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
@@ -40,11 +62,11 @@ class ShadowInference(Inference):
 		reduction = reduction_numer / reduction_denom
 		pred_var_reduced = (pred_var - reduction)
 
-		# assert (satellite_pred_var >= 0).data.all()
+		assert (satellite_pred_var >= 0).data.all()
 		numerically_stable = numerically_stable and (satellite_pred_var >= 0).data.all()
 		# TODO : this assertion can be broken by relatively small negative value less then 0.01 ratio, possibly due to jitter, how to make this more stable?
 		# TODO : this happens when prediction is made at the location close to training data point, this is much rare in high dimensional cases.
-		# assert (pred_var_reduced >= 0).data.all()
+		assert (pred_var_reduced >= 0).data.all()
 		numerically_stable = numerically_stable and (pred_var_reduced >= 0).data.all()
 
 		zero_pred_var = (pred_var_reduced.data <= 0).all()

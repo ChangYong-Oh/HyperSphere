@@ -69,8 +69,12 @@ class Inference(nn.Module):
 			except RuntimeError:
 				chol_jitter = self.gram_mat.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
 		self.jitter = chol_jitter
+		# eigvals = torch.symeig(self.gram_mat.data + eye_mat * self.jitter)[0]
+		# min_eigval = torch.min(eigvals)
+		# max_eigval = torch.max(eigvals)
+		# if min_eigval <
 
-	def predict(self, pred_x, hyper=None):
+	def predict(self, pred_x, hyper=None, set_jitter=False):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
@@ -85,6 +89,7 @@ class Inference(nn.Module):
 		pred_quad = (chol_solve_k ** 2).sum(0).view(-1, 1)
 		pred_var = kernel_max - pred_quad
 
+		assert (pred_var.data >= 0).all()
 		numerically_stable = (pred_var.data >= 0).all()
 		zero_pred_var = (pred_var.data <= 0).all()
 
@@ -95,10 +100,12 @@ class Inference(nn.Module):
 	def negative_log_likelihood(self, hyper=None):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
-			self.gram_mat_update(hyper)
-		nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.gram_mat, self.mean_vec) + 0.5 * LogDeterminant.apply(self.gram_mat) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
+			self.cholesky_update(hyper)
+		# nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.gram_mat, self.mean_vec) + 0.5 * LogDeterminant.apply(self.gram_mat) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
+		mean_vec_sol = torch.gesv(self.mean_vec, self.cholesky)[0]
+		nll = 0.5 * torch.sum(mean_vec_sol ** 2) + torch.sum(torch.log(torch.diag(self.cholesky))) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 		if hyper is not None:
-			self.gram_mat_update(param_original)
+			self.cholesky_update(param_original)
 		return nll
 
 	def learning(self, n_restarts=10):
