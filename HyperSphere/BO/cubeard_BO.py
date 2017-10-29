@@ -72,7 +72,7 @@ def cube_BO(n_eval=200, **kwargs):
 
 		inference = Inference((x_input, output), model)
 		inference.init_parameters()
-		inference.sampling(n_sample=1, n_burnin=9, n_thin=1)
+		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
 	stored_variable_names = locals().keys()
 	ignored_variable_names = ['n_eval', 'kwargs', 'data_config_file', 'dir_list', 'folder_name_root', 'folder_name_suffix',

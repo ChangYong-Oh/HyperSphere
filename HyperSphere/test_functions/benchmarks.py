@@ -73,7 +73,7 @@ def levy(x):
 	else:
 		x = x * 10
 
-	w = 1 + (x - 1) / 4.0
+	w = (x - 1.0) / 4.0 + 1.0
 	output = ((w[:, :-1] - 1) ** 2 * (1 + 10 * torch.sin(math.pi * w[:, :-1] + 1) ** 2)).sum(1, keepdim=True)
 	output += torch.sin(math.pi * w[:, :1]) ** 2 + ((w[:, -1:] - 1) ** 2 * (1 + torch.sin(2 * math.pi * w[:, -1:]) ** 2))
 	if flat:
@@ -95,7 +95,7 @@ def rosenbrock(x):
 		x = x * 7.5 + 2.5
 
 	normalizer = 50000.0 / ((90 ** 2 + 9 ** 2) * (x.size(1) - 1))
-	output = (((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)) * normalizer
+	output = (100.0 * ((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)) * normalizer
 	if flat:
 		return output.squeeze(0)
 	else:
