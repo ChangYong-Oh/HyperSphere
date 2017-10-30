@@ -50,7 +50,7 @@ def cube_BO(n_eval=200, **kwargs):
 		lower_bnd = -torch.ones(ndim) * search_cube_half_sidelength
 		upper_bnd = torch.ones(ndim) * search_cube_half_sidelength
 
-		x_input = Variable(torch.ger(torch.arange(0, 2), torch.ones(ndim)))
+		x_input = Variable(torch.ger(-torch.arange(0, 2), torch.ones(ndim)))
 		output = Variable(torch.zeros(x_input.size(0), 1))
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])

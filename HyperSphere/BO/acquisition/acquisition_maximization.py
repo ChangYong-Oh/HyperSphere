@@ -69,12 +69,12 @@ def deepcopy_inference(inference, param_samples):
 	return inferences
 
 
-def acquisition(x, inferences, acquisition_function=expected_improvement, **kwargs):
+def acquisition(x, inferences, acquisition_function=expected_improvement, stability_check=False, **kwargs):
 	acquisition_sample_list = []
 	numerically_stable_list = []
 	zero_pred_var_list = []
 	for s in range(len(inferences)):
-		pred_dist = inferences[s].predict(x)
+		pred_dist = inferences[s].predict(x, stability_check=stability_check)
 		pred_mean_sample = pred_dist[0]
 		pred_var_sample = pred_dist[1]
 		numerically_stable_list.append(pred_dist[2])
@@ -132,6 +132,9 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 
 	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
 	x0 = torch.cat([input.data, x0_spray, x0_sobol], 0)
+	nonzero_radius_mask = torch.sum(x0 ** 2, 1) > 0
+	nonzero_radius_ind = torch.sort(nonzero_radius_mask, 0, descending=True)[1][:torch.sum(nonzero_radius_mask)]
+	x0 = x0.index_select(0, nonzero_radius_ind)
 
 	return Variable(x0)
 
@@ -139,7 +142,7 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 def optimization_init_points(candidates, inferences, acquisition_function=expected_improvement, **kwargs):
 	start_time = time.time()
 	ndim = candidates.size(1)
-	acq_value, sample_info = acquisition(candidates, inferences, acquisition_function, **kwargs)
+	acq_value, sample_info = acquisition(candidates, inferences, acquisition_function, False, **kwargs)
 	acq_value = acq_value.data
 	nonnan_ind = acq_value == acq_value
 	acq_value = acq_value[nonnan_ind]

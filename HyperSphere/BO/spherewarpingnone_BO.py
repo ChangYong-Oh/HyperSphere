@@ -50,8 +50,7 @@ def BO(n_eval=200, **kwargs):
 
 		search_sphere_radius = ndim ** 0.5
 
-		x_input = Variable(torch.stack([torch.zeros(ndim), torch.ones(ndim)]))
-
+		x_input = Variable(torch.ger(-torch.arange(0, 2), torch.ones(ndim)))
 		output = Variable(torch.zeros(x_input.size(0), 1))
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])

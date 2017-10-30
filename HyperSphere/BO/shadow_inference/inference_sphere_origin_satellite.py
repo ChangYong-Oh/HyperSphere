@@ -2,6 +2,7 @@ import numpy as np
 
 import torch
 from torch.autograd import Variable
+from torch.autograd._functions.linalg import Potrf
 
 from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.acquisition.acquisition_maximization import deepcopy_inference
@@ -10,86 +11,100 @@ from HyperSphere.BO.acquisition.acquisition_maximization import deepcopy_inferen
 class ShadowInference(Inference):
 	def __init__(self, train_data, model):
 		super(ShadowInference, self).__init__(train_data, model)
+		origin_mask = torch.sum(self.train_x ** 2, 1) == 0
+		n_origin = torch.sum(origin_mask).data[0]
+		assert n_origin == 1
+		self.zero_radius_ind = None
+		ind_origin = torch.sort(origin_mask, 0, descending=True)[1]
+		self.ind_origin = ind_origin[:n_origin]
+		self.ind_nonorigin = ind_origin[n_origin:]
+		self.train_x_nonorigin = self.train_x.index_select(0, self.ind_nonorigin)
+		self.train_x_nonorigin_radius = torch.sum(self.train_x_nonorigin ** 2, 1, keepdim=True) ** 0.5
+		self.train_x_nonorigin_sphere = self.train_x_nonorigin / self.train_x_nonorigin_radius
+		self.cholesky_nonorigin = None
+		self.gram_mat_nonorigin = None
 
-	def predict(self, pred_x, hyper=None, stability_check=False):
+	def cholesky_update(self, hyper):
+		self.gram_mat_update(hyper)
+		self.gram_mat_nonorigin = self.gram_mat.index_select(0, self.ind_nonorigin).index_select(1, self.ind_nonorigin)
+		eye_mat = torch.eye(self.gram_mat_nonorigin.size(0)).type_as(self.gram_mat_nonorigin.data)
+		chol_jitter = 0
+		while True:
+			try:
+				self.cholesky_nonorigin = Potrf.apply(self.gram_mat_nonorigin + Variable(eye_mat) * chol_jitter, False)
+				break
+			except RuntimeError:
+				chol_jitter = self.gram_mat_nonorigin.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
+		self.jitter = chol_jitter
+
+	def predict(self, pred_x, hyper=None):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
-		n_pred = pred_x.size(0)
-		k_pred_train = self.model.kernel(pred_x, self.train_x)
+		kernel_max = self.model.kernel.forward_on_identical().data[0]
+		n_pred, n_dim = pred_x.size()
 		pred_x_radius = torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True))
 		assert (pred_x_radius.data > 0).all()
 		satellite = pred_x / pred_x_radius * pred_x.size(1) ** 0.5
-		K_train_satellite = self.model.kernel(self.train_x, satellite)
 
-		cho_solver = torch.gesv(torch.cat([k_pred_train.t(), self.mean_vec, K_train_satellite], 1), self.cholesky)[0]
-		cho_solve_k = cho_solver[:, :n_pred]
-		cho_solve_y = cho_solver[:, n_pred:n_pred + 1]
-		cho_solve_s = cho_solver[:, n_pred + 1:]
-		pred_mean = torch.mm(cho_solve_k.t(), cho_solve_y) + self.model.mean(pred_x)
-		pred_var = self.model.kernel.forward_on_identical() - (cho_solve_k ** 2).sum(0).view(-1, 1)
+		K_nonorigin_pred = self.model.kernel(self.train_x_nonorigin, pred_x)
+		K_nonorigin_satellite = self.model.kernel(self.train_x_nonorigin, satellite)
+		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
+		K_nonorigin_origin = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius * 0)
+		K_pred_origin_diag = self.model.kernel.radius_kernel(pred_x_radius, one_radius * 0)
+		K_origin_satellite_diag = self.model.kernel.radius_kernel(one_radius * 0, one_radius * n_dim ** 0.5).repeat(n_pred, 1)
+		K_pred_satellite_daig = self.model.kernel.radius_kernel(pred_x_radius, one_radius * n_dim ** 0.5)
 
-		if not (pred_var.data >= 0).all():
-			neg_pred_var_mask = pred_var.data < 0
-			negative_pred_var = pred_var.data[neg_pred_var_mask]
-			min_negative_pred_var = torch.min(negative_pred_var)
-			max_negative_pred_var = torch.max(negative_pred_var)
-			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_pred_var_mask), pred_var.numel(), min_negative_pred_var, min_negative_pred_var / kernel_max, max_negative_pred_var, max_negative_pred_var / kernel_max))
-			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
-			print('jitter %.4E' % self.jitter)
-			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		if stability_check:
-			assert (pred_var.data >= 0).all()
+		chol_solver = torch.gesv(torch.cat([K_nonorigin_pred, K_nonorigin_origin, self.mean_vec.index_select(0, self.ind_nonorigin), K_nonorigin_satellite], 1), self.cholesky_nonorigin)[0]
+		chol_solver_k = chol_solver[:, :n_pred]
+		chol_solver_q = chol_solver[:, n_pred:n_pred * 2]
+		chol_solver_y = chol_solver[:, n_pred * 2:n_pred * 2 + 1]
+		chol_solver_q_bar_0 = chol_solver[:, n_pred * 2 + 1:]
+
+		sol_p = kernel_max + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
+		assert (sol_p.data >= 0).all()
+		sol_k_bar = (K_pred_origin_diag - (chol_solver_q * chol_solver_k).sum(0).view(-1, 1)) / sol_p
+		sol_y_bar = (self.mean_vec.index_select(0, self.ind_origin) - torch.mm(chol_solver_q.t(), chol_solver_y)) / sol_p
+		sol_q_bar_1 = (K_origin_satellite_diag - (chol_solver_q * chol_solver_q_bar_0).sum(0).view(-1, 1)) / sol_p
+
+		sol_p_bar = kernel_max + self.jitter - (chol_solver_q_bar_0 ** 2).sum(0).view(-1, 1) - (sol_q_bar_1 ** 2)
+		assert (sol_p_bar.data >= 0).all()
+
+		sol_k_tilde = (K_pred_satellite_daig - (chol_solver_q_bar_0 * chol_solver_k).sum(0).view(-1, 1) - sol_k_bar * sol_q_bar_1) / sol_p_bar
+
+		pred_mean = torch.mm(chol_solver_k.t(), chol_solver_y) + sol_k_bar * sol_y_bar + self.model.mean(pred_x)
+		pred_var = self.model.kernel.forward_on_identical() - (chol_solver_k ** 2).sum(0).view(-1, 1) - sol_k_bar ** 2 - sol_k_tilde ** 2
+
+		assert (pred_var.data >= 0).all()
 		numerically_stable = (pred_var.data >= 0).all()
-
-		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
-		reduction_numer = ((cho_solve_k * cho_solve_s).sum(0).view(-1, 1) - k_satellite_pred_diag) ** 2
-		satellite_pred_var = self.model.kernel.forward_on_identical() - (cho_solve_s ** 2).sum(0).view(-1, 1)
-
-		# By adding jitter, result is the same as using inference but reduction effect becomes very small
-		# TODO : the effect of maintaining jitter, having it is reasonable, if not more drastic effect in variance reduction
-		reduction_denom = satellite_pred_var.clamp(min=1e-8) + self.model.likelihood(pred_x).view(-1, 1) + self.jitter
-		reduction = reduction_numer / reduction_denom
-		pred_var_reduced = (pred_var.clamp(min=1e-8) - reduction)
-
-		if not (satellite_pred_var.data >= 0).all():
-			min_pred_var = torch.min(pred_var.data)
-			max_pred_var = torch.max(pred_var.data)
-			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('satellite_pred_var %.4E / ratio w.r.t max %.4E' % (satellite_pred_var.data.squeeze()[0], satellite_pred_var.data.squeeze()[0] / kernel_max))
-			print('pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (min_pred_var, min_pred_var / kernel_max, max_pred_var, max_pred_var / kernel_max))
-			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
-			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		if stability_check:
-			assert (satellite_pred_var >= 0).data.all()
-		numerically_stable = numerically_stable and (satellite_pred_var >= 0).data.all()
-
-		if not (pred_var_reduced.data >= 0).all():
-			neg_pred_var_reduced_mask = pred_var_reduced.data < 0
-			negative_pred_var_reduced = pred_var_reduced.data[neg_pred_var_reduced_mask]
-			min_negative_pred_var_reduced = torch.min(negative_pred_var_reduced)
-			max_negative_pred_var_reduced = torch.max(negative_pred_var_reduced)
-			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('negative %d/%d pred_var_reduced range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_pred_var_reduced_mask), pred_var_reduced.numel(), min_negative_pred_var_reduced, min_negative_pred_var_reduced / kernel_max, max_negative_pred_var_reduced, max_negative_pred_var_reduced / kernel_max))
-			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
-			print('jitter %.4E' % self.jitter)
-			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		if stability_check:
-			assert (pred_var_reduced >= 0).data.all()
-		numerically_stable = numerically_stable and (pred_var_reduced >= 0).data.all()
-
-		zero_pred_var = (pred_var_reduced.data <= 0).all()
+		zero_pred_var = (pred_var.data <= 0).all()
 
 		if hyper is not None:
 			self.cholesky_update(param_original)
-		return pred_mean, pred_var_reduced.clamp(min=1e-8), numerically_stable, zero_pred_var
+		return pred_mean, pred_var.clamp(min=1e-8), numerically_stable, zero_pred_var
+
+	def negative_log_likelihood(self, hyper=None):
+		if hyper is not None:
+			param_original = self.model.param_to_vec()
+			self.cholesky_update(hyper)
+		kernel_max = self.model.kernel.forward_on_identical().data[0]
+		n_nonorigin = self.train_x_nonorigin_radius.size(0)
+		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
+		K_nonorigin_origin_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius.repeat(n_nonorigin, 1) * 0)
+		K_nonorigin_origin_sphere = self.model.kernel.sphere_kernel(self.train_x_nonorigin_sphere, self.train_x_nonorigin_sphere)
+		K_nonorigin_origin = K_nonorigin_origin_radius * K_nonorigin_origin_sphere
+
+		chol_solver = torch.gesv(torch.cat([self.mean_vec.index_select(0, self.ind_nonorigin), K_nonorigin_origin], 1), self.cholesky_nonorigin)[0]
+		chol_solver_y = chol_solver[:, :n_nonorigin]
+		chol_solver_q = chol_solver[:, n_nonorigin:]
+		sol_p = kernel_max + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
+		assert (sol_p.data >= 0).all()
+		sol_y = (self.mean_vec.index_select(0, self.ind_origin) - (chol_solver_q * chol_solver_y).sum(0).view(-1, 1)) / sol_p
+
+		nll = 0.5 * (torch.sum(chol_solver_y ** 2) + torch.mean(sol_y ** 2)) + torch.sum(torch.log(torch.diag(self.cholesky_nonorigin))) + torch.mean(torch.log(sol_p)) + 0.5 * self.train_y.size(0) * np.log(2 * np.pi)
+		if hyper is not None:
+			self.cholesky_update(param_original)
+		return nll
 
 
 if __name__ == '__main__':
@@ -97,7 +112,6 @@ if __name__ == '__main__':
 	from mpl_toolkits.mplot3d import Axes3D
 	from copy import deepcopy
 	import matplotlib.pyplot as plt
-	from torch.autograd._functions.linalg import Potrf
 	from HyperSphere.GP.kernels.modules.radialization import RadializationKernel
 	from HyperSphere.GP.models.gp_regression import GPRegression
 	from HyperSphere.BO.acquisition.acquisition_maximization import acquisition

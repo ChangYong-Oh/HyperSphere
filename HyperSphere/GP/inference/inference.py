@@ -1,10 +1,8 @@
 import progressbar
 import sys
-import math
 import time
 
 import numpy as np
-import scipy as sp
 import sampyl as smp
 
 import torch
@@ -12,8 +10,6 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd._functions.linalg import Potrf
-from HyperSphere.GP.inference.inverse_bilinear_form import InverseBilinearForm
-from HyperSphere.GP.inference.log_determinant import LogDeterminant
 
 
 class Inference(nn.Module):
@@ -22,7 +18,6 @@ class Inference(nn.Module):
 		super(Inference, self).__init__()
 		self.model = model
 		self.train_x = train_data[0]
-		assert (self.train_x.data[0] == 0).all()
 		self.train_y = train_data[1]
 		self.output_min = torch.min(self.train_y.data)
 		self.output_max = torch.max(self.train_y.data)
@@ -53,14 +48,11 @@ class Inference(nn.Module):
 		if hyper is not None:
 			self.model.vec_to_param(hyper)
 		self.mean_vec = self.train_y - self.model.mean(self.train_x)
-		self.model.kernel(self.train_x)
 		self.gram_mat = self.model.kernel(self.train_x) + torch.diag(self.model.likelihood(self.train_x))
 
 	def cholesky_update(self, hyper):
 		self.gram_mat_update(hyper)
-		n_data = self.gram_mat.size(0)
-		eye_mat = torch.eye(n_data).type_as(self.gram_mat.data)
-		self.gram_mat_update(hyper)
+		eye_mat = torch.eye(self.gram_mat.size(0)).type_as(self.gram_mat.data)
 		chol_jitter = 0
 		while True:
 			try:
@@ -69,12 +61,8 @@ class Inference(nn.Module):
 			except RuntimeError:
 				chol_jitter = self.gram_mat.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
 		self.jitter = chol_jitter
-		# eigvals = torch.symeig(self.gram_mat.data + eye_mat * self.jitter)[0]
-		# min_eigval = torch.min(eigvals)
-		# max_eigval = torch.max(eigvals)
-		# if min_eigval <
 
-	def predict(self, pred_x, hyper=None, set_jitter=False):
+	def predict(self, pred_x, hyper=None, stability_check=False):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
@@ -89,7 +77,8 @@ class Inference(nn.Module):
 		pred_quad = (chol_solve_k ** 2).sum(0).view(-1, 1)
 		pred_var = kernel_max - pred_quad
 
-		assert (pred_var.data >= 0).all()
+		if stability_check:
+			assert (pred_var.data >= 0).all()
 		numerically_stable = (pred_var.data >= 0).all()
 		zero_pred_var = (pred_var.data <= 0).all()
 
@@ -103,7 +92,7 @@ class Inference(nn.Module):
 			self.cholesky_update(hyper)
 		# nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.gram_mat, self.mean_vec) + 0.5 * LogDeterminant.apply(self.gram_mat) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 		mean_vec_sol = torch.gesv(self.mean_vec, self.cholesky)[0]
-		nll = 0.5 * torch.sum(mean_vec_sol ** 2) + torch.sum(torch.log(torch.diag(self.cholesky))) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
+		nll = 0.5 * torch.sum(mean_vec_sol ** 2) + torch.sum(torch.log(torch.diag(self.cholesky))) + 0.5 * self.train_y.size(0) * np.log(2 * np.pi)
 		if hyper is not None:
 			self.cholesky_update(param_original)
 		return nll
