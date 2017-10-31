@@ -46,23 +46,18 @@ class ShadowInference(Inference):
 		pred_x_radius = torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True))
 		assert (pred_x_radius.data > 0).all()
 		pred_x_sphere = pred_x / pred_x_radius
-		satellite = pred_x_sphere * pred_x.size(1) ** 0.5
 
 		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
 		K_non_ori_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius * 0)
 		K_non_ori_sphere = self.model.kernel.sphere_kernel(self.train_x_nonorigin_sphere, pred_x_sphere)
 		K_non_ori = K_non_ori_radius.view(-1, 1) * K_non_ori_sphere
 		K_non_pre = self.model.kernel(self.train_x_nonorigin, pred_x)
-		K_non_sat = self.model.kernel(self.train_x_nonorigin, satellite)
 		K_ori_pre_diag = self.model.kernel.radius_kernel(pred_x_radius, one_radius * 0)
-		K_ori_sat_diag = self.model.kernel.radius_kernel(one_radius * 0, one_radius * n_dim ** 0.5).repeat(n_pred, 1)
-		K_sat_pre_diag = self.model.kernel.radius_kernel(pred_x_radius, one_radius * n_dim ** 0.5)
 
-		chol_solver = torch.gesv(torch.cat([K_non_ori, K_non_pre, self.mean_vec.index_select(0, self.ind_nonorigin), K_non_sat], 1), self.cholesky_nonorigin)[0]
+		chol_solver = torch.gesv(torch.cat([K_non_ori, K_non_pre, self.mean_vec.index_select(0, self.ind_nonorigin)], 1), self.cholesky_nonorigin)[0]
 		chol_solver_q = chol_solver[:, :n_pred]
 		chol_solver_k = chol_solver[:, n_pred:n_pred * 2]
 		chol_solver_y = chol_solver[:, n_pred * 2:n_pred * 2 + 1]
-		chol_solver_q_bar_0 = chol_solver[:, n_pred * 2 + 1:]
 
 		sol_p_sqr = kernel_max + self.model.likelihood(pred_x).view(-1, 1) + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
 		if not (sol_p_sqr.data >= 0).all():
@@ -85,32 +80,9 @@ class ShadowInference(Inference):
 		sol_p = torch.sqrt(sol_p_sqr.clamp(min=1e-8))
 		sol_k_bar = (K_ori_pre_diag - (chol_solver_q * chol_solver_k).sum(0).view(-1, 1)) / sol_p
 		sol_y_bar = (self.mean_vec.index_select(0, self.ind_origin) - torch.mm(chol_solver_q.t(), chol_solver_y)) / sol_p
-		sol_q_bar_1 = (K_ori_sat_diag - (chol_solver_q * chol_solver_q_bar_0).sum(0).view(-1, 1)) / sol_p
-
-		sol_p_bar_sqr = kernel_max + self.model.likelihood(pred_x).view(-1, 1) + self.jitter - (chol_solver_q_bar_0 ** 2).sum(0).view(-1, 1) - (sol_q_bar_1 ** 2)
-		if not (sol_p_bar_sqr.data >= 0).all():
-			neg_mask = sol_p_bar_sqr.data < 0
-			neg_val = sol_p_bar_sqr.data[neg_mask]
-			min_neg_val = torch.min(neg_val)
-			max_neg_val = torch.max(neg_val)
-			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('p bar')
-			print('p bar')
-			print('p bar')
-			print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), sol_p_bar_sqr.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
-			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
-			print('jitter %.4E' % self.jitter)
-			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		if stability_check:
-			assert (sol_p_bar_sqr.data >= 0).all()
-		sol_p_bar = torch.sqrt(sol_p_bar_sqr.clamp(min=1e-8))
-
-		sol_k_tilde = (K_sat_pre_diag - (chol_solver_q_bar_0 * chol_solver_k).sum(0).view(-1, 1) - sol_k_bar * sol_q_bar_1) / sol_p_bar
 
 		pred_mean = torch.mm(chol_solver_k.t(), chol_solver_y) + sol_k_bar * sol_y_bar + self.model.mean(pred_x)
-		pred_var = self.model.kernel.forward_on_identical() - (chol_solver_k ** 2).sum(0).view(-1, 1) - sol_k_bar ** 2 - sol_k_tilde ** 2
+		pred_var = self.model.kernel.forward_on_identical() - (chol_solver_k ** 2).sum(0).view(-1, 1) - sol_k_bar ** 2
 
 		if not (pred_var.data >= 0).all():
 			neg_mask = pred_var.data < 0

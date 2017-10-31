@@ -37,9 +37,7 @@ class Inference(nn.Module):
 
 	def stable_parameters(self):
 		const_mean = self.model.mean.const_mean.data[0]
-		kernel_log_amp = self.model.kernel.log_kernel_amp().data[0]
-		log_noise_var = self.model.likelihood.log_noise_var.data[0]
-		return self.output_min <= const_mean <= self.output_max# and log_noise_var >= kernel_log_amp + np.log(0.05)
+		return self.output_min <= const_mean <= self.output_max
 
 	def log_kernel_amp(self):
 		return self.model.log_kernel_amp()
