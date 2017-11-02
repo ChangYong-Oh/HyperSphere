@@ -1,7 +1,7 @@
 import math
-
 import numpy as np
 import torch
+from functools import partial
 
 
 def id_transform(phi):
@@ -19,10 +19,12 @@ def x2radial(x):
 x2radial.dim_change = lambda x: x + 1
 
 
-def radial_bound(radius):
-	def func(x):
-		return torch.sum(x.data ** 2) > radius ** 2
-	return func
+def in_sphere(x, radius):
+	return torch.sum(x.data ** 2) > radius ** 2
+
+
+def sphere_bound(radius):
+	return partial(in_sphere, radius=radius)
 
 
 def phi_reflection(phi):

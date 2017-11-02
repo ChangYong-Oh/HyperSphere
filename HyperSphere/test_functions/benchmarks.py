@@ -148,12 +148,15 @@ def perm(x):
 	if flat:
 		x = x.view(1, -1)
 	ndim = x.size(1)
+	indices = torch.arange(1, ndim + 1)
+	if hasattr(x, 'data'):
+		indices = Variable(indices)
 
 	beta = 0
 
 	output = 0
 	for i in range(1, ndim + 1):
-		output += torch.mean((torch.arange(1, ndim + 1) + beta) * (x ** i - torch.arange(1, ndim + 1) ** (-i)), 1, keepdim=True) ** 2
+		output += torch.mean((indices + beta) * (x ** i - indices ** (-i)), 1, keepdim=True) ** 2
 	output /= ndim
 	if flat:
 		return output.squeeze(0)

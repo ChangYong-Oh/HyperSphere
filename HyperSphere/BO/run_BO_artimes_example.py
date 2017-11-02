@@ -1,8 +1,11 @@
 import os.path
 import pickle
+import sys
 import time
-import argparse
 from datetime import datetime
+
+from artemis.experiments import experiment_function
+from artemis.experiments.decorators import experiment_root
 
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
@@ -21,11 +24,14 @@ from HyperSphere.BO.shadow_inference.inference_sphere_origin import ShadowInfere
 from HyperSphere.BO.shadow_inference.inference_sphere_origin_satellite import ShadowInference as both_ShadowInference
 
 # boundary conditions
-from HyperSphere.feature_map.functionals import sphere_bound
+from HyperSphere.feature_map.functionals import radial_bound
 
-
-def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=False, ard=False, origin=False, warping=False):
+@experiment_root
+def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=False, ard=None, origin=None, warping=None, seed=1234):
 	assert (path is None) != (func is None)
+
+	if isinstance(func, str):
+		func = {'levy': levy}[func]
 
 	if path is None:
 		assert (func.dim == 0) != (ndim is None)
@@ -35,10 +41,12 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 		exp_conf_str = geometry
 		if geometry == 'sphere':
-			assert not ard
+			assert ard is None and origin is not None
+			search_sphere_radius = ndim ** 0.5
+
 			exp_conf_str += 'warping' if warping else ''
-			kernel = RadializationWarpingKernel if warping else RadializationKernel
-			model = GPRegression(kernel=kernel(max_power=3, search_radius=ndim ** 0.5))
+			kernel_method = RadializationWarpingKernel if warping else RadializationKernel
+			model = GPRegression(kernel=kernel_method(max_power=3, search_radius=search_sphere_radius))
 			inference_method = None
 			if origin and boundary:
 				inference_method = both_ShadowInference
@@ -52,20 +60,19 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			else:
 				inference_method = Inference
 				exp_conf_str += 'none'
-			bnd = sphere_bound(ndim ** 0.5)
+			bnd = radial_bound(search_sphere_radius)
 		elif geometry == 'cube':
-			assert not origin
+			assert origin is None and ard is not None
 			exp_conf_str += ('ard' if ard else '') + ('boundary' if boundary else '')
-			kernel = Matern52
-			model = GPRegression(kernel=kernel(ndim=ndim, ard=ard))
+			kernel_method = Matern52
+			model = GPRegression(kernel=kernel_method(ndim=ndim, ard=ard))
 			inference_method = satellite_ShadowInference if boundary else Inference
 			bnd = (-1, 1)
 
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
 		folder_name = func.__name__ + '_D' + str(ndim) + '_' + exp_conf_str + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name))
-		logfile_dir = os.path.join(EXPERIMENT_DIR, folder_name, 'log')
-		os.makedirs(logfile_dir)
+		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name, 'log'))
 		model_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
@@ -101,15 +108,14 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			exec(key + '=value')
 		data_config_file.close()
 
-	ignored_variable_names = ['n_eval', 'path', 'i',
+	ignored_variable_names = ['n_eval', 'path', 'ndim', 'i',
 	                          'data_config_file', 'dir_list', 'folder_name', 'model_filename', 'data_config_filename',
-	                          'kernel', 'model', 'inference']
+	                          'kernel_method', 'inference_method', 'bnd', 'model', 'inference']
 	stored_variable_names = set(locals().keys()).difference(set(ignored_variable_names))
 
-	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
+	print(('Experiment based on data in %s\n' % os.path.split(model_filename)[0]) * 3)
 
 	for _ in range(n_eval):
-		logfile = open(os.path.join(logfile_dir, str(x_input.size(0)).zfill(4) + '.out'), 'w')
 		inference = inference_method((x_input, output), model)
 
 		reference, ref_ind = torch.min(output, 0)
@@ -154,9 +160,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			             dist_to_ref_list[i], dist_to_min[i], dist_to_suggest[i]))
 			min_str = '  <========= MIN' if i == min_ind.data.squeeze()[0] else ''
 			print(time_str + data_str + min_str)
-			logfile.writelines(time_str + data_str + min_str + '\n')
-
-		logfile.close()
+		print(model.kernel.__class__.__name__)
 
 		torch.save(model, model_filename)
 		stored_variable = dict()
@@ -166,36 +170,36 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		pickle.dump(stored_variable, f)
 		f.close()
 
-	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
+	print(('Experiment based on data in %s\n' % os.path.split(model_filename)[0]) * 3)
 
 	return os.path.split(model_filename)[0]
 
+
+
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='Bayesian Optimization runner')
-	parser.add_argument('-g', '--geometry', dest='geometry', help='cube/sphere')
-	parser.add_argument('-e', '--n_eval', dest='n_eval', type=int, default=1)
-	parser.add_argument('-p', '--path', dest='path')
-	parser.add_argument('-d', '--dim', dest='ndim', type=int)
-	parser.add_argument('-f', '--func', dest='func_name')
-	parser.add_argument('--boundary', dest='boundary', action='store_true', default=False)
-	parser.add_argument('--origin', dest='origin', action='store_true', default=False)
-	parser.add_argument('--ard', dest='ard', action='store_true', default=False)
-	parser.add_argument('--warping', dest='warping', action='store_true', default=False)
+	run_new = False
+	path, suffix = os.path.split(sys.argv[1])
 
-	args = parser.parse_args()
-	assert (args.path is None) != (args.func_name is None)
-	args_dict = vars(args)
-	if args.func_name is not None:
-		exec 'func=' + args.func_name
-		args_dict['func'] = func
-	del args_dict['func_name']
-	if args.path is None:
-		assert (func.dim == 0) != (args.ndim is None)
-		assert args.geometry is not None
-		if args.geometry == 'sphere':
-			assert not args.ard
-		elif args.geometry == 'cube':
-			assert not args.origin
-			assert not args.warping
+	baseline = BO.add_root_variant('baseline', geometry='cube', n_eval=int(sys.argv[2]), path=None, func='levy', ndim=int(sys.argv[1]), ard=None,
+	                               origin=None, warping=True)
 
-	BO(**vars(args))
+	for seed in range(10):
+		baseline.add_variant(boundary=False, seed=seed)
+	for seed in range(10):
+		baseline.add_variant(boundary=True, seed=seed)
+
+	BO.browse(display_format='flat')
+
+
+	# if path == '' and not ('_D' in suffix):
+	# 	run_new = True
+	# if run_new:
+	# 	func = locals()[sys.argv[1]]
+	# 	if func.dim == 0:
+	# 		n_eval = int(sys.argv[3]) if len(sys.argv) > 3 else 100
+	# 		BO(n_eval=n_eval, func=func, ndim=int(sys.argv[2]))
+	# 	else:
+	# 		BO(n_eval=int(sys.argv[2]), func=func)
+	# else:
+	# 	BO(n_eval=int(sys.argv[2]), path=sys.argv[1])
+

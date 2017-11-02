@@ -55,7 +55,7 @@ def suggest(inferences, x0, acquisition_function=expected_improvement, bounds=No
 		local_optima.append(x.clone())
 		optima_value.append(-acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
 	suggestion = local_optima[np.nanargmin(optima_value)]
-	mean, std, var, stdmax, varmax = mean_std_var(Variable(suggestion), inferences)
+	mean, std, var, stdmax, varmax = mean_std_var(suggestion, inferences)
 	return suggestion, mean, std, var, stdmax, varmax
 
 
