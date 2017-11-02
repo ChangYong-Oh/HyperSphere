@@ -173,14 +173,16 @@ def michalewicz(x):
 	if flat:
 		x = x.view(1, -1)
 	ndim = x.size(1)
+	indices = torch.arange(1, ndim + 1)
 	if hasattr(x, 'data'):
 		x.data = (x.data + 1) * 0.5 * pi
+		indices = Variable(indices)
 	else:
 		x = (x + 1) * 0.5 * pi
 
 	m = 10
 
-	output = -torch.mean(torch.sin(x) * torch.sin(x ** 2 * torch.arange(1, ndim + 1) / pi) ** (2 * m), 1, keepdim=True)
+	output = -torch.mean(torch.sin(x) * torch.sin(x ** 2 * indices / pi) ** (2 * m), 1, keepdim=True)
 	if flat:
 		return output.squeeze(0)
 	else:
