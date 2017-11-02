@@ -2,8 +2,7 @@ import os.path
 import pickle
 import sys
 import time
-
-import numpy as np
+from datetime import datetime
 
 # ShadowInference version should coincide with the one used in acquisition_maximization
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference
@@ -39,12 +38,10 @@ def BO(n_eval=200, **kwargs):
 		else:
 			ndim = func.dim
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
-		folder_name_root = func.__name__ + '_D' + str(ndim) + '_' + exp_str
-		folder_name_suffix = [elm[len(folder_name_root):] for elm in dir_list if elm[:len(folder_name_root)] == folder_name_root]
-		next_ind = 1 + np.max([int(elm) for elm in folder_name_suffix if elm.isdigit()] + [-1])
-		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind)))
-		model_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'model.pt')
-		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name_root + str(next_ind), 'data_config.pkl')
+		folder_name = func.__name__ + '_D' + str(ndim) + '_' + exp_str + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
+		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name))
+		model_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'model.pt')
+		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
 		search_sphere_radius = ndim ** 0.5
 
@@ -138,6 +135,8 @@ def BO(n_eval=200, **kwargs):
 
 	for _ in range(3):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
+
+	return os.path.split(model_filename)[0]
 
 
 if __name__ == '__main__':

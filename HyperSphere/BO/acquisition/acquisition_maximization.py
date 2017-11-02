@@ -150,7 +150,7 @@ def optimization_init_points(candidates, inferences, acquisition_function=expect
 	_, sort_ind = torch.sort(acq_value, 0, descending=True)
 	is_maximum = acq_value == acq_value[sort_ind[0]]
 	n_equal_maximum = torch.sum(is_maximum)
-	print('Initial points selection ' + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
+	print(('Initial points selection from %d points ' % candidates.size(0)) + time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time)))
 	if n_equal_maximum > N_INIT:
 		shuffled_ind = torch.sort(torch.randn(n_equal_maximum), 0)[1]
 		return init_points[is_maximum.view(-1, 1).repeat(1, ndim)].view(-1, ndim)[(shuffled_ind < N_INIT).view(-1, 1).repeat(1, ndim)].view(-1, ndim), sample_info

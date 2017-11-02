@@ -122,3 +122,66 @@ def styblinskitang(x):
 
 
 styblinskitang.dim = 0
+
+
+def schwefel(x):
+	flat = x.dim() == 1
+	if flat:
+		x = x.view(1, -1)
+	if hasattr(x, 'data'):
+		x.data = x.data * 500.0
+	else:
+		x = x * 500.0
+
+	output = 418.9829 - torch.mean(x * torch.sin(torch.abs(x) ** 0.5), 1, keepdim=True)
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output
+
+
+schwefel.dim = 0
+
+
+def perm(x):
+	flat = x.dim() == 1
+	if flat:
+		x = x.view(1, -1)
+	ndim = x.size(1)
+
+	beta = 0
+
+	output = 0
+	for i in range(1, ndim + 1):
+		output += torch.mean((torch.arange(1, ndim + 1) + beta) * (x ** i - torch.arange(1, ndim + 1) ** (-i)), 1, keepdim=True) ** 2
+	output /= ndim
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output
+
+
+perm.dim = 0
+
+
+def michalewicz(x):
+	pi = math.pi
+	flat = x.dim() == 1
+	if flat:
+		x = x.view(1, -1)
+	ndim = x.size(1)
+	if hasattr(x, 'data'):
+		x.data = (x.data + 1) * 0.5 * pi
+	else:
+		x = (x + 1) * 0.5 * pi
+
+	m = 10
+
+	output = -torch.mean(torch.sin(x) * torch.sin(x ** 2 * torch.arange(1, ndim + 1) / pi) ** (2 * m), 1, keepdim=True)
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output
+
+
+michalewicz.dim = 0
