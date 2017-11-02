@@ -5,21 +5,20 @@ import time
 from datetime import datetime
 
 # ShadowInference version should coincide with the one used in acquisition_maximization
-from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, \
-	optimization_init_points, deepcopy_inference
-from HyperSphere.GP.inference.inference import Inference
+from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference
+from HyperSphere.BO.shadow_inference.inference_sphere_satellite import ShadowInference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.feature_map.functionals import x2radial, radial_bound
+from HyperSphere.feature_map.functionals import *
 from HyperSphere.test_functions.benchmarks import *
 
 exp_str = __file__.split('/')[-1].split('_')[0]
 
 
-def BO(n_eval=200, **kwargs):
-	if 'path' in kwargs.keys():
-		path = kwargs['path']
+def BO(n_eval=200, path=None, func=None, ndim=None):
+	assert (path is None) != (func is None)
+	if path is not None:
 		if not os.path.exists(path):
 			path = os.path.join(EXPERIMENT_DIR, path)
 		model_filename = os.path.join(path, 'model.pt')
@@ -31,12 +30,10 @@ def BO(n_eval=200, **kwargs):
 			exec(key + '=value')
 		data_config_file.close()
 
-		inference = Inference((x_input, output), model)
+		inference = ShadowInference((x_input, output), model)
 	else:
-		func = kwargs['func']
-		if func.dim == 0:
-			ndim = kwargs['dim']
-		else:
+		assert (func.dim == 0) != (ndim is None)
+		if ndim is None:
 			ndim = func.dim
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
 		folder_name = func.__name__ + '_D' + str(ndim) + '_' + exp_str + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
@@ -44,15 +41,13 @@ def BO(n_eval=200, **kwargs):
 		model_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
-		search_sphere_radius = ndim ** 0.5
-
 		x_input = Variable(torch.ger(-torch.arange(0, 2), torch.ones(ndim)))
 		output = Variable(torch.zeros(x_input.size(0), 1))
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
 
-		kernel_input_map = x2radial
-		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), input_map=kernel_input_map))
+		kernel_input_map = id_transform
+		model = GPRegression(kernel=Matern52(ndim=kernel_input_map.dim_change(ndim), ard=False, input_map=kernel_input_map))
 
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]
@@ -64,24 +59,23 @@ def BO(n_eval=200, **kwargs):
 		reference_list = [output.data.squeeze()[0]] * 2
 		refind_list = [1, 1]
 		dist_to_ref_list = [0, 0]
+		sample_info_list = [(10, 0, 10)] * 2
 
-		inference = Inference((x_input, output), model)
+		inference = ShadowInference((x_input, output), model)
 		inference.init_parameters()
 		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
 	stored_variable_names = locals().keys()
-	ignored_variable_names = ['n_eval', 'kwargs', 'data_config_file', 'dir_list', 'folder_name',
+	ignored_variable_names = ['n_eval', 'path', 'data_config_file', 'dir_list', 'folder_name',
 	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
 	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
-
-	bnd = radial_bound(search_sphere_radius)
 
 	for _ in range(3):
 		print('Experiment based on data in ' + os.path.split(model_filename)[0])
 
 	for _ in range(n_eval):
-		inference = Inference((x_input, output), model)
+		inference = ShadowInference((x_input, output), model)
 
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
@@ -90,7 +84,7 @@ def BO(n_eval=200, **kwargs):
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0, sample_info = optimization_init_points(x0_cand, inferences, reference=reference)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inferences, x0=x0, bounds=bnd, reference=reference)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inferences, x0=x0, bounds=(-1, 1), reference=reference)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
@@ -102,8 +96,9 @@ def BO(n_eval=200, **kwargs):
 		reference_list.append(reference)
 		refind_list.append(ref_ind.data.squeeze()[0] + 1)
 		dist_to_ref_list.append(torch.sum((next_x_point - x_input[ref_ind].data) ** 2) ** 0.5)
+		sample_info_list.append(sample_info)
 
-		x_input = torch.cat([x_input, Variable(next_x_point)], 0)
+		x_input = torch.cat([x_input, next_x_point], 0)
 		output = torch.cat([output, func(x_input[-1])])
 
 		min_ind = torch.min(output, 0)[1]
@@ -115,16 +110,16 @@ def BO(n_eval=200, **kwargs):
 		print('')
 		for i in range(x_input.size(0)):
 			time_str = time.strftime('%H:%M:%S', time.gmtime(time_list[i])) + '(' + time.strftime('%H:%M:%S', time.gmtime(elapse_list[i])) + ')  '
-			data_str = ('%3d-th : %+14.4f(R:%8.4f[%4d]/ref:[%3d]%8.4f), '
+			data_str = ('%3d-th : %+12.4f(R:%8.4f[%4d]/ref:[%3d]%8.4f), sample([%2d] best:%2d/worst:%2d), '
 			            'mean : %+.4E, std : %.4E(%5.4f), var : %.4E(%5.4f), '
 			            '2ownMIN : %8.4f, 2curMIN : %8.4f, 2new : %8.4f' %
 			            (i + 1, output.data.squeeze()[i], torch.sum(x_input.data[i] ** 2) ** 0.5, out_of_box[i], refind_list[i], reference_list[i],
+			             sample_info_list[i][2], sample_info_list[i][0], sample_info_list[i][1],
 			             pred_mean_list[i], pred_std_list[i], pred_std_list[i] / pred_stdmax_list[i], pred_var_list[i], pred_var_list[i] / pred_varmax_list[i],
 			             dist_to_ref_list[i], dist_to_min[i], dist_to_suggest[i]))
 			min_str = '  <========= MIN' if i == min_ind.data.squeeze()[0] else ''
 			print(time_str + data_str + min_str)
 		print(model.kernel.__class__.__name__)
-
 		torch.save(model, model_filename)
 		stored_variable = dict()
 		for key in stored_variable_names:

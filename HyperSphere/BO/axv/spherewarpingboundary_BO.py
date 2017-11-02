@@ -17,9 +17,9 @@ from HyperSphere.test_functions.benchmarks import *
 exp_str = __file__.split('/')[-1].split('_')[0]
 
 
-def BO(n_eval=200, **kwargs):
-	if 'path' in kwargs.keys():
-		path = kwargs['path']
+def BO(n_eval=200, path=None, func=None, ndim=None):
+	assert (path is None) != (func is None)
+	if path is not None:
 		if not os.path.exists(path):
 			path = os.path.join(EXPERIMENT_DIR, path)
 		model_filename = os.path.join(path, 'model.pt')
@@ -33,10 +33,8 @@ def BO(n_eval=200, **kwargs):
 
 		inference = ShadowInference((x_input, output), model)
 	else:
-		func = kwargs['func']
-		if func.dim == 0:
-			ndim = kwargs['dim']
-		else:
+		assert (func.dim == 0) != (ndim is None)
+		if ndim is None:
 			ndim = func.dim
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
 		folder_name = func.__name__ + '_D' + str(ndim) + '_' + exp_str + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
@@ -70,7 +68,7 @@ def BO(n_eval=200, **kwargs):
 		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
 	stored_variable_names = locals().keys()
-	ignored_variable_names = ['n_eval', 'kwargs', 'data_config_file', 'dir_list', 'folder_name',
+	ignored_variable_names = ['n_eval', 'path', 'data_config_file', 'dir_list', 'folder_name',
 	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
 	                          'kernel_input_map', 'model', 'inference']
 	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))

@@ -4,54 +4,74 @@ import sys
 import time
 from datetime import datetime
 
-# ShadowInference version should coincide with the one used in acquisition_maximization
-from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, \
-	optimization_init_points, deepcopy_inference
-from HyperSphere.BO.shadow_inference.inference_sphere_origin_satellite import ShadowInference
+from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
-from HyperSphere.GP.kernels.modules.radialization_warping import RadializationWarpingKernel
 from HyperSphere.GP.models.gp_regression import GPRegression
-from HyperSphere.feature_map.functionals import radial_bound
 from HyperSphere.test_functions.benchmarks import *
 
-exp_str = __file__.split('/')[-1].split('_')[0]
+# Kernels
+from HyperSphere.GP.kernels.modules.matern52 import Matern52
+from HyperSphere.GP.kernels.modules.radialization_warping import RadializationWarpingKernel
+from HyperSphere.GP.kernels.modules.radialization import RadializationKernel
+
+# Inferences
+from HyperSphere.GP.inference.inference import Inference
+from HyperSphere.BO.shadow_inference.inference_sphere_satellite import ShadowInference as satellite_ShadowInference
+from HyperSphere.BO.shadow_inference.inference_sphere_origin import ShadowInference as origin_ShadowInference
+from HyperSphere.BO.shadow_inference.inference_sphere_origin_satellite import ShadowInference as both_ShadowInference
+
+# boundary conditions
+from HyperSphere.feature_map.functionals import radial_bound
 
 
-def BO(n_eval=200, **kwargs):
-	if 'path' in kwargs.keys():
-		path = kwargs['path']
-		if not os.path.exists(path):
-			path = os.path.join(EXPERIMENT_DIR, path)
-		model_filename = os.path.join(path, 'model.pt')
-		data_config_filename = os.path.join(path, 'data_config.pkl')
-
-		model = torch.load(model_filename)
-		data_config_file = open(data_config_filename, 'r')
-		for key, value in pickle.load(data_config_file).iteritems():
-			exec(key + '=value')
-		data_config_file.close()
-
-		inference = ShadowInference((x_input, output), model)
-	else:
-		func = kwargs['func']
-		if func.dim == 0:
-			ndim = kwargs['dim']
-		else:
+def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=False, ard=None, origin=None, warping=None):
+	assert (path is None) != (func is None)
+	if path is None:
+		assert (func.dim == 0) != (ndim is None)
+		assert geometry is not None
+		if ndim is None:
 			ndim = func.dim
+
+		exp_conf_str = geometry
+		if geometry == 'sphere':
+			assert ard is None
+			search_sphere_radius = ndim ** 0.5
+
+			exp_conf_str += 'warping' if warping else ''
+			kernel_method = RadializationWarpingKernel if warping else RadializationKernel
+			model = GPRegression(kernel=kernel_method(max_power=3, search_radius=search_sphere_radius))
+			inference_method = None
+			if origin and boundary:
+				inference_method = both_ShadowInference
+				exp_conf_str += 'both'
+			elif origin:
+				inference_method = origin_ShadowInference
+				exp_conf_str += 'origin'
+			elif boundary:
+				inference_method = satellite_ShadowInference
+				exp_conf_str += 'boundary'
+			else:
+				inference_method = Inference
+				exp_conf_str += 'none'
+			bnd = radial_bound(search_sphere_radius)
+		elif geometry == 'cube':
+			assert origin is None
+			exp_conf_str += ('ard' if ard else '') + ('boundary' if boundary else '')
+			kernel_method = Matern52
+			model = GPRegression(kernel=kernel_method(ndim=ndim, ard=ard))
+			inference_method = satellite_ShadowInference if boundary else Inference
+			bnd = (-1, 1)
+
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
-		folder_name = func.__name__ + '_D' + str(ndim) + '_' + exp_str + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
+		folder_name = func.__name__ + '_D' + str(ndim) + '_' + exp_conf_str + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name))
 		model_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
-
-		search_sphere_radius = ndim ** 0.5
 
 		x_input = Variable(torch.ger(-torch.arange(0, 2), torch.ones(ndim)))
 		output = Variable(torch.zeros(x_input.size(0), 1))
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
-
-		model = GPRegression(kernel=RadializationWarpingKernel(max_power=3, search_radius=search_sphere_radius))
 
 		time_list = [time.time()] * 2
 		elapse_list = [0, 0]
@@ -65,23 +85,34 @@ def BO(n_eval=200, **kwargs):
 		dist_to_ref_list = [0, 0]
 		sample_info_list = [(10, 0, 10)] * 2
 
-		inference = ShadowInference((x_input, output), model)
+		inference = inference_method((x_input, output), model)
 		inference.init_parameters()
 		inference.sampling(n_sample=1, n_burnin=99, n_thin=1)
 
-	stored_variable_names = locals().keys()
-	ignored_variable_names = ['n_eval', 'kwargs', 'data_config_file', 'dir_list', 'folder_name',
-	                          'next_ind', 'model_filename', 'data_config_filename', 'i',
-	                          'kernel_input_map', 'model', 'inference']
-	stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
+		stored_variable_names = locals().keys()
+		ignored_variable_names = ['n_eval', 'path', 'ndim', 'i',
+		                          'data_config_file', 'dir_list', 'folder_name', 'model_filename', 'data_config_filename',
+		                          'kernel_method', 'inference_method', 'bnd', 'model', 'inference']
+		stored_variable_names = set(stored_variable_names).difference(set(ignored_variable_names))
+	else:
+		if not os.path.exists(path):
+			path = os.path.join(EXPERIMENT_DIR, path)
+		model_filename = os.path.join(path, 'model.pt')
+		data_config_filename = os.path.join(path, 'data_config.pkl')
 
-	bnd = radial_bound(search_sphere_radius)
+		model = torch.load(model_filename)
+		data_config_file = open(data_config_filename, 'r')
+		for key, value in pickle.load(data_config_file).iteritems():
+			exec(key + '=value')
+		data_config_file.close()
 
-	for _ in range(3):
-		print('Experiment based on data in ' + os.path.split(model_filename)[0])
+		inference = inference_method((x_input, output), model)
+		stored_variable_names = locals().keys()
+
+	print(('Experiment based on data in %s\n' % os.path.split(model_filename)[0]) * 3)
 
 	for _ in range(n_eval):
-		inference = ShadowInference((x_input, output), model)
+		inference = inference_method((x_input, output), model)
 
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
@@ -104,7 +135,7 @@ def BO(n_eval=200, **kwargs):
 		dist_to_ref_list.append(torch.sum((next_x_point - x_input[ref_ind].data) ** 2) ** 0.5)
 		sample_info_list.append(sample_info)
 
-		x_input = torch.cat([x_input, Variable(next_x_point)], 0)
+		x_input = torch.cat([x_input, next_x_point], 0)
 		output = torch.cat([output, func(x_input[-1])])
 
 		min_ind = torch.min(output, 0)[1]
@@ -135,11 +166,9 @@ def BO(n_eval=200, **kwargs):
 		pickle.dump(stored_variable, f)
 		f.close()
 
-	for _ in range(3):
-		print('Experiment based on data in ' + os.path.split(model_filename)[0])
+	print(('Experiment based on data in %s\n' % os.path.split(model_filename)[0]) * 3)
 
 	return os.path.split(model_filename)[0]
-
 
 if __name__ == '__main__':
 	run_new = False
@@ -150,7 +179,7 @@ if __name__ == '__main__':
 		func = locals()[sys.argv[1]]
 		if func.dim == 0:
 			n_eval = int(sys.argv[3]) if len(sys.argv) > 3 else 100
-			BO(n_eval=n_eval, func=func, dim=int(sys.argv[2]))
+			BO(n_eval=n_eval, func=func, ndim=int(sys.argv[2]))
 		else:
 			BO(n_eval=int(sys.argv[2]), func=func)
 	else:
