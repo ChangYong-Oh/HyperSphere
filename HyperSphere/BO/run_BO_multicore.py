@@ -10,7 +10,7 @@ import tempfile
 import socket
 import smtplib
 
-
+from utils.datafile_utils import EXPERIMENT_DIR
 
 valid_config_str_list = ['cube', 'cubeard', 'cubeboundary', 'cubeardboundary',
                          'spherenone', 'sphereorigin', 'sphereboundary', 'sphereboth',
@@ -72,6 +72,7 @@ if __name__ == '__main__':
 	parser.add_argument('-f', '--func', dest='func_name_list')
 	parser.add_argument('-o', '--optimizer', dest='optimizer_config_list')
 	parser.add_argument('-p', '--path', dest='path')
+	parser.add_argument('--continue', dest='continuing', action='store_true', default=False)
 
 	current_file = sys.argv[0]
 	try:
@@ -81,7 +82,14 @@ if __name__ == '__main__':
 			optimizer_config_list = args.optimizer_config_list.split(',')
 			func_name_list = args.func_name_list.split(',')
 			n_runs = len(optimizer_config_list) * len(func_name_list) * 5
-			cmd_str_list = beginning_command_str_generate(current_file, optimizer_config_list, func_name_list, args.ndim, args.n_eval)
+			if args.continuing:
+				path_list = []
+				for optimizer_config in optimizer_config_list:
+					for func_name in func_name:
+						path_list += [os.path.join(EXPERIMENT_DIR, elm) for elm in os.listdir(EXPERIMENT_DIR) if func_name + '_D' + str(args.ndim) + '_' + optimizer_config in elm]
+				cmd_str_list = continuing_command_str_generate(current_file, path_list, args.n_eval)
+			else:
+				cmd_str_list = beginning_command_str_generate(current_file, optimizer_config_list, func_name_list, args.ndim, args.n_eval)
 		else:
 			path_list = args.path.split(',')
 			n_runs = len(path_list) * 5
