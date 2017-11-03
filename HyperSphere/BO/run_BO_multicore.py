@@ -167,9 +167,9 @@ if __name__ == '__main__':
 						msg.attach(MIMEText(file(moved_filename).read()))
 
 						smtplib.SMTP('localhost').sendmail(sender, receiver, msg.as_string())
+					sys.stdout.write('\n')
 				else:
 					moved_filename = log_file_list[i].name
-				sys.stdout.write('\n')
 		previous_process_status_list = process_status_list[:]
 		if process_monitor_cnt *process_monitor_cnt % 60 ==0:
 			msg = MIMEMultipart()
