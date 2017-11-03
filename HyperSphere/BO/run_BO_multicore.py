@@ -80,7 +80,6 @@ if __name__ == '__main__':
 		args = parser.parse_args()
 		assert (args.path is None) != ((args.ndim is None) and (args.func_name_list is None) and (args.optimizer_config_list is None))
 		if args.path is None:
-			assert args.n_eval == 1
 			optimizer_config_list = args.optimizer_config_list.split(',')
 			func_name_list = args.func_name_list.split(',')
 			n_runs = len(optimizer_config_list) * len(func_name_list) * 5
@@ -93,6 +92,7 @@ if __name__ == '__main__':
 					print(elm)
 				cmd_str_list = continuing_command_str_generate(current_file, path_list, args.n_eval)
 			else:
+				assert args.n_eval == 1
 				cmd_str_list = beginning_command_str_generate(current_file, optimizer_config_list, func_name_list, args.ndim, args.n_eval)
 		else:
 			path_list = args.path.split(',')
