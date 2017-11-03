@@ -125,5 +125,9 @@ if __name__ == '__main__':
 			if p_status is not None and prev_p_status is None:
 				cnt += 1
 				message = "Subject: %2d/%2d Terminated exit code(%d) in %s\n\ncheck file %s" % (cnt, n_runs, process_list[i].returncode, sender.split('@')[1], log_filename_list[i])
-				smtpObj.sendmail(sender, receiver, message)
+				try:
+					smtpObj.sendmail(sender, receiver, message)
+				except:
+					print(message)
+					sys.stdout.flush()
 		previous_process_status_list = process_status_list[:]
