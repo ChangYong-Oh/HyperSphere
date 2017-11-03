@@ -85,8 +85,10 @@ if __name__ == '__main__':
 			if args.continuing:
 				path_list = []
 				for optimizer_config in optimizer_config_list:
-					for func_name in func_name:
+					for func_name in func_name_list:
 						path_list += [os.path.join(EXPERIMENT_DIR, elm) for elm in os.listdir(EXPERIMENT_DIR) if func_name + '_D' + str(args.ndim) + '_' + optimizer_config in elm]
+				for elm in path_list:
+					print(elm)
 				cmd_str_list = continuing_command_str_generate(current_file, path_list, args.n_eval)
 			else:
 				cmd_str_list = beginning_command_str_generate(current_file, optimizer_config_list, func_name_list, args.ndim, args.n_eval)
