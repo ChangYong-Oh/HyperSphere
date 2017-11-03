@@ -2,10 +2,11 @@ import os
 import os.path
 import sys
 import time
+import shutil
 from datetime import datetime
 import argparse
 import multiprocessing
-import subprocess
+import subprocess32
 import tempfile
 import socket
 import smtplib
@@ -79,6 +80,7 @@ if __name__ == '__main__':
 		args = parser.parse_args()
 		assert (args.path is None) != ((args.ndim is None) and (args.func_name_list is None) and (args.optimizer_config_list is None))
 		if args.path is None:
+			assert args.n_eval == 1
 			optimizer_config_list = args.optimizer_config_list.split(',')
 			func_name_list = args.func_name_list.split(',')
 			n_runs = len(optimizer_config_list) * len(func_name_list) * 5
@@ -116,28 +118,43 @@ if __name__ == '__main__':
 	start_time = datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
 	log_file_list = [tempfile.NamedTemporaryFile('w', delete=False) for _ in range(n_runs)]
 	for cmd_str, log_file in zip(cmd_str_list, log_file_list):
-		process_list.append(subprocess.Popen(cmd_str.split(), stdout=log_file, stderr=log_file))
-	log_filename_list = [os.path.split(elm.name) for elm in log_file_list]
-	log_filename_list = [os.path.join(elm[0], start_time + str(i).zfill(2) + '-' + elm[1] + '.log') for (i, elm) in enumerate(log_filename_list)]
+		process_list.append(subprocess32.Popen(cmd_str.split(), stdout=log_file, stderr=log_file))
+	dir_created = [os.path.isdir(elm) for elm in process_list[0].args].count(True) == 1
+	exp_dir_list = None
+	if dir_created:
+		exp_dir_list = [[elm for elm in process_list[i].args if os.path.isdir(elm)][0] for i in range(n_runs)]
 
-	sender = 'coh@' + socket.gethostbyaddr(socket.gethostname())[0]
-	receiver = 'changyong.oh0224@gmail.com'
-	smtpObj = smtplib.SMTP('localhost')
 	process_status_list = [elm.poll() for elm in process_list]
 	previous_process_status_list = process_status_list[:]
-	cnt = 0
+	cnt_normal_terimnation = 0
+	cnt_abnormal_termination = 0
+	sys.stdout.write('Process status check... %s -- Start\n' % datetime.now().strftime('%Y%m%d-%H:%M:%S'))
 	while None in process_status_list:
 		time.sleep(60)
-		print('process status checking...' + datetime.now().strftime('%Y%m%d-%H:%M:%S'))
+		sys.stdout.write('\rProcess status check... ' + datetime.now().strftime('%Y%m%d-%H:%M:%S'))
 		sys.stdout.flush()
 		process_status_list = [elm.poll() for elm in process_list]
 		for i, prev_p_status, p_status in zip(range(n_runs), previous_process_status_list, process_status_list):
 			if p_status is not None and prev_p_status is None:
-				cnt += 1
-				message = "Subject: %2d/%2d Terminated exit code(%d) in %s\n\ncheck file %s" % (cnt, n_runs, process_list[i].returncode, sender.split('@')[1], log_filename_list[i])
-				try:
-					smtpObj.sendmail(sender, receiver, message)
-				except:
-					print(message)
-					sys.stdout.flush()
+				if p_status == 0:
+					cnt_normal_terimnation += 1
+				else:
+					cnt_abnormal_termination += 1
+				log_filedir, log_filename = os.path.split(log_file_list[i].name)
+				if dir_created:
+					moved_filename = os.path.join(exp_dir_list[i], 'log', 'L' + start_time + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f') + '_'+ log_filename + '.log')
+					shutil.move(log_file_list[i].name, moved_filename)
+				else:
+					moved_filename = log_file_list[i].name
+				if p_status == 0:
+					sys.stdout.write('\n          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
+				else:
+					sys.stdout.write('\n    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
+					sender = 'coh@' + socket.gethostbyaddr(socket.gethostname())[0]
+					receiver = 'changyong.oh0224@gmail.com'
+					message = "Subject: %2d(+%2d:-%2d)/%2d Terminated(%d) in %s(%s)\n\ncheck file %s" \
+					          % (cnt_normal_terimnation + cnt_abnormal_termination, cnt_normal_terimnation, cnt_abnormal_termination, n_runs,
+					             process_list[i].returncode, sender.split('@')[1], start_time, moved_filename)
+					smtplib.SMTP('localhost').sendmail(sender, receiver, message)
+				sys.stdout.write('\n')
 		previous_process_status_list = process_status_list[:]

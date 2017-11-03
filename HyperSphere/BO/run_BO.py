@@ -198,4 +198,4 @@ if __name__ == '__main__':
 			assert not args.origin
 			assert not args.warping
 
-	BO(**vars(args))
+	print(BO(**vars(args)))
