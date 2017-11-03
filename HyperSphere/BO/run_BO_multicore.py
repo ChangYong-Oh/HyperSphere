@@ -119,9 +119,9 @@ if __name__ == '__main__':
 	log_file_list = [tempfile.NamedTemporaryFile('w', delete=False) for _ in range(n_runs)]
 	for cmd_str, log_file in zip(cmd_str_list, log_file_list):
 		process_list.append(subprocess32.Popen(cmd_str.split(), stdout=log_file, stderr=log_file))
-	dir_created = [os.path.isdir(elm) for elm in process_list[0].args].count(True) == 1
+	exp_dir_exist = [os.path.isdir(elm) for elm in process_list[0].args].count(True) == 1
 	exp_dir_list = None
-	if dir_created:
+	if exp_dir_exist:
 		exp_dir_list = [[elm for elm in process_list[i].args if os.path.isdir(elm)][0] for i in range(n_runs)]
 
 	process_status_list = [elm.poll() for elm in process_list]
@@ -141,20 +141,21 @@ if __name__ == '__main__':
 				else:
 					cnt_abnormal_termination += 1
 				log_filedir, log_filename = os.path.split(log_file_list[i].name)
-				if dir_created:
+				if exp_dir_exist:
 					moved_filename = os.path.join(exp_dir_list[i], 'log', 'L' + start_time + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f') + '_'+ log_filename + '.log')
 					shutil.move(log_file_list[i].name, moved_filename)
+					if p_status == 0:
+						sys.stdout.write('\n          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
+					else:
+						sys.stdout.write('\n    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
+						sender = 'coh@' + socket.gethostbyaddr(socket.gethostname())[0]
+						receiver = 'changyong.oh0224@gmail.com'
+						message = "Subject: %2d(+%2d:-%2d)/%2d Terminated(%d) in %s(%s)\n\ncheck file %s" \
+						          % (cnt_normal_terimnation + cnt_abnormal_termination, cnt_normal_terimnation,
+						             cnt_abnormal_termination, n_runs,
+						             process_list[i].returncode, sender.split('@')[1], start_time, moved_filename)
+						smtplib.SMTP('localhost').sendmail(sender, receiver, message)
+					sys.stdout.write('\n')
 				else:
 					moved_filename = log_file_list[i].name
-				if p_status == 0:
-					sys.stdout.write('\n          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
-				else:
-					sys.stdout.write('\n    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
-					sender = 'coh@' + socket.gethostbyaddr(socket.gethostname())[0]
-					receiver = 'changyong.oh0224@gmail.com'
-					message = "Subject: %2d(+%2d:-%2d)/%2d Terminated(%d) in %s(%s)\n\ncheck file %s" \
-					          % (cnt_normal_terimnation + cnt_abnormal_termination, cnt_normal_terimnation, cnt_abnormal_termination, n_runs,
-					             process_list[i].returncode, sender.split('@')[1], start_time, moved_filename)
-					smtplib.SMTP('localhost').sendmail(sender, receiver, message)
-				sys.stdout.write('\n')
 		previous_process_status_list = process_status_list[:]
