@@ -163,13 +163,13 @@ if __name__ == '__main__':
 						msg['Subject'] = '%2d(+%2d:-%2d)/%2d Terminated(%d) in %s(%s)' % \
 						                 (cnt_normal_terimnation + cnt_abnormal_termination, cnt_normal_terimnation, cnt_abnormal_termination,
 						                  n_runs, process_list[i].returncode, sender.split('@')[1], start_time)
-						msg.attach(MIMEText('check file %s' % moved_filename))
+						msg.attach(MIMEText('check file %s\n\n' % moved_filename))
 						msg.attach(MIMEText(file(moved_filename).read()))
 
 						smtplib.SMTP('localhost').sendmail(sender, receiver, msg.as_string())
-					sys.stdout.write('\n')
 				else:
 					moved_filename = log_file_list[i].name
+				sys.stdout.write('\n')
 		previous_process_status_list = process_status_list[:]
 		if process_monitor_cnt *process_monitor_cnt % 60 ==0:
 			msg = MIMEMultipart()
