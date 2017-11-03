@@ -18,6 +18,7 @@ class ShadowInference(Inference):
 		ind_origin = torch.sort(origin_mask, 0, descending=True)[1]
 		self.ind_origin = ind_origin[:n_origin]
 		self.ind_nonorigin = ind_origin[n_origin:]
+		self.train_x_origin = self.train_x.index_select(0, self.ind_origin)
 		self.train_x_nonorigin = self.train_x.index_select(0, self.ind_nonorigin)
 		self.train_x_nonorigin_radius = torch.sum(self.train_x_nonorigin ** 2, 1, keepdim=True) ** 0.5
 		self.train_x_nonorigin_sphere = self.train_x_nonorigin / self.train_x_nonorigin_radius
