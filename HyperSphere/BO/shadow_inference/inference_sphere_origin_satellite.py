@@ -143,18 +143,33 @@ class ShadowInference(Inference):
 		kernel_max = self.model.kernel.forward_on_identical().data[0]
 		n_nonorigin = self.train_x_nonorigin_radius.size(0)
 		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
-		K_nonorigin_origin_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius.repeat(n_nonorigin, 1) * 0)
-		K_nonorigin_origin_sphere = self.model.kernel.sphere_kernel(self.train_x_nonorigin_sphere, self.train_x_nonorigin_sphere)
-		K_nonorigin_origin = K_nonorigin_origin_radius * K_nonorigin_origin_sphere
+		K_non_ori_rel_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius * 0).repeat(1, n_nonorigin)
+		K_non_ori_rel_sphere = self.model.kernel.sphere_kernel(self.train_x_nonorigin_sphere, self.train_x_nonorigin_sphere)
+		K_non_ori_rel = K_non_ori_rel_radius * K_non_ori_rel_sphere
 
-		chol_solver = torch.gesv(torch.cat([self.mean_vec.index_select(0, self.ind_nonorigin), K_nonorigin_origin], 1), self.cholesky_nonorigin)[0]
-		chol_solver_y = chol_solver[:, :n_nonorigin]
-		chol_solver_q = chol_solver[:, n_nonorigin:]
-		sol_p = kernel_max + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
-		assert (sol_p.data >= 0).all()
-		sol_y = (self.mean_vec.index_select(0, self.ind_origin) - (chol_solver_q * chol_solver_y).sum(0).view(-1, 1)) / sol_p
+		chol_solver = torch.gesv(torch.cat([self.mean_vec.index_select(0, self.ind_nonorigin), K_non_ori_rel], 1), self.cholesky_nonorigin)[0]
+		chol_solver_y = chol_solver[:, :1]
+		chol_solver_q = chol_solver[:, 1:]
+		sol_p_sqr = kernel_max + self.model.likelihood(self.train_x_origin).repeat(n_nonorigin, 1) + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
+		if not (sol_p_sqr.data >= 0).all():
+			neg_mask = sol_p_sqr.data < 0
+			neg_val = sol_p_sqr.data[neg_mask]
+			min_neg_val = torch.min(neg_val)
+			max_neg_val = torch.max(neg_val)
+			kernel_max = self.model.kernel.forward_on_identical().data[0]
+			print('p')
+			print('p')
+			print('p')
+			print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), sol_p_sqr.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
+			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
+			print('jitter %.4E' % self.jitter)
+			print('-' * 50)
+			print('-' * 50)
+			print('-' * 50)
+		sol_p = torch.sqrt(sol_p_sqr.clamp(min=1e-8))
+		sol_y_i = (self.mean_vec.index_select(0, self.ind_origin) - chol_solver_q.t().mm(chol_solver_y)) / sol_p
 
-		nll = 0.5 * (torch.sum(chol_solver_y ** 2) + torch.mean(sol_y ** 2)) + torch.sum(torch.log(torch.diag(self.cholesky_nonorigin))) + torch.mean(torch.log(sol_p)) + 0.5 * self.train_y.size(0) * np.log(2 * np.pi)
+		nll = 0.5 * (torch.sum(chol_solver_y ** 2) + torch.mean(sol_y_i ** 2)) + torch.sum(torch.log(torch.diag(self.cholesky_nonorigin))) + torch.mean(torch.log(sol_p)) + 0.5 * self.train_y.size(0) * np.log(2 * np.pi)
 		if hyper is not None:
 			self.cholesky_update(param_original)
 		return nll

@@ -129,8 +129,12 @@ if __name__ == '__main__':
 	cnt_normal_terimnation = 0
 	cnt_abnormal_termination = 0
 	sys.stdout.write('Process status check... %s -- Start\n' % datetime.now().strftime('%Y%m%d-%H:%M:%S'))
+	process_monitor_cnt = 0
+	sender = 'coh@' + socket.gethostbyaddr(socket.gethostname())[0]
+	receiver = 'changyong.oh0224@gmail.com'
 	while None in process_status_list:
 		time.sleep(60)
+		process_monitor_cnt += 1
 		sys.stdout.write('\rProcess status check... ' + datetime.now().strftime('%Y%m%d-%H:%M:%S'))
 		sys.stdout.flush()
 		process_status_list = [elm.poll() for elm in process_list]
@@ -148,8 +152,6 @@ if __name__ == '__main__':
 						sys.stdout.write('\n          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
 					else:
 						sys.stdout.write('\n    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
-						sender = 'coh@' + socket.gethostbyaddr(socket.gethostname())[0]
-						receiver = 'changyong.oh0224@gmail.com'
 						message = "Subject: %2d(+%2d:-%2d)/%2d Terminated(%d) in %s(%s)\n\ncheck file %s" \
 						          % (cnt_normal_terimnation + cnt_abnormal_termination, cnt_normal_terimnation,
 						             cnt_abnormal_termination, n_runs,
@@ -159,3 +161,7 @@ if __name__ == '__main__':
 				else:
 					moved_filename = log_file_list[i].name
 		previous_process_status_list = process_status_list[:]
+		if process_monitor_cnt *process_monitor_cnt % 60 ==0:
+			message = "Subject: %2d processes (%2d) are running in %s without a problem\n\nSince %s" \
+			          % (process_status_list.count(None), n_runs, sender.split('@')[1], start_time)
+			smtplib.SMTP('localhost').sendmail(sender, receiver, message)
