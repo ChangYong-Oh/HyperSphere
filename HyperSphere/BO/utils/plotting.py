@@ -79,7 +79,7 @@ def plot_samples(ax, sample_list, color_list, title_str):
 
 
 if __name__ == '__main__':
-	optimum_plot('schwefel', 100)
+	optimum_plot('schwefel', 50)
 	# rosenbrock
 	# levy
 	# styblinskitang

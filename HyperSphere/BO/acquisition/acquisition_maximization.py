@@ -17,12 +17,16 @@ N_INIT = 20
 
 def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None):
 	max_step = 500
-
 	n_init = x0.size(0)
+
+	start_time = time.time()
+	print('Acqusition function is optimized with %2d inits %s' % (n_init, time.strftime('%H:%M:%S', time.gmtime(start_time))))
 	pool = multiprocessing.Pool(n_init)
 	processes = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
 	results = [p.get() for p in processes]
 	local_optima, optima_value = zip(*results)
+	end_time = time.time()
+	print('...............................................%s(%s)' % (time.strftime('%H:%M:%S', time.gmtime(end_time)), time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))))
 
 	suggestion = local_optima[np.nanargmin(optima_value)]
 	mean, std, var, stdmax, varmax = mean_std_var(suggestion, inferences)
