@@ -101,7 +101,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			exec(key + '=value')
 		data_config_file.close()
 
-	ignored_variable_names = ['n_eval', 'path', 'i',
+	ignored_variable_names = ['n_eval', 'path', 'i', 'key', 'value',
 	                          'data_config_file', 'dir_list', 'folder_name', 'model_filename', 'data_config_filename',
 	                          'kernel', 'model', 'inference']
 	stored_variable_names = set(locals().keys()).difference(set(ignored_variable_names))
@@ -118,8 +118,8 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		inferences = deepcopy_inference(inference, gp_hyper_params)
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
-		x0, sample_info = optimization_init_points(x0_cand, inferences, reference=reference)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(inferences, x0=x0, bounds=bnd, reference=reference)
+		x0, sample_info = optimization_init_points(x0_cand, reference=reference, inferences=inferences)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])

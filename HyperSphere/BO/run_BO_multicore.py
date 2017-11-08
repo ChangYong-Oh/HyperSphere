@@ -171,7 +171,7 @@ if __name__ == '__main__':
 				else:
 					moved_filename = log_file_list[i].name
 		previous_process_status_list = process_status_list[:]
-		if process_monitor_cnt *process_monitor_cnt % 60 ==0:
+		if process_monitor_cnt *process_monitor_cnt % 60 == 0:
 			msg = MIMEMultipart()
 			msg['From'] = sender
 			msg['To'] = receiver

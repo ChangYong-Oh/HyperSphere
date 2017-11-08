@@ -3,6 +3,7 @@ from torch.autograd import Variable
 import time
 import numpy as np
 import scipy.linalg as linalg
+import multiprocessing
 
 
 def test_speed_inverse_gesv(ndim=10):
@@ -117,5 +118,16 @@ def kumaraswamy():
 	plt.show()
 
 
+def test_func(x):
+	return x ** 2, range(x)
+
+
+def multiprocessor_test():
+	pool = multiprocessing.Pool(20)
+	process = [pool.apply_async(test_func, args=(i, )) for i in range(20)]
+	result = [p.get() for p in process]
+	print result
+
+
 if __name__ == '__main__':
-	kumaraswamy()
+	multiprocessor_test()

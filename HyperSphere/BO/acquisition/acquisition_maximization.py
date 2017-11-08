@@ -1,8 +1,8 @@
 import copy
 import time
+import multiprocessing
 
 import numpy as np
-import progressbar
 import torch
 import torch.optim as optim
 from torch.autograd import Variable, grad
@@ -15,48 +15,51 @@ N_SPRAY = 10
 N_INIT = 20
 
 
-def suggest(inferences, x0, acquisition_function=expected_improvement, bounds=None, **kwargs):
-	x = Variable(inferences[0].train_x.data.new(1, inferences[0].train_x.size(1)), requires_grad=True)
-	if bounds is not None:
-		if not hasattr(bounds, '__call__'):
-			def out_of_bounds(x):
-				return (x.data < bounds[0]).any() or (x.data > bounds[1]).any()
-		else:
-			out_of_bounds = bounds
+def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None):
+	max_step = 500
 
-	# for multi process, https://discuss.pytorch.org/t/copying-nn-modules-without-shared-memory/113
-	bar = progressbar.ProgressBar(max_value=x0.size(0))
-	bar.update(0)
-	n_step = 500
-	local_optima = []
-	optima_value = []
-	for i in range(x0.size(0)):
-		x.data = x0[i].view(1, -1)
-		prev_loss = None
-		###--------------------------------------------------###
-		# This block can be modified to use other optimization method
-		optimizer = optim.Adam([x], lr=0.01)
-		for _ in range(n_step):
-			optimizer.zero_grad()
-			loss = -acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs)
-			curr_loss = loss.data.squeeze()[0]
-			x.grad = grad([loss], [x], retain_graph=True)[0]
-			ftol = (prev_loss - curr_loss)/max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
-			if (x.grad.data != x.grad.data).any() or (ftol < 1e-9):
-				break
-			prev_x = x.data.clone()
-			prev_loss = curr_loss
-			optimizer.step()
-			if bounds is not None and out_of_bounds(x):
-				x.data = prev_x
-				break
-		###--------------------------------------------------###
-		bar.update(i+1)
-		local_optima.append(x.clone())
-		optima_value.append(-acquisition(x, inferences, acquisition_function=acquisition_function, **kwargs).data.squeeze()[0])
+	n_init = x0.size(0)
+	pool = multiprocessing.Pool(n_init)
+	processes = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
+	results = [p.get() for p in processes]
+	local_optima, optima_value = zip(*results)
+
 	suggestion = local_optima[np.nanargmin(optima_value)]
 	mean, std, var, stdmax, varmax = mean_std_var(suggestion, inferences)
 	return suggestion, mean, std, var, stdmax, varmax
+
+
+def optimize(max_step, x0, reference, inferences, acquisition_function=expected_improvement, bounds=None):
+	if bounds is not None:
+		if not hasattr(bounds, '__call__'):
+			def out_of_bounds(x_input):
+				return (x_input.data < bounds[0]).any() or (x_input.data > bounds[1]).any()
+		else:
+			out_of_bounds = bounds
+
+	x = Variable(x0.clone().view(1, -1), requires_grad=True)
+	prev_loss = None
+	###--------------------------------------------------###
+	# This block can be modified to use other optimization method
+	optimizer = optim.Adam([x], lr=0.01)
+	for _ in range(max_step):
+		optimizer.zero_grad()
+		loss = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function)
+		curr_loss = loss.data.squeeze()[0]
+		x.grad = grad([loss], [x], retain_graph=True)[0]
+		ftol = (prev_loss - curr_loss) / max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
+		if (x.grad.data != x.grad.data).any() or (ftol < 1e-9):
+			break
+		prev_x = x.data.clone()
+		prev_loss = curr_loss
+		optimizer.step()
+		if bounds is not None and out_of_bounds(x):
+			x.data = prev_x
+			break
+	###--------------------------------------------------###
+	optimum_loc = x.clone()
+	optimum_value = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function).data.squeeze()[0]
+	return optimum_loc, optimum_value
 
 
 def deepcopy_inference(inference, param_samples):
@@ -69,7 +72,7 @@ def deepcopy_inference(inference, param_samples):
 	return inferences
 
 
-def acquisition(x, inferences, acquisition_function=expected_improvement, stability_check=False, **kwargs):
+def acquisition(x, reference, inferences, acquisition_function=expected_improvement, stability_check=False):
 	acquisition_sample_list = []
 	numerically_stable_list = []
 	zero_pred_var_list = []
@@ -79,7 +82,7 @@ def acquisition(x, inferences, acquisition_function=expected_improvement, stabil
 		pred_var_sample = pred_dist[1]
 		numerically_stable_list.append(pred_dist[2])
 		zero_pred_var_list.append(pred_dist[3])
-		acquisition_sample_list.append(acquisition_function(pred_mean_sample[:, 0], pred_var_sample[:, 0], **kwargs))
+		acquisition_sample_list.append(acquisition_function(pred_mean_sample[:, 0], pred_var_sample[:, 0], reference=reference))
 	sample_info = (np.sum(numerically_stable_list), np.sum(zero_pred_var_list), len(numerically_stable_list))
 	if x.size(0) == 1:
 		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
@@ -139,10 +142,10 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	return Variable(x0)
 
 
-def optimization_init_points(candidates, inferences, acquisition_function=expected_improvement, **kwargs):
+def optimization_init_points(candidates, reference, inferences, acquisition_function=expected_improvement):
 	start_time = time.time()
 	ndim = candidates.size(1)
-	acq_value, sample_info = acquisition(candidates, inferences, acquisition_function, False, **kwargs)
+	acq_value, sample_info = acquisition(candidates, reference, inferences, acquisition_function, False)
 	acq_value = acq_value.data
 	nonnan_ind = acq_value == acq_value
 	acq_value = acq_value[nonnan_ind]
