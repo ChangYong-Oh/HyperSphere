@@ -1,10 +1,10 @@
 import copy
 import time
-import multiprocessing
 
 import numpy as np
 import torch
 import torch.optim as optim
+import torch.multiprocessing
 from torch.autograd import Variable, grad
 
 from HyperSphere.BO.acquisition.acquisition_functions import expected_improvement
@@ -20,13 +20,22 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 	n_init = x0.size(0)
 
 	start_time = time.time()
-	print('Acqusition function is optimized with %2d inits %s' % (n_init, time.strftime('%H:%M:%S', time.gmtime(start_time))))
-	pool = multiprocessing.Pool(n_init)
-	processes = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
-	results = [p.get() for p in processes]
-	local_optima, optima_value = zip(*results)
+	print('Acqusition function optimization with %2d inits %s has begun' % (n_init, time.strftime('%H:%M:%S', time.gmtime(start_time))))
+
+	pool = torch.multiprocessing.Pool(n_init)
+	results = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
+	return_values = [res.get() for res in results]
+	local_optima, optima_value = zip(*return_values)
+
+	# local_optima = []
+	# optima_value = []
+	# for i in range(n_init):
+	# 	optimum_loc, optimum_value = optimize(max_step, x0[i], reference, inferences, acquisition_function, bounds)
+	# 	local_optima.append(optimum_loc)
+	# 	optima_value.append(optimum_value)
+
 	end_time = time.time()
-	print('...............................................%s(%s)' % (time.strftime('%H:%M:%S', time.gmtime(end_time)), time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))))
+	print('Acqusition function optimization ended %s(%s)' % (time.strftime('%H:%M:%S', time.gmtime(end_time)), time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))))
 
 	suggestion = local_optima[np.nanargmin(optima_value)]
 	mean, std, var, stdmax, varmax = mean_std_var(suggestion, inferences)
@@ -34,6 +43,10 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 
 
 def optimize(max_step, x0, reference, inferences, acquisition_function=expected_improvement, bounds=None):
+	p = torch.multiprocessing.current_process()
+	pname = p.name
+	pid = p.pid
+	print('%s process has begun with id %s' % (pname, pid))
 	if bounds is not None:
 		if not hasattr(bounds, '__call__'):
 			def out_of_bounds(x_input):
@@ -63,6 +76,7 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 	###--------------------------------------------------###
 	optimum_loc = x.clone()
 	optimum_value = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function).data.squeeze()[0]
+	print('%s process(id:%s) ended' % (pname, pid))
 	return optimum_loc, optimum_value
 
 

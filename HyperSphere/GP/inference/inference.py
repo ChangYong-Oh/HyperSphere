@@ -55,6 +55,7 @@ class Inference(nn.Module):
 		while True:
 			try:
 				self.cholesky = Potrf.apply(self.gram_mat + Variable(eye_mat) * chol_jitter, False)
+				torch.gesv(self.gram_mat[:, :1], self.cholesky)
 				break
 			except RuntimeError:
 				chol_jitter = self.gram_mat.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10

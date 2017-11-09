@@ -33,6 +33,7 @@ class ShadowInference(Inference):
 		while True:
 			try:
 				self.cholesky_nonorigin = Potrf.apply(self.gram_mat_nonorigin + Variable(eye_mat) * chol_jitter, False)
+				torch.gesv(self.gram_mat_nonorigin[:, :1], self.cholesky_nonorigin)
 				break
 			except RuntimeError:
 				chol_jitter = self.gram_mat_nonorigin.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
