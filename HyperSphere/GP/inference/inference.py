@@ -89,7 +89,6 @@ class Inference(nn.Module):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
-		# nll = 0.5 * InverseBilinearForm.apply(self.mean_vec, self.gram_mat, self.mean_vec) + 0.5 * LogDeterminant.apply(self.gram_mat) + 0.5 * self.train_y.size(0) * math.log(2 * math.pi)
 		mean_vec_sol = torch.gesv(self.mean_vec, self.cholesky)[0]
 		nll = 0.5 * torch.sum(mean_vec_sol ** 2) + torch.sum(torch.log(torch.diag(self.cholesky))) + 0.5 * self.train_y.size(0) * np.log(2 * np.pi)
 		if hyper is not None:

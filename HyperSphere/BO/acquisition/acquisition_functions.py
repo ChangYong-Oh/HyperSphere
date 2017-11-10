@@ -2,7 +2,7 @@ import math
 
 import torch
 
-from HyperSphere.BO.axv.normal_cdf import norm_cdf
+from HyperSphere.BO.utils.normal_cdf import norm_cdf
 
 
 def norm_pdf(x, mu=0.0, var=1.0):

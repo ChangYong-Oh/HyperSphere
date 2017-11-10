@@ -37,7 +37,6 @@ class ShadowInference(Inference):
 				break
 			except RuntimeError:
 				chol_jitter = gram_mat_nonorigin.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
-		self.cholesky_nonorigin_inverse = torch.inverse(self.cholesky_nonorigin)
 		self.jitter = chol_jitter
 
 	def predict(self, pred_x, hyper=None, stability_check=False):
@@ -62,8 +61,7 @@ class ShadowInference(Inference):
 		K_sat_pre_diag = self.model.kernel.radius_kernel(pred_x_radius, one_radius * n_dim ** 0.5)
 
 		chol_B = torch.cat([K_non_ori, K_non_pre, self.mean_vec.index_select(0, self.ind_nonorigin), K_non_sat], 1)
-		# chol_solver = torch.gesv(chol_B, self.cholesky_nonorigin)[0]
-		chol_solver = self.cholesky_nonorigin_inverse.mm(chol_B)
+		chol_solver = torch.gesv(chol_B, self.cholesky_nonorigin)[0]
 		chol_solver_q = chol_solver[:, :n_pred]
 		chol_solver_k = chol_solver[:, n_pred:n_pred * 2]
 		chol_solver_y = chol_solver[:, n_pred * 2:n_pred * 2 + 1]

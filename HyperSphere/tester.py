@@ -118,10 +118,10 @@ def kumaraswamy():
 	plt.show()
 
 
-def test_func(x):
+def test_func():
 	p = multiprocessing.current_process()
 	print(p.pid)
-	ndim = 1000
+	ndim = 500
 	A = Variable(torch.randn(ndim, ndim))
 	b = Variable(torch.randn(ndim, 4))
 	x = torch.gesv(b, A)[0]
@@ -132,7 +132,7 @@ def test_func(x):
 def multiprocessor_test():
 	n = 10
 	pool = multiprocessing.Pool(n)
-	process = [pool.apply_async(test_func, args=(i, )) for i in range(n)]
+	process = [pool.apply_async(test_func) for _ in range(n)]
 	result = [p.get() for p in process]
 	print 'Done'
 

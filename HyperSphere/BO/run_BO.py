@@ -4,7 +4,9 @@ import time
 import argparse
 from datetime import datetime
 
-from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference
+import torch.multiprocessing
+
+from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference, N_INIT
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.test_functions.benchmarks import *
@@ -69,7 +71,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		model_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
-		x_input = Variable(torch.ger(-torch.arange(0, 2), torch.ones(ndim)))
+		x_input = Variable(torch.ger(torch.arange(0, 2), torch.ones(ndim)))
 		output = Variable(torch.zeros(x_input.size(0), 1))
 		for i in range(x_input.size(0)):
 			output[i] = func(x_input[i])
@@ -92,16 +94,18 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 	else:
 		if not os.path.exists(path):
 			path = os.path.join(EXPERIMENT_DIR, path)
+		logfile_dir = os.path.join(path, 'log')
 		model_filename = os.path.join(path, 'model.pt')
 		data_config_filename = os.path.join(path, 'data_config.pkl')
 
 		model = torch.load(model_filename)
 		data_config_file = open(data_config_filename, 'r')
 		for key, value in pickle.load(data_config_file).iteritems():
-			exec(key + '=value')
+			if key != 'logfile_dir':
+				exec(key + '=value')
 		data_config_file.close()
 
-	ignored_variable_names = ['n_eval', 'path', 'i', 'key', 'value',
+	ignored_variable_names = ['n_eval', 'path', 'i', 'key', 'value', 'logfile_dir',
 	                          'data_config_file', 'dir_list', 'folder_name', 'model_filename', 'data_config_filename',
 	                          'kernel', 'model', 'inference']
 	stored_variable_names = set(locals().keys()).difference(set(ignored_variable_names))
@@ -112,6 +116,8 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		logfile = open(os.path.join(logfile_dir, str(x_input.size(0)).zfill(4) + '.out'), 'w')
 		inference = inference_method((x_input, output), model)
 
+		pool = torch.multiprocessing.Pool(N_INIT)
+
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
@@ -119,7 +125,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0, sample_info = optimization_init_points(x0_cand, reference=reference, inferences=inferences)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(pool=pool, x0=x0, reference=reference, inferences=inferences, bounds=bnd)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])

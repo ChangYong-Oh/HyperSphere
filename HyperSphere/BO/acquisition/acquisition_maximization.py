@@ -15,24 +15,24 @@ N_SPRAY = 10
 N_INIT = 20
 
 
-def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None):
+def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None, pool=None):
 	max_step = 500
 	n_init = x0.size(0)
 
 	start_time = time.time()
 	print('Acqusition function optimization with %2d inits %s has begun' % (n_init, time.strftime('%H:%M:%S', time.gmtime(start_time))))
 
-	pool = torch.multiprocessing.Pool(n_init)
-	results = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
-	return_values = [res.get() for res in results]
-	local_optima, optima_value = zip(*return_values)
-
-	# local_optima = []
-	# optima_value = []
-	# for i in range(n_init):
-	# 	optimum_loc, optimum_value = optimize(max_step, x0[i], reference, inferences, acquisition_function, bounds)
-	# 	local_optima.append(optimum_loc)
-	# 	optima_value.append(optimum_value)
+	if pool is not None:
+		results = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
+		return_values = [res.get() for res in results]
+		local_optima, optima_value = zip(*return_values)
+	else:
+		local_optima = []
+		optima_value = []
+		for i in range(n_init):
+			optimum_loc, optimum_value = optimize(max_step, x0[i], reference, inferences, acquisition_function, bounds)
+		local_optima.append(optimum_loc)
+		optima_value.append(optimum_value)
 
 	end_time = time.time()
 	print('Acqusition function optimization ended %s(%s)' % (time.strftime('%H:%M:%S', time.gmtime(end_time)), time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))))
