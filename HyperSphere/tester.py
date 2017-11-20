@@ -2,6 +2,7 @@ import torch
 from torch.autograd import Variable
 import time
 import numpy as np
+import scipy as sp
 import scipy.linalg as linalg
 import multiprocessing
 
@@ -137,5 +138,14 @@ def multiprocessor_test():
 	print 'Done'
 
 
+def inversion_time(n_data):
+	start_time = time.time()
+	A = sp.randn(n_data, n_data)
+	print('random generation' + time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time)))
+	start_time = time.time()
+	B = linalg.inv(A)
+	print('matrix inversion' + time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time)))
+
+
 if __name__ == '__main__':
-	multiprocessor_test()
+	inversion_time(50000)

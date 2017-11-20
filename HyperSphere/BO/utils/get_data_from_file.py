@@ -3,6 +3,7 @@ import sys
 import pickle
 import numpy as np
 from scipy.io import loadmat
+import pandas as pd
 
 
 def get_data_sphere(dir_name, algorithms, func_name, ndim):
@@ -22,7 +23,6 @@ def get_data_sphere(dir_name, algorithms, func_name, ndim):
 			data['y'] = unpickled_data['output'].data.numpy()
 			data['optimum'] = np.array([np.min(data['y'][:i]) for i in range(1, data['n_eval'] + 1)])
 			data_list.append(data)
-
 	return data_list
 
 
@@ -66,17 +66,56 @@ def get_data_additive(dir_name, func_name, ndim):
 		data['optimum'] = np.squeeze(data_optimum[i])
 		data['n_eval'] = data['y'].size
 		data_list.append(data)
+	return data_list
 
+
+def get_data_spearmint(dir_name, func_name, ndim):
+	data_list = []
+	folder_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + str(ndim) in elm]
+	for folder in folder_list:
+		df = pd.read_pickle(os.path.join(folder, 'query_eval_data.pkl'))
+		df.sort_index(inplace=True)
+		df = df.applymap(float)
+		n_eval = df.shape[0]
+		data = {}
+		data['algorithm'] = 'spearmint_warping'
+		x_data = np.empty((n_eval, 0))
+		for i in range(1, ndim + 1):
+			x_data = np.hstack((x_data, np.array(df['x' + str(i)]).reshape((n_eval, 1))))
+		data['x'] = x_data
+		data['y'] = np.array(df['value'])
+		data['optimum'] = np.array([np.min(data['y'][:i]) for i in range(1, n_eval + 1)])
+		data['n_eval'] = n_eval
+		data_list.append(data)
+	return data_list
+
+
+def get_data_elastic(dir_name, func_name, ndim):
+	data_list = []
+	filename_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + str(ndim) in elm and '.mat' in elm]
+	for filename in filename_list:
+		mat_data = loadmat(filename)
+		data = {}
+		data['algorithm'] = 'elasticGP'
+		data['x'] = mat_data['x']
+		data['y'] = -mat_data['y'].flatten()
+		data['optimum'] = -mat_data['ybest'].flatten()
+		data['n_eval'] = mat_data['y'].shape[0]
+		data_list.append(data)
 	return data_list
 
 
 def get_data(func_name, ndim):
 	HPOlib_dir_name = '/home/coh1/git_repositories/HPOlib/HPOlib/benchmarks/' + func_name + str(ndim)
 	additive_dir_name = '/home/coh1/Experiments/Additive_BO_mat'
+	spearmint_warping_dir_name = '/home/coh1/Experiments/Spearmint_ALL'
+	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat'
 	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL'
 	data_list = get_data_additive(additive_dir_name, func_name, ndim)
 	if os.path.exists(HPOlib_dir_name):
 		data_list += get_data_HPOlib(HPOlib_dir_name)
+	data_list += get_data_spearmint(spearmint_warping_dir_name, func_name, ndim)
+	data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
 	data_list += get_data_sphere(sphere_dir_name, ['spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)
 	return data_list
 

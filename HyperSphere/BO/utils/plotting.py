@@ -7,6 +7,23 @@ from HyperSphere.BO.utils.get_data_from_file import get_data
 color_list = ['b', 'g', 'r', 'tab:brown', 'm', 'p', 'k', 'w']
 
 
+def algorithm_color(algorithm):
+	if algorithm == 'spearmint':
+		return 'yellow'
+	if algorithm == 'spearmint_warping':
+		return 'darkorange'
+	if algorithm == 'additiveBO':
+		return 'g'
+	if algorithm == 'elasticGP':
+		return 'slategray'
+	if algorithm == 'spherewarpingnone':
+		return 'brown'
+	if algorithm == 'spherewarpingboth':
+		return 'r'
+	if algorithm == 'spherewarpingorigin':
+		return 'm'
+
+
 def optimum_plot(func_name, ndim):
 	data_list = get_data(func_name, ndim)
 	title = func_name + '_D' + str(ndim)
@@ -14,7 +31,7 @@ def optimum_plot(func_name, ndim):
 	n_algorithms = algorithms.size
 
 	y_min = np.inf
-	y_max = np.min(np.array([data['optimum'][:2] for data in data_list]))
+	y_max = np.max(np.min([data['optimum'][:2] for data in data_list]))
 	norm_z = 1.0
 	plot_data = {}
 	for algorithm in algorithms:
@@ -38,7 +55,7 @@ def optimum_plot(func_name, ndim):
 
 	ax_big = plt.subplot(gs[n_algorithms:])
 	for key, data in plot_data.iteritems():
-		color = np.random.rand(3)
+		color = algorithm_color(key)
 		ax_big.plot(data['plot_x'], data['mean'], color=color, label=key + '(' + str(data['n_samples']) + ')')
 		ax_big.fill_between(data['plot_x'], data['mean'] - norm_z * data['std'], data['mean'] + norm_z * data['std'], color=color, alpha=0.25)
 	ax_big.set_ylabel('Comparison', rotation=0, fontsize=8)
@@ -79,9 +96,8 @@ def plot_samples(ax, sample_list, color_list, title_str):
 
 
 if __name__ == '__main__':
-	optimum_plot('schwefel', 50)
-	# rosenbrock
-	# levy
-	# styblinskitang
+	optimum_plot('styblinskitang', 50)
 	# schwefel
-
+	# styblinskitang
+	# michalewicz
+	# levy

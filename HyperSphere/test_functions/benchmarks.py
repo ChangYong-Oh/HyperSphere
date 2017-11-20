@@ -95,7 +95,7 @@ def rosenbrock(x):
 		x = x * 7.5 + 2.5
 
 	normalizer = 50000.0 / ((90 ** 2 + 9 ** 2) * (x.size(1) - 1))
-	output = (100.0 * ((x[:, 1:] - x[:, :-1] ** 2) ** 2).sum(1, keepdim=True) + ((x[:, :-1] - 1) ** 2).sum(1, keepdim=True)) * normalizer
+	output = (100.0 * ((x[:, 1:] - x[:, :-1] ** 2) ** 2) + (x[:, :-1] - 1) ** 2).sum(1, keepdim=True) * normalizer
 	if flat:
 		return output.squeeze(0)
 	else:
@@ -124,6 +124,27 @@ def styblinskitang(x):
 styblinskitang.dim = 0
 
 
+def rotatedstyblinskitang(x):
+	flat = x.dim() == 1
+	if flat:
+		x = x.view(1, -1)
+	ndim = x.size(1)
+	orthogonal_matrix = generate_orthogonal_matrix(ndim)
+	if hasattr(x, 'data'):
+		x.data = x.data.mm(orthogonal_matrix) * 5.0
+	else:
+		x = x.mm(orthogonal_matrix) * 5.0
+
+	output = ((x ** 4).sum(1, keepdim=True) - 16 * (x ** 2).sum(1, keepdim=True) + 5 * x.sum(1, keepdim=True)) / (2.0 * x.size(1))
+	if flat:
+		return output.squeeze(0)
+	else:
+		return output
+
+
+rotatedstyblinskitang.dim = 0
+
+
 def schwefel(x):
 	flat = x.dim() == 1
 	if flat:
@@ -143,28 +164,25 @@ def schwefel(x):
 schwefel.dim = 0
 
 
-def perm(x):
+def rotatedschwefel(x):
 	flat = x.dim() == 1
 	if flat:
 		x = x.view(1, -1)
 	ndim = x.size(1)
-	indices = torch.arange(1, ndim + 1)
+	orthogonal_matrix = generate_orthogonal_matrix(ndim)
 	if hasattr(x, 'data'):
-		indices = Variable(indices)
+		x.data = x.data.mm(orthogonal_matrix) * 500.0
+	else:
+		x = x.mm(orthogonal_matrix) * 500.0
 
-	beta = 0
-
-	output = 0
-	for i in range(1, ndim + 1):
-		output += torch.mean((indices + beta) * (x ** i - indices ** (-i)), 1, keepdim=True) ** 2
-	output /= ndim
+	output = 418.9829 - torch.mean(x * torch.sin(torch.abs(x) ** 0.5), 1, keepdim=True)
 	if flat:
 		return output.squeeze(0)
 	else:
 		return output
 
 
-perm.dim = 0
+rotatedschwefel.dim = 0
 
 
 def michalewicz(x):
@@ -190,3 +208,9 @@ def michalewicz(x):
 
 
 michalewicz.dim = 0
+
+
+def generate_orthogonal_matrix(ndim):
+	x = torch.exp(torch.sin(torch.linspace(-ndim ** 0.5, ndim ** 0.5, ndim)))
+	gram_mat = torch.exp(-(x.unsqueeze(1).repeat(1, ndim) - x.unsqueeze(0).repeat(ndim, 1)) ** 2)
+	return torch.qr(gram_mat)[0]
