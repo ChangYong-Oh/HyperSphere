@@ -130,7 +130,7 @@ if __name__ == '__main__':
 	while None in process_status_list:
 		time.sleep(60)
 		process_monitor_cnt += 1
-		print('Process status check...(%s) load avg %4.2f,%4.2f,%4.2f' % ((datetime.now().strftime('%Y%m%d-%H:%M:%S')) + os.getloadavg()))
+		print('Process status check...(%s) load avg %4.2f,%4.2f,%4.2f' % ((datetime.now().strftime('%Y%m%d-%H:%M:%S'), ) + os.getloadavg()))
 		sys.stdout.flush()
 		process_status_list = [elm.poll() for elm in process_list]
 		for i, prev_p_status, p_status in zip(range(n_runs), previous_process_status_list, process_status_list):
