@@ -125,12 +125,12 @@ if __name__ == '__main__':
 	previous_process_status_list = process_status_list[:]
 	cnt_normal_terimnation = 0
 	cnt_abnormal_termination = 0
-	sys.stdout.write('Process status check... %s -- Start\n' % datetime.now().strftime('%Y%m%d-%H:%M:%S'))
+	print('Process status check... %s -- Start' % datetime.now().strftime('%Y%m%d-%H:%M:%S'))
 	process_monitor_cnt = 0
 	while None in process_status_list:
 		time.sleep(60)
 		process_monitor_cnt += 1
-		sys.stdout.write('\rProcess status check... ' + datetime.now().strftime('%Y%m%d-%H:%M:%S'))
+		print('Process status check...(%s) load avg %4.2f,%4.2f,%4.2f' % ((datetime.now().strftime('%Y%m%d-%H:%M:%S')) + os.getloadavg()))
 		sys.stdout.flush()
 		process_status_list = [elm.poll() for elm in process_list]
 		for i, prev_p_status, p_status in zip(range(n_runs), previous_process_status_list, process_status_list):
@@ -144,10 +144,9 @@ if __name__ == '__main__':
 					moved_filename = os.path.join(exp_dir_list[i], 'log', 'L' + start_time + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f') + '_'+ log_filename + '.log')
 					shutil.move(log_file_list[i].name, moved_filename)
 					if p_status == 0:
-						sys.stdout.write('\n          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
+						print('          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
 					else:
-						sys.stdout.write('\n    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
-					sys.stdout.write('\n')
+						print('    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
 				else:
 					moved_filename = log_file_list[i].name
 		previous_process_status_list = process_status_list[:]
