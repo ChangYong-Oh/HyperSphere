@@ -125,7 +125,7 @@ if __name__ == '__main__':
 	previous_process_status_list = process_status_list[:]
 	cnt_normal_terimnation = 0
 	cnt_abnormal_termination = 0
-	print('Process status check... %s -- Start' % datetime.now().strftime('%Y%m%d-%H:%M:%S'))
+	print('Process status check...(%s) -- Start' % datetime.now().strftime('%Y%m%d-%H:%M:%S'))
 	process_monitor_cnt = 0
 	while None in process_status_list:
 		time.sleep(60)
@@ -147,6 +147,7 @@ if __name__ == '__main__':
 						print('          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
 					else:
 						print('    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
+					sys.stdout.flush()
 				else:
 					moved_filename = log_file_list[i].name
 		previous_process_status_list = process_status_list[:]
