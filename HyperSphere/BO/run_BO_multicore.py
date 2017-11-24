@@ -3,24 +3,20 @@ import os.path
 import sys
 import time
 import shutil
+import psutil
 from datetime import datetime
 import argparse
 import multiprocessing
 import subprocess32
 import tempfile
 import socket
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email.mime.text import MIMEText
-from email.utils import COMMASPACE, formatdate
 
 from utils.datafile_utils import EXPERIMENT_DIR
 
 valid_config_str_list = ['cube', 'cubeard', 'cubeboundary', 'cubeardboundary',
                          'spherenone', 'sphereorigin', 'sphereboundary', 'sphereboth',
                          'spherewarpingnone', 'spherewarpingorigin', 'spherewarpingboundary', 'spherewarpingboth']
-valid_func_name_list = ['levy', 'styblinskitang', 'rosenbrock', 'schwefel', 'perm', 'michalewicz']
+valid_func_name_list = ['levy', 'styblinskitang', 'rosenbrock', 'schwefel', 'michalewicz', 'rotatedschwefel', 'rotatedstyblinskitang']
 
 
 def argument_generate(config_str):
@@ -102,9 +98,6 @@ if __name__ == '__main__':
 			path_list = args.path.split(',')
 			n_runs = len(path_list) * 5
 			cmd_str_list = continuing_command_str_generate(current_file, path_list, args.n_eval)
-		if n_runs > int(multiprocessing.cpu_count() / 5) * 5:
-			print('Too many runs, reduce the number of optimizer or the number of functions')
-			exit()
 	except:
 		print('Multiple arguments can be given with comma seperation(no other seperator is allowed.)')
 		if args.path is None:
@@ -134,8 +127,6 @@ if __name__ == '__main__':
 	cnt_abnormal_termination = 0
 	sys.stdout.write('Process status check... %s -- Start\n' % datetime.now().strftime('%Y%m%d-%H:%M:%S'))
 	process_monitor_cnt = 0
-	sender = 'coh@' + socket.gethostbyaddr(socket.gethostname())[0]
-	receiver = 'changyong.oh0224@gmail.com'
 	while None in process_status_list:
 		time.sleep(60)
 		process_monitor_cnt += 1
@@ -156,27 +147,8 @@ if __name__ == '__main__':
 						sys.stdout.write('\n          Experiment in %s has finished with exit code %d' % (exp_dir_list[i], process_list[i].returncode))
 					else:
 						sys.stdout.write('\n    !!!!! Experiment in %s has finished with exit code %d !!!!!' % (exp_dir_list[i], process_list[i].returncode))
-						msg = MIMEMultipart()
-						msg['From'] = sender
-						msg['To'] = receiver
-						msg['Date'] = formatdate(localtime=True)
-						msg['Subject'] = '%2d(+%2d:-%2d)/%2d Terminated(%d) in %s(%s)' % \
-						                 (cnt_normal_terimnation + cnt_abnormal_termination, cnt_normal_terimnation, cnt_abnormal_termination,
-						                  n_runs, process_list[i].returncode, sender.split('@')[1], start_time)
-						msg.attach(MIMEText('check file %s\n\n' % moved_filename))
-						msg.attach(MIMEText(file(moved_filename).read()))
-
-						smtplib.SMTP('localhost').sendmail(sender, receiver, msg.as_string())
 					sys.stdout.write('\n')
 				else:
 					moved_filename = log_file_list[i].name
 		previous_process_status_list = process_status_list[:]
-		if process_monitor_cnt *process_monitor_cnt % 60 == 0:
-			msg = MIMEMultipart()
-			msg['From'] = sender
-			msg['To'] = receiver
-			msg['Date'] = formatdate(localtime=True)
-			msg['Subject'] = "%2d processes (%2d) are running in %s without a problem" \
-			                 % (process_status_list.count(None), n_runs, sender.split('@')[1])
-			msg.attach(MIMEText('Since %s' % start_time))
-			smtplib.SMTP('localhost').sendmail(sender, receiver, msg.as_string())
+

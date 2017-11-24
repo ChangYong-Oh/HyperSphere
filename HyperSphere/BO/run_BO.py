@@ -116,8 +116,6 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		logfile = open(os.path.join(logfile_dir, str(x_input.size(0)).zfill(4) + '.out'), 'w')
 		inference = inference_method((x_input, output), model)
 
-		pool = torch.multiprocessing.Pool(N_INIT)
-
 		reference, ref_ind = torch.min(output, 0)
 		reference = reference.data.squeeze()[0]
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
@@ -125,7 +123,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0, sample_info = optimization_init_points(x0_cand, reference=reference, inferences=inferences)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(pool=pool, x0=x0, reference=reference, inferences=inferences, bounds=bnd)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])

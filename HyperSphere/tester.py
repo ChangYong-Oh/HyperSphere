@@ -1,10 +1,12 @@
 import torch
 from torch.autograd import Variable
+import sys
 import time
+from datetime import datetime
 import numpy as np
 import scipy as sp
 import scipy.linalg as linalg
-import multiprocessing
+import torch.multiprocessing
 
 
 def test_speed_inverse_gesv(ndim=10):
@@ -119,22 +121,46 @@ def kumaraswamy():
 	plt.show()
 
 
-def test_func():
-	p = multiprocessing.current_process()
+def test_func(i):
+	p = torch.multiprocessing.current_process()
 	print(p.pid)
+	sys.stdout.flush()
 	ndim = 500
 	A = Variable(torch.randn(ndim, ndim))
 	b = Variable(torch.randn(ndim, 4))
 	x = torch.gesv(b, A)[0]
-	print(torch.sum(x).data[0])
 	return x
 
 
 def multiprocessor_test():
-	n = 10
-	pool = multiprocessing.Pool(n)
-	process = [pool.apply_async(test_func) for _ in range(n)]
-	result = [p.get() for p in process]
+	n = 5
+
+	pool = torch.multiprocessing.Pool(n)
+	result_list = []
+	for i in range(n):
+		time.sleep(0.1)
+		result_list.append(pool.apply_async(test_func, args=(i,)))
+		print('At %s, running %d process' % (datetime.now().strftime('%Y%m%d-%H:%M:%S:%f'), [p.ready() for p in result_list].count(False)))
+		sys.stdout.flush()
+	print("all processes are running")
+	sys.stdout.flush()
+	while [p.ready() for p in result_list].count(False) > 0:
+		time.sleep(0.1)
+		print('At %s, running %d process' % (datetime.now().strftime('%Y%m%d-%H:%M:%S:%f'), [p.ready() for p in result_list].count(False)))
+	result = [p.get() for p in result_list]
+	for res in result:
+		print(res.size())
+
+	# process_list = [torch.multiprocessing.Process(target=test_func, args=(i, )) for i in range(n)]
+	# print("Before start n_running : %d" % [p.is_alive() for p in process_list].count(True))
+	# sys.stdout.flush()
+	# for p in process_list:
+	# 	p.start()
+	# while [p.is_alive() for p in process_list].count(True) > 0:
+	# 	time.sleep(0.1)
+	# 	print(datetime.now().strftime('%Y%m%d-%H:%M:%S:%f'))
+	# 	sys.stdout.flush()
+
 	print 'Done'
 
 
@@ -148,4 +174,4 @@ def inversion_time(n_data):
 
 
 if __name__ == '__main__':
-	inversion_time(50000)
+	multiprocessor_test()

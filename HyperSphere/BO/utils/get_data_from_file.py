@@ -111,9 +111,10 @@ def get_data(func_name, ndim):
 	spearmint_warping_dir_name = '/home/coh1/Experiments/Spearmint_ALL'
 	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat'
 	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL'
-	data_list = get_data_additive(additive_dir_name, func_name, ndim)
+	data_list = []
 	if os.path.exists(HPOlib_dir_name):
 		data_list += get_data_HPOlib(HPOlib_dir_name)
+	data_list += get_data_additive(additive_dir_name, func_name, ndim)
 	data_list += get_data_spearmint(spearmint_warping_dir_name, func_name, ndim)
 	data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
 	data_list += get_data_sphere(sphere_dir_name, ['spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)

@@ -96,8 +96,10 @@ def plot_samples(ax, sample_list, color_list, title_str):
 
 
 if __name__ == '__main__':
-	optimum_plot('styblinskitang', 50)
+	optimum_plot('schwefel', 50)
 	# schwefel
 	# styblinskitang
 	# michalewicz
 	# levy
+	# rotatedschwefel
+	# rotatedstyblinskitang
