@@ -16,7 +16,7 @@ from utils.datafile_utils import EXPERIMENT_DIR
 valid_config_str_list = ['cube', 'cubeard', 'cubeboundary', 'cubeardboundary',
                          'spherenone', 'sphereorigin', 'sphereboundary', 'sphereboth',
                          'spherewarpingnone', 'spherewarpingorigin', 'spherewarpingboundary', 'spherewarpingboth']
-valid_func_name_list = ['levy', 'styblinskitang', 'rosenbrock', 'schwefel', 'michalewicz', 'rotatedschwefel', 'rotatedstyblinskitang']
+valid_func_name_list = ['levy', 'michalewicz', 'rosenbrock', 'rotatedschwefel', 'rotatedstyblinskitang', 'schwefel', 'styblinskitang']
 
 
 def argument_generate(config_str):
@@ -87,7 +87,8 @@ if __name__ == '__main__':
 				path_list = []
 				for optimizer_config in optimizer_config_list:
 					for func_name in func_name_list:
-						path_list += [os.path.join(EXPERIMENT_DIR, elm) for elm in os.listdir(EXPERIMENT_DIR) if func_name + '_D' + str(args.ndim) + '_' + optimizer_config in elm]
+						exp_config = func_name + '_D' + str(args.ndim) + '_' + optimizer_config
+						path_list += [os.path.join(EXPERIMENT_DIR, elm) for elm in os.listdir(EXPERIMENT_DIR) if exp_config == elm[:len(exp_config)]]
 				for elm in path_list:
 					print(elm)
 				cmd_str_list = continuing_command_str_generate(current_file, path_list, args.n_eval)
