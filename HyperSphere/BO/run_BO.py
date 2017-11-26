@@ -26,7 +26,7 @@ from HyperSphere.BO.shadow_inference.inference_sphere_origin_satellite import Sh
 from HyperSphere.feature_map.functionals import sphere_bound
 
 
-def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=False, ard=False, origin=False, warping=False):
+def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=False, ard=False, origin=False, warping=False, parallel=False):
 	assert (path is None) != (func is None)
 
 	if path is None:
@@ -72,21 +72,22 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
 		x_input = Variable(torch.ger(torch.arange(0, 2), torch.ones(ndim)))
-		output = Variable(torch.zeros(x_input.size(0), 1))
-		for i in range(x_input.size(0)):
+		n_init_eval = x_input.size(0)
+		output = Variable(torch.zeros(n_init_eval, 1))
+		for i in range(n_init_eval):
 			output[i] = func(x_input[i])
 
-		time_list = [time.time()] * 2
-		elapse_list = [0, 0]
-		pred_mean_list = [0, 0]
-		pred_std_list = [0, 0]
-		pred_var_list = [0, 0]
-		pred_stdmax_list = [1, 1]
-		pred_varmax_list = [1, 1]
-		reference_list = [output.data.squeeze()[0]] * 2
-		refind_list = [1, 1]
-		dist_to_ref_list = [0, 0]
-		sample_info_list = [(10, 0, 10)] * 2
+		time_list = [time.time()] * n_init_eval
+		elapse_list = [0] * n_init_eval
+		pred_mean_list = [0] * n_init_eval
+		pred_std_list = [0] * n_init_eval
+		pred_var_list = [0] * n_init_eval
+		pred_stdmax_list = [1] * n_init_eval
+		pred_varmax_list = [1] * n_init_eval
+		reference_list = [output.data.squeeze()[0]] * n_init_eval
+		refind_list = [1] * n_init_eval
+		dist_to_ref_list = [0] * n_init_eval
+		sample_info_list = [(10, 0, 10)] * n_init_eval
 
 		inference = inference_method((x_input, output), model)
 		inference.init_parameters()
@@ -105,14 +106,15 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 				exec(key + '=value')
 		data_config_file.close()
 
-	ignored_variable_names = ['n_eval', 'path', 'i', 'key', 'value', 'logfile_dir',
+	ignored_variable_names = ['n_eval', 'path', 'i', 'key', 'value', 'logfile_dir', 'n_init_eval',
 	                          'data_config_file', 'dir_list', 'folder_name', 'model_filename', 'data_config_filename',
-	                          'kernel', 'model', 'inference']
+	                          'kernel', 'model', 'inference', 'pool']
 	stored_variable_names = set(locals().keys()).difference(set(ignored_variable_names))
 
 	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
 
 	for _ in range(x_input.size(0), n_eval):
+		start_time = time.time()
 		logfile = open(os.path.join(logfile_dir, str(x_input.size(0)).zfill(4) + '.out'), 'w')
 		inference = inference_method((x_input, output), model)
 
@@ -123,7 +125,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0, sample_info = optimization_init_points(x0_cand, reference=reference, inferences=inferences)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd, parallel=parallel)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
@@ -185,6 +187,7 @@ if __name__ == '__main__':
 	parser.add_argument('--origin', dest='origin', action='store_true', default=False)
 	parser.add_argument('--ard', dest='ard', action='store_true', default=False)
 	parser.add_argument('--warping', dest='warping', action='store_true', default=False)
+	parser.add_argument('--parallel', dest='parallel', action='store_true', default=False)
 
 	args = parser.parse_args()
 	assert (args.path is None) != (args.func_name is None)

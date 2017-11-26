@@ -17,35 +17,17 @@ N_SPRAY = 10
 N_INIT = 20
 
 
-def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None, parallel=True):
+def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None, parallel=False):
 	max_step = 500
 	n_init = x0.size(0)
 
 	start_time = time.time()
 	print('Acqusition function optimization with %2d inits %s has begun' % (n_init, time.strftime('%H:%M:%S', time.gmtime(start_time))))
 
+	# Parallel version and non-parallel version behave differently.
 	if parallel:
-		pool = torch.multiprocessing.Pool(N_INIT)
-		results = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
-
-		# To prevent competing for resource
-		# n_cpu = float(torch.multiprocessing.cpu_count())
-		# pool = torch.multiprocessing.Pool(n_init)
-		# results = []
-		# process_started = [False] * n_init
-		# process_running = [False] * n_init
-		# process_index = 0
-		# while process_started.count(False) > 0:
-		# 	cpu_usage = psutil.cpu_percent(1.0) * psutil.cpu_count() * 0.01
-		# 	run_more = cpu_usage + 4.0 < n_cpu
-		# 	if run_more:
-		# 		results.append(pool.apply_async(optimize, args=(max_step, x0[process_index], reference, inferences, acquisition_function, bounds)))
-		# 		process_started[process_index] = True
-		# 		process_running[process_index] = True
-		# 		process_index += 1
-		# while process_running.count(True) > 0:
-		# 	time.sleep(1)
-		# 	process_running = [not p.ready() for p in results]
+		pool = torch.multiprocessing.Pool(n_init) if parallel else None
+		results = [pool.apply_async(optimize, args=(max_step, x0[p], reference, inferences, acquisition_function, bounds)) for p in range(n_init)]
 
 		return_values = [res.get() for res in results]
 		local_optima, optima_value = zip(*return_values)
@@ -53,10 +35,10 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 	else:
 		local_optima = []
 		optima_value = []
-		for i in range(n_init):
-			optimum_loc, optimum_value = optimize(max_step, x0[i], reference, inferences, acquisition_function, bounds)
-		local_optima.append(optimum_loc)
-		optima_value.append(optimum_value)
+		for p in range(n_init):
+			optimum_loc, optimum_value = optimize(max_step, x0[p], reference, inferences, acquisition_function, bounds)
+			local_optima.append(optimum_loc)
+			optima_value.append(optimum_value)
 
 	end_time = time.time()
 	print('Acqusition function optimization ended %s(%s)' % (time.strftime('%H:%M:%S', time.gmtime(end_time)), time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))))
@@ -67,10 +49,10 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 
 
 def optimize(max_step, x0, reference, inferences, acquisition_function=expected_improvement, bounds=None):
-	p = torch.multiprocessing.current_process()
-	pname = p.name
-	pid = p.pid
-	print('%s process has begun with id %s' % (pname, pid))
+	# p = torch.multiprocessing.current_process()
+	# pname = p.name
+	# pid = p.pid
+	# print('%s process has begun with id %s' % (pname, pid))
 	if bounds is not None:
 		if not hasattr(bounds, '__call__'):
 			def out_of_bounds(x_input):
@@ -83,7 +65,7 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 	###--------------------------------------------------###
 	# This block can be modified to use other optimization method
 	optimizer = optim.Adam([x], lr=0.01)
-	for _ in range(max_step):
+	for s in range(max_step):
 		optimizer.zero_grad()
 		loss = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function)
 		curr_loss = loss.data.squeeze()[0]
@@ -100,7 +82,7 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 	###--------------------------------------------------###
 	optimum_loc = x.clone()
 	optimum_value = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function).data.squeeze()[0]
-	print('%s process(id:%s) ended' % (pname, pid))
+	# print('%s process(id:%s) ended' % (pname, pid))
 	return optimum_loc, optimum_value
 
 
