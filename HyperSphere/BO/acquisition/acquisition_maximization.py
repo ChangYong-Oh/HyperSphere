@@ -25,27 +25,27 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 	print('Acqusition function optimization with %2d inits %s has begun' % (n_init, time.strftime('%H:%M:%S', time.gmtime(start_time))))
 
 	if parallel:
-		# pool = torch.multiprocessing.Pool(N_INIT)
-		# results = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
+		pool = torch.multiprocessing.Pool(N_INIT)
+		results = [pool.apply_async(optimize, args=(max_step, x0[i], reference, inferences, acquisition_function, bounds)) for i in range(n_init)]
 
 		# To prevent competing for resource
-		n_cpu = float(torch.multiprocessing.cpu_count())
-		pool = torch.multiprocessing.Pool(n_init)
-		results = []
-		process_started = [False] * n_init
-		process_running = [False] * n_init
-		process_index = 0
-		while process_started.count(False) > 0:
-			cpu_usage = psutil.cpu_percent(1.0) * psutil.cpu_count() * 0.01
-			run_more = cpu_usage + 4.0 < n_cpu
-			if run_more:
-				results.append(pool.apply_async(optimize, args=(max_step, x0[process_index], reference, inferences, acquisition_function, bounds)))
-				process_started[process_index] = True
-				process_running[process_index] = True
-				process_index += 1
-		while process_running.count(True) > 0:
-			time.sleep(1)
-			process_running = [not p.ready() for p in results]
+		# n_cpu = float(torch.multiprocessing.cpu_count())
+		# pool = torch.multiprocessing.Pool(n_init)
+		# results = []
+		# process_started = [False] * n_init
+		# process_running = [False] * n_init
+		# process_index = 0
+		# while process_started.count(False) > 0:
+		# 	cpu_usage = psutil.cpu_percent(1.0) * psutil.cpu_count() * 0.01
+		# 	run_more = cpu_usage + 4.0 < n_cpu
+		# 	if run_more:
+		# 		results.append(pool.apply_async(optimize, args=(max_step, x0[process_index], reference, inferences, acquisition_function, bounds)))
+		# 		process_started[process_index] = True
+		# 		process_running[process_index] = True
+		# 		process_index += 1
+		# while process_running.count(True) > 0:
+		# 	time.sleep(1)
+		# 	process_running = [not p.ready() for p in results]
 
 		return_values = [res.get() for res in results]
 		local_optima, optima_value = zip(*return_values)

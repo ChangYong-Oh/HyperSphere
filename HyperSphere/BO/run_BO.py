@@ -112,7 +112,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
 
-	for _ in range(n_eval):
+	for _ in range(x_input.size(0), n_eval):
 		logfile = open(os.path.join(logfile_dir, str(x_input.size(0)).zfill(4) + '.out'), 'w')
 		inference = inference_method((x_input, output), model)
 
