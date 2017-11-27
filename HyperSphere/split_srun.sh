@@ -32,7 +32,7 @@ esac
 
 for s in {1..5}
 do
-    dir_name=$($run_command $exp_config -d 100 -f levy | tail -1)
+    dir_name=$("$run_command $exp_config -d $2 -f levy | tail -1")
     for (( i=1; i<=$n_eval; i++ ))
     do
         $run_command -p $dir_name
