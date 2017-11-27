@@ -1,6 +1,6 @@
 #!/bin/bash
 
-run_command="python ./HyperSphere/BO/run_BO.py"
+run_command="srun python ./HyperSphere/BO/run_BO.py"
 
 case $1 in
 'cube')
