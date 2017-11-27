@@ -68,16 +68,19 @@ def continuing_command_str_generate(current_file, path_list, n_eval):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Bayesian Optimization multicore runner')
-	parser.add_argument('-e', '--n_eval', dest='n_eval', type=int, default=1)
+	parser.add_argument('-e', '--n_eval', dest='n_eval', type=int, default=0)
 	parser.add_argument('-d', '--dim', dest='ndim', type=int)
 	parser.add_argument('-f', '--func', dest='func_name_list')
 	parser.add_argument('-o', '--optimizer', dest='optimizer_config_list')
 	parser.add_argument('-p', '--path', dest='path')
 	parser.add_argument('--continue', dest='continuing', action='store_true', default=False)
 
+	args = parser.parse_args()
+	if args.n_eval == 0:
+		args.n_eval = 1 if args.continuing else 3
+	print(args.n_eval)
 	current_file = sys.argv[0]
 	try:
-		args = parser.parse_args()
 		assert (args.path is None) != ((args.ndim is None) and (args.func_name_list is None) and (args.optimizer_config_list is None))
 		if args.path is None:
 			optimizer_config_list = args.optimizer_config_list.split(',')

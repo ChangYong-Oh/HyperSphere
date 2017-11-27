@@ -179,7 +179,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Bayesian Optimization runner')
 	parser.add_argument('-g', '--geometry', dest='geometry', help='cube/sphere')
-	parser.add_argument('-e', '--n_eval', dest='n_eval', type=int, default=1)
+	parser.add_argument('-e', '--n_eval', dest='n_eval', type=int, default=0)
 	parser.add_argument('-p', '--path', dest='path')
 	parser.add_argument('-d', '--dim', dest='ndim', type=int)
 	parser.add_argument('-f', '--func', dest='func_name')
@@ -190,6 +190,8 @@ if __name__ == '__main__':
 	parser.add_argument('--parallel', dest='parallel', action='store_true', default=False)
 
 	args = parser.parse_args()
+	if args.n_eval == 0:
+		args.n_eval = 3 if args.path is None else 1
 	assert (args.path is None) != (args.func_name is None)
 	args_dict = vars(args)
 	if args.func_name is not None:
