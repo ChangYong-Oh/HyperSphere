@@ -113,7 +113,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
 
-	for _ in range(x_input.size(0), n_eval):
+	for _ in range(n_eval):
 		start_time = time.time()
 		logfile = open(os.path.join(logfile_dir, str(x_input.size(0)).zfill(4) + '.out'), 'w')
 		inference = inference_method((x_input, output), model)
@@ -190,8 +190,8 @@ if __name__ == '__main__':
 	parser.add_argument('--parallel', dest='parallel', action='store_true', default=False)
 
 	args = parser.parse_args()
-	if args.n_eval == 0:
-		args.n_eval = 3 if args.path is None else 1
+	# if args.n_eval == 0:
+	# 	args.n_eval = 3 if args.path is None else 1
 	assert (args.path is None) != (args.func_name is None)
 	args_dict = vars(args)
 	if args.func_name is not None:

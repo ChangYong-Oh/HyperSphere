@@ -76,9 +76,8 @@ if __name__ == '__main__':
 	parser.add_argument('--continue', dest='continuing', action='store_true', default=False)
 
 	args = parser.parse_args()
-	if args.n_eval == 0:
-		args.n_eval = 1 if args.continuing else 3
-	print(args.n_eval)
+	# if args.n_eval == 0:
+	# 	args.n_eval = 1 if args.continuing else 3
 	current_file = sys.argv[0]
 	try:
 		assert (args.path is None) != ((args.ndim is None) and (args.func_name_list is None) and (args.optimizer_config_list is None))
