@@ -179,7 +179,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Bayesian Optimization runner')
 	parser.add_argument('-g', '--geometry', dest='geometry', help='cube/sphere')
-	parser.add_argument('-e', '--n_eval', dest='n_eval', type=int, default=0)
+	parser.add_argument('-e', '--n_eval', dest='n_eval', type=int, default=1)
 	parser.add_argument('-p', '--path', dest='path')
 	parser.add_argument('-d', '--dim', dest='ndim', type=int)
 	parser.add_argument('-f', '--func', dest='func_name')
