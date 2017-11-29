@@ -4,7 +4,7 @@ import time
 import argparse
 from datetime import datetime
 
-import torch.multiprocessing
+import torch.multiprocessing as multiprocessing
 
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference, N_INIT
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
@@ -71,7 +71,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		model_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
-		x_input = Variable(torch.ger(torch.arange(0, 2), torch.ones(ndim)))
+		x_input = Variable(torch.stack([torch.zeros(ndim), torch.ones(ndim)]))
 		n_init_eval = x_input.size(0)
 		output = Variable(torch.zeros(n_init_eval, 1))
 		for i in range(n_init_eval):
@@ -113,6 +113,9 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
 
+	# multiprocessing conflicts with pytorch linear algebra operation
+	pool = multiprocessing.Pool(N_INIT) if parallel else None
+
 	for _ in range(n_eval):
 		start_time = time.time()
 		logfile = open(os.path.join(logfile_dir, str(x_input.size(0)).zfill(4) + '.out'), 'w')
@@ -125,7 +128,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 		x0_cand = optimization_candidates(x_input, output, -1, 1)
 		x0, sample_info = optimization_init_points(x0_cand, reference=reference, inferences=inferences)
-		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd, parallel=parallel)
+		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd, pool=pool)
 
 		time_list.append(time.time())
 		elapse_list.append(time_list[-1] - time_list[-2])
@@ -171,6 +174,9 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		f = open(data_config_filename, 'w')
 		pickle.dump(stored_variable, f)
 		f.close()
+
+	if parallel:
+		pool.close()
 
 	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
 

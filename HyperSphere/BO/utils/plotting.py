@@ -8,23 +8,31 @@ color_list = ['b', 'g', 'r', 'tab:brown', 'm', 'p', 'k', 'w']
 
 
 def algorithm_color(algorithm):
+	if algorithm == 'hyperopt':
+		return 'rosybrown'
+	if algorithm == 'smac':
+		return 'darkkhaki'
 	if algorithm == 'spearmint':
-		return 'yellow'
+		return 'maroon'
 	if algorithm == 'spearmint_warping':
-		return 'darkorange'
-	if algorithm == 'additiveBO':
+		return 'yellow'
+	if algorithm == 'cubeard':
+		return 'orange'
+	if algorithm[:10] == 'additiveBO':
 		return 'g'
 	if algorithm == 'elasticGP':
-		return 'slategray'
-	if algorithm == 'spherewarpingnone':
-		return 'brown'
+		return 'coral'
+	if algorithm == 'sphereboth':
+		return 'royalblue'
+	if algorithm == 'sphereorigin':
+		return 'blueviolet'
 	if algorithm == 'spherewarpingboth':
-		return 'r'
+		return 'fuchsia'
 	if algorithm == 'spherewarpingorigin':
-		return 'm'
+		return 'red'
 
 
-def optimum_plot(func_name, ndim):
+def optimum_plot(func_name, ndim, type='avg'):
 	data_list = get_data(func_name, ndim)
 	title = func_name + '_D' + str(ndim)
 	algorithms = np.unique([elm['algorithm'] for elm in data_list])
@@ -32,7 +40,7 @@ def optimum_plot(func_name, ndim):
 
 	y_min = np.inf
 	y_max = np.max(np.min([data['optimum'][:2] for data in data_list]))
-	norm_z = 1.0
+	norm_z = 0.2
 	plot_data = {}
 	for algorithm in algorithms:
 		plot_data[algorithm] = {}
@@ -49,24 +57,30 @@ def optimum_plot(func_name, ndim):
 		plot_data[algorithm]['mean'] = np.mean(min_std_data, 0)
 		plot_data[algorithm]['std'] = np.std(min_std_data, 0)
 		plot_data[algorithm]['plot_x'] = np.arange(min_n_eval)
-		y_min = min(y_min, np.min(plot_data[algorithm]['mean'] - norm_z * plot_data[algorithm]['std']))
+		y_min = min(y_min, np.min(plot_data[algorithm]['mean'] - norm_z * plot_data[algorithm]['std'] * 0.2))
 
-	gs = gridspec.GridSpec(n_algorithms + 1, 1)
+	if type == 'avg':
+		gs = gridspec.GridSpec(1, 1)
 
-	ax_big = plt.subplot(gs[n_algorithms:])
-	for key, data in plot_data.iteritems():
-		color = algorithm_color(key)
-		ax_big.plot(data['plot_x'], data['mean'], color=color, label=key + '(' + str(data['n_samples']) + ')')
-		ax_big.fill_between(data['plot_x'], data['mean'] - norm_z * data['std'], data['mean'] + norm_z * data['std'], color=color, alpha=0.25)
-	ax_big.set_ylabel('Comparison', rotation=0, fontsize=8)
-	ax_big.yaxis.set_label_coords(-0.06, 0.85)
-	ax_big.set_ylim(y_min, y_max)
-	ax_big.legend()
-
-	for i, key in enumerate(plot_data.keys()):
-		ax = plt.subplot(gs[i], sharex=ax_big)
-		plot_samples(ax, plot_data[key]['sample'], color_list, key)
-		ax.set_ylim(y_min, y_max)
+		ax_big = plt.subplot(gs[0])
+		for key in sorted(plot_data.keys()):
+			data = plot_data[key]
+			color = algorithm_color(key)
+			ax_big.plot(data['plot_x'], data['mean'], color=color, label=key + '(' + str(data['n_samples']) + ')')
+			ax_big.fill_between(data['plot_x'], data['mean'] - norm_z * data['std'], data['mean'] + norm_z * data['std'], color=color, alpha=0.25)
+		ax_big.set_ylabel('Comparison', rotation=0, fontsize=8)
+		ax_big.yaxis.set_label_coords(-0.06, 0.85)
+		# ax_big.set_ylim(y_min, y_max)
+		ax_big.legend()
+	elif type == 'sample':
+		gs = gridspec.GridSpec(n_algorithms, 1)
+		for i, key in enumerate(plot_data.keys()):
+			if i == 0:
+				ax = plt.subplot(gs[i])
+			else:
+				ax = plt.subplot(gs[i], sharex=ax)
+			plot_samples(ax, plot_data[key]['sample'], color_list, key)
+			ax.set_ylim(y_min, y_max)
 
 	plt.subplots_adjust(hspace=0.02)
 
@@ -96,10 +110,11 @@ def plot_samples(ax, sample_list, color_list, title_str):
 
 
 if __name__ == '__main__':
-	optimum_plot('schwefel', 50)
+	optimum_plot('michalewicz', 20, type='avg')
 	# schwefel
-	# styblinskitang
-	# michalewicz
-	# levy
 	# rotatedschwefel
+	# michalewicz
+	# rosenbrock
+	# levy
+	# styblinskitang
 	# rotatedstyblinskitang

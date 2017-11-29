@@ -52,26 +52,32 @@ def HPOlib_params2np(params):
 
 
 def get_data_additive(dir_name, func_name, ndim):
-	data_x = loadmat(os.path.join(dir_name, func_name + '_D' + str(ndim) + '_x.mat'))['queries']
-	data_y = loadmat(os.path.join(dir_name, func_name + '_D' + str(ndim) + '_y.mat'))['neg_values']
-	data_optimum = loadmat(os.path.join(dir_name, func_name + '_D' + str(ndim) + '_optimum.mat'))['neg_optima']
-
-	n_data = data_x.shape[0]
+	exp_id = func_name + '_D' + str(ndim)
+	file_pool = [elm for elm in os.listdir(dir_name) if elm[:len(exp_id)] == exp_id]
+	additive_ids = np.unique(['_'.join(elm.split('_')[2:4]) for elm in file_pool])
 	data_list = []
-	for i in range(n_data):
-		data = {}
-		data['algorithm'] = 'additiveBO'
-		data['x'] = np.squeeze(data_x[i])
-		data['y'] = np.squeeze(data_y[i])
-		data['optimum'] = np.squeeze(data_optimum[i])
-		data['n_eval'] = data['y'].size
-		data_list.append(data)
+	for additive_id in additive_ids:
+		data_id = '_'.join([exp_id, additive_id])
+		data_x_list = [elm for elm in os.listdir(dir_name) if data_id == elm[:len(data_id)] and elm[-6:] == '_x.mat']
+		instance_ids = [elm.split('_')[4] for elm in data_x_list]
+		for instance_id in instance_ids:
+			data_batch_x = loadmat(os.path.join(dir_name, '_'.join([data_id, instance_id, 'x.mat'])))['queries']
+			data_batch_y = loadmat(os.path.join(dir_name, '_'.join([data_id, instance_id, 'y.mat'])))['neg_values']
+			data_batch_optimum = loadmat(os.path.join(dir_name, '_'.join([data_id, instance_id, 'optimum.mat'])))['neg_optima']
+			for s in range(data_batch_x.shape[0]):
+				data = {}
+				data['algorithm'] = 'additiveBO_' + additive_id[5:]
+				data['x'] = data_batch_x[s]
+				data['y'] = data_batch_y[s]
+				data['optimum'] = data_batch_optimum[s]
+				data['n_eval'] = data['y'].size
+				data_list.append(data)
 	return data_list
 
 
 def get_data_spearmint(dir_name, func_name, ndim):
 	data_list = []
-	folder_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + str(ndim) in elm]
+	folder_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + str(ndim) == elm[:len(func_name + str(ndim))]]
 	for folder in folder_list:
 		df = pd.read_pickle(os.path.join(folder, 'query_eval_data.pkl'))
 		df.sort_index(inplace=True)
@@ -92,7 +98,8 @@ def get_data_spearmint(dir_name, func_name, ndim):
 
 def get_data_elastic(dir_name, func_name, ndim):
 	data_list = []
-	filename_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + str(ndim) in elm and '.mat' in elm]
+	exp_id = func_name + str(ndim)
+	filename_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if exp_id == elm[:len(exp_id)] and '.mat' in elm]
 	for filename in filename_list:
 		mat_data = loadmat(filename)
 		data = {}
@@ -100,7 +107,7 @@ def get_data_elastic(dir_name, func_name, ndim):
 		data['x'] = mat_data['x']
 		data['y'] = -mat_data['y'].flatten()
 		data['optimum'] = -mat_data['ybest'].flatten()
-		data['n_eval'] = mat_data['y'].shape[0]
+		data['n_eval'] = mat_data['y'].size
 		data_list.append(data)
 	return data_list
 
@@ -112,12 +119,13 @@ def get_data(func_name, ndim):
 	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat'
 	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL'
 	data_list = []
-	if os.path.exists(HPOlib_dir_name):
-		data_list += get_data_HPOlib(HPOlib_dir_name)
-	data_list += get_data_additive(additive_dir_name, func_name, ndim)
+	data_list += get_data_HPOlib(HPOlib_dir_name, 'spearmint_april2013_mod')
+	data_list += get_data_HPOlib(HPOlib_dir_name, 'hyperopt_august2013_mod')
+	data_list += get_data_HPOlib(HPOlib_dir_name, 'smac_2_10_00-dev')
+	# data_list += get_data_additive(additive_dir_name, func_name, ndim)
 	data_list += get_data_spearmint(spearmint_warping_dir_name, func_name, ndim)
-	data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
-	data_list += get_data_sphere(sphere_dir_name, ['spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)
+	# data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
+	data_list += get_data_sphere(sphere_dir_name, ['cubeard', 'sphereboth', 'sphereorigin', 'spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)
 	return data_list
 
 

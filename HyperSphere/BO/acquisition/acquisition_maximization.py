@@ -1,12 +1,10 @@
 import copy
 import time
-import os
 import psutil
 
 import numpy as np
 import torch
 import torch.optim as optim
-import torch.multiprocessing
 from torch.autograd import Variable, grad
 
 from HyperSphere.BO.acquisition.acquisition_functions import expected_improvement
@@ -17,7 +15,7 @@ N_SPRAY = 10
 N_INIT = 20
 
 
-def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None, parallel=False):
+def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None, pool=None):
 	max_step = 500
 	n_init = x0.size(0)
 
@@ -25,13 +23,27 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 	print('Acqusition function optimization with %2d inits %s has begun' % (n_init, time.strftime('%H:%M:%S', time.gmtime(start_time))))
 
 	# Parallel version and non-parallel version behave differently.
-	if parallel:
-		pool = torch.multiprocessing.Pool(n_init) if parallel else None
-		results = [pool.apply_async(optimize, args=(max_step, x0[p], reference, inferences, acquisition_function, bounds)) for p in range(n_init)]
+	if pool is not None:
+		# pool = torch.multiprocessing.Pool(n_init) if parallel else None
+		# results = [pool.apply_async(optimize, args=(max_step, x0[p], reference, inferences, acquisition_function, bounds)) for p in range(n_init)]
+
+		results = []
+		process_started = [False] * n_init
+		process_running = [False] * n_init
+		process_index = 0
+		while process_started.count(False) > 0:
+			cpu_usage = psutil.cpu_percent(0.2)
+			run_more = (100.0 - cpu_usage) * float(psutil.cpu_count()) > 500.0
+			if run_more:
+				results.append(pool.apply_async(optimize, args=(max_step, x0[process_index], reference, inferences, acquisition_function, bounds)))
+				process_started[process_index] = True
+				process_running[process_index] = True
+				process_index += 1
+		while [not res.ready() for res in results].count(True) > 0:
+			time.sleep(1)
 
 		return_values = [res.get() for res in results]
 		local_optima, optima_value = zip(*return_values)
-		pool.close()
 	else:
 		local_optima = []
 		optima_value = []
