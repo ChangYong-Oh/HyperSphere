@@ -11,8 +11,8 @@ class GP(GPModule):
 			if hasattr(m, 'reset_parameters'):
 				m.reset_parameters()
 
-	def log_kernel_amp(self):
-		return self.kernel.log_kernel_amp()
+	def kernel_amp(self):
+		return self.kernel.kernel_amp()
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:

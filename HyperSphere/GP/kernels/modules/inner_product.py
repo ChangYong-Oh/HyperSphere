@@ -29,10 +29,10 @@ class InnerProductKernel(Kernel):
 			return not super(InnerProductKernel, self).out_of_bounds(vec[:1])
 
 	def n_params(self):
-		return super(InnerProductKernel, self).n_params() + self.sigma_chol.numel()
+		return super(InnerProductKernel, self).n_params() + self.sigma_sqrt.numel()
 
 	def param_to_vec(self):
-		return torch.cat([self.log_amp.data, self.sigma_chol.data])
+		return torch.cat([self.log_amp.data, self.sigma_sqrt.data])
 
 	def vec_to_param(self, vec):
 		self.log_amp.data = vec[0:1]
@@ -46,7 +46,7 @@ class InnerProductKernel(Kernel):
 		if input2 is None:
 			input2 = input1
 			stabilizer = Variable(torch.diag(input1.data.new(input1.size(0)).fill_(1e-6 * math.exp(self.log_amp.data[0]))))
-		gram_mat = inner_product.InnerProductKernel.apply(self.input_map(input1), self.input_map(input2), self.log_amp, self.sigma_sqrt if self.diag else self.sigma_sqrt.view(int(self.sigma_sqrt.numel() ** 0.5), -1))
+		gram_mat = inner_product.innerProductKernel(self.input_map(input1), self.input_map(input2), self.log_amp, self.sigma_sqrt if self.diag else self.sigma_sqrt.view(int(self.sigma_sqrt.numel() ** 0.5), -1))
 		return gram_mat + stabilizer
 
 	def __repr__(self):

@@ -7,7 +7,7 @@ root_five = 5.0 ** 0.5
 class Matern52(Function):
 
 	@staticmethod
-	def forward(ctx, input1, input2, log_amp, log_ls):
+	def forward(ctx, input1, input2, log_ls):
 		n1, ndim = input1.size()
 		n2 = input2.size(0)
 
@@ -16,8 +16,8 @@ class Matern52(Function):
 
 		r_l_sq = torch.sum(diff**2 / scaling, dim=2)
 		r_l = torch.sqrt(r_l_sq)
-		output = log_amp.exp() * (1 + root_five * r_l + 5.0 / 3.0 * r_l_sq) * torch.exp(-root_five * r_l)
-		ctx.save_for_backward(input1, input2, log_amp, log_ls, output)
+		output = (1 + root_five * r_l + 5.0 / 3.0 * r_l_sq) * torch.exp(-root_five * r_l)
+		ctx.save_for_backward(input1, input2, log_ls, output)
 		return output
 
 	@staticmethod
@@ -27,8 +27,8 @@ class Matern52(Function):
 		:param grad_output: grad_output is assumed to be d[Scalar]/dK and size() is n1 x n2 
 		:return: 
 		"""
-		input1, input2, log_amp, log_ls, output = ctx.saved_variables
-		grad_input1 = grad_input2 = grad_log_amp = grad_log_ls = None
+		input1, input2, log_ls, output = ctx.saved_variables
+		grad_input1 = grad_input2 = grad_log_ls = None
 
 		n1, ndim = input1.size()
 		n2 = input2.size(0)
@@ -39,7 +39,7 @@ class Matern52(Function):
 		r_l_sq = torch.sum(diff ** 2 / scaling, dim=2)
 		r_l = torch.sqrt(r_l_sq)
 
-		intermediate_grad = log_amp.exp() * -5.0 / 6.0 * (1 + root_five * r_l) * torch.exp(-root_five * r_l)
+		intermediate_grad = -5.0 / 6.0 * (1 + root_five * r_l) * torch.exp(-root_five * r_l)
 
 		if ctx.needs_input_grad[0]:
 			kernel_grad_input1 = 2.0 * diff / scaling * intermediate_grad.unsqueeze(2).repeat(1, 1, ndim)
@@ -48,13 +48,10 @@ class Matern52(Function):
 			kernel_grad_input2 = -2.0 * diff / scaling * intermediate_grad.unsqueeze(2).repeat(1, 1, ndim)
 			grad_input2 = (grad_output.unsqueeze(2).repeat(1, 1, ndim) * kernel_grad_input2).sum(0)
 		if ctx.needs_input_grad[2]:
-			kernel_grad_log_amp = output
-			grad_log_amp = (grad_output * kernel_grad_log_amp).sum()
-		if ctx.needs_input_grad[3]:
 			kernel_grad_log_ls = -diff ** 2/scaling * intermediate_grad.unsqueeze(2).repeat(1, 1, ndim)
 			grad_log_ls = (grad_output.unsqueeze(2).repeat(1, 1, ndim) * kernel_grad_log_ls).sum(0).sum(0)
 
-		return grad_input1, grad_input2, grad_log_amp, grad_log_ls
+		return grad_input1, grad_input2, grad_log_ls
 
 
 if __name__ == '__main__':

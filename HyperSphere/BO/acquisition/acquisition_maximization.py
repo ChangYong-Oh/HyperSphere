@@ -33,7 +33,7 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 		process_index = 0
 		while process_started.count(False) > 0:
 			cpu_usage = psutil.cpu_percent(0.2)
-			run_more = (100.0 - cpu_usage) * float(psutil.cpu_count()) > 500.0
+			run_more = (100.0 - cpu_usage) * float(psutil.cpu_count()) > 1600.0
 			if run_more:
 				results.append(pool.apply_async(optimize, args=(max_step, x0[process_index], reference, inferences, acquisition_function, bounds)))
 				process_started[process_index] = True
@@ -82,7 +82,7 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 		loss = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function)
 		curr_loss = loss.data.squeeze()[0]
 		x.grad = grad([loss], [x], retain_graph=True)[0]
-		ftol = (prev_loss - curr_loss) / max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
+		ftol = (prev_loss - curr_loss) / max(1, abs(prev_loss), abs(curr_loss)) if prev_loss is not None else 1
 		if (x.grad.data != x.grad.data).any() or (ftol < 1e-9):
 			break
 		prev_x = x.data.clone()
@@ -137,7 +137,7 @@ def mean_std_var(x, inferences):
 		pred_mean_sample = pred_dist[0]
 		pred_var_sample = pred_dist[1]
 		pred_std_sample = pred_var_sample ** 0.5
-		varmax_sample = torch.exp(inferences[s].log_kernel_amp())
+		varmax_sample = inferences[s].kernel_amp()
 		stdmax_sample = varmax_sample ** 0.5
 		mean_sample_list.append(pred_mean_sample.data)
 		std_sample_list.append(pred_std_sample.data)
@@ -154,11 +154,10 @@ def mean_std_var(x, inferences):
 def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
-	# x0_spray = input.data.new(0, ndim)
-	# for std in [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]:
-	# 	x0_spray = torch.cat([x0_spray, input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * std * (upper_bnd - lower_bnd)])
 
-	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
+	x0_spray_cube = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
+	x0_spray_sphere = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) * (1 + input.data.new(N_SPRAY).unsqueeze(1).normal_() * 0.001 * ndim ** 0.5)
+	x0_spray = torch.cat([x0_spray_cube, x0_spray_sphere], 0)
 
 	if hasattr(lower_bnd, 'size'):
 		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]

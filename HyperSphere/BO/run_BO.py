@@ -4,6 +4,8 @@ import time
 import argparse
 from datetime import datetime
 
+import numpy as np
+
 import torch.multiprocessing as multiprocessing
 
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference, N_INIT
@@ -40,7 +42,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			assert not ard
 			exp_conf_str += 'warping' if warping else ''
 			kernel = RadializationWarpingKernel if warping else RadializationKernel
-			model = GPRegression(kernel=kernel(max_power=3, search_radius=ndim ** 0.5))
+			model = GPRegression(kernel=kernel(max_power=9, search_radius=ndim ** 0.5))
 			inference_method = None
 			if origin and boundary:
 				inference_method = both_ShadowInference

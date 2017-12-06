@@ -8,8 +8,8 @@ from HyperSphere.GP.kernels.modules.kernel import Kernel, log_lower_bnd
 
 class Stationary(Kernel):
 
-	def __init__(self, ndim, ard=True, input_map=None, max_ls=None):
-		super(Stationary, self).__init__(input_map)
+	def __init__(self, ndim, ard=True, input_map=None, max_ls=None, trainable_amp=True):
+		super(Stationary, self).__init__(input_map=input_map, trainable_amp=trainable_amp)
 		self.max_log_ls = np.log(2.0 * ndim ** 0.5) if max_ls is None else np.log(max_ls)
 		self.ndim = ndim
 		self.ard = ard
@@ -22,9 +22,9 @@ class Stationary(Kernel):
 		super(Stationary, self).reset_parameters()
 		self.log_ls.data.uniform_().mul_(np.exp(self.max_log_ls)).log_()
 
-	def init_parameters(self, amp):
+	def init_parameters(self, amp=None):
 		super(Stationary, self).init_parameters(amp)
-		self.log_ls.data.fill_(self.max_log_ls - np.log(2.0))
+		self.log_ls.data.fill_(0.0)
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
@@ -45,20 +45,16 @@ class Stationary(Kernel):
 
 	def vec_to_param(self, vec):
 		n_param_super = super(Stationary, self).n_params()
-		super(Stationary, self).vec_to_param(vec[:n_param_super])
+		if n_param_super > 0:
+			super(Stationary, self).vec_to_param(vec[:n_param_super])
 		self.log_ls.data = vec[n_param_super:]
-
-	def elastic_vec_to_param(self, vec, func):
-		n_param_super = super(Stationary, self).n_params()
-		super(Stationary, self).vec_to_param(vec[:n_param_super])
-		self.log_ls.data = func(vec[n_param_super:])
 
 	def prior(self, vec):
 		n_param_super = super(Stationary, self).n_params()
 		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))
 
 	def forward_on_identical(self):
-		return torch.exp(self.log_amp) * (1 + 1e-6)
+		return super(Stationary, self).kernel_amp() * (1 + 1e-6)
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (dim=' + str(self.ndim) + ', ARD=' + ('TRUE' if self.ard else 'FALSE') + ')'

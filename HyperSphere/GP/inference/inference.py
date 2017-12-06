@@ -30,7 +30,7 @@ class Inference(nn.Module):
 		self.model.reset_parameters()
 
 	def init_parameters(self):
-		amp = torch.std(self.train_y).data[0]
+		amp = max(torch.std(self.train_y).data[0], torch.mean(self.train_y).data[0] * 0.1)
 		self.model.kernel.init_parameters(amp)
 		self.model.mean.const_mean.data.fill_(torch.mean(self.train_y.data))
 		self.model.likelihood.log_noise_var.data.fill_(np.log(amp / 1000))
@@ -39,8 +39,8 @@ class Inference(nn.Module):
 		const_mean = self.model.mean.const_mean.data[0]
 		return self.output_min <= const_mean <= self.output_max
 
-	def log_kernel_amp(self):
-		return self.model.log_kernel_amp()
+	def kernel_amp(self):
+		return self.model.kernel_amp()
 
 	def gram_mat_update(self, hyper=None):
 		if hyper is not None:

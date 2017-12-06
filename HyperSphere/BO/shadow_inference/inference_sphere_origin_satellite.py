@@ -51,14 +51,19 @@ class ShadowInference(Inference):
 		satellite = pred_x_sphere * pred_x.size(1) ** 0.5
 
 		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
-		K_non_ori_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius * 0)
+		K_non_ori_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius * 0).repeat(1, pred_x_sphere.size(0))
 		K_non_ori_sphere = self.model.kernel.sphere_kernel(self.train_x_nonorigin_sphere, pred_x_sphere)
-		K_non_ori = K_non_ori_radius.view(-1, 1) * K_non_ori_sphere
+
+		K_non_ori = self.model.kernel.combine_kernel(radial_gram=K_non_ori_radius, sphere_gram=K_non_ori_sphere)
 		K_non_pre = self.model.kernel(self.train_x_nonorigin, pred_x)
 		K_non_sat = self.model.kernel(self.train_x_nonorigin, satellite)
-		K_ori_pre_diag = self.model.kernel.radius_kernel(pred_x_radius, one_radius * 0)
-		K_ori_sat_diag = self.model.kernel.radius_kernel(one_radius * 0, one_radius * n_dim ** 0.5).repeat(n_pred, 1)
-		K_sat_pre_diag = self.model.kernel.radius_kernel(pred_x_radius, one_radius * n_dim ** 0.5)
+
+		K_ori_pre_diag_radius = self.model.kernel.radius_kernel(pred_x_radius, one_radius * 0)
+		K_ori_pre_diag = self.model.kernel.combine_kernel(radial_gram=K_ori_pre_diag_radius, sphere_gram=self.model.kernel.radius_kernel.forward_on_identical())
+		K_ori_sat_diag_radius = self.model.kernel.radius_kernel(one_radius * 0, one_radius * n_dim ** 0.5).repeat(n_pred, 1)
+		K_ori_sat_diag = self.model.kernel.combine_kernel(radial_gram=K_ori_sat_diag_radius, sphere_gram=self.model.kernel.radius_kernel.forward_on_identical())
+		K_sat_pre_diag_radius = self.model.kernel.radius_kernel(pred_x_radius, one_radius * n_dim ** 0.5)
+		K_sat_pre_diag = self.model.kernel.combine_kernel(radial_gram=K_sat_pre_diag_radius, sphere_gram=self.model.kernel.radius_kernel.forward_on_identical(), )
 
 		chol_B = torch.cat([K_non_ori, K_non_pre, self.mean_vec.index_select(0, self.ind_nonorigin), K_non_sat], 1)
 		chol_solver = torch.gesv(chol_B, self.cholesky_nonorigin)[0]
@@ -113,7 +118,7 @@ class ShadowInference(Inference):
 		sol_k_tilde = (K_sat_pre_diag - (chol_solver_q_bar_0 * chol_solver_k).sum(0).view(-1, 1) - sol_k_bar * sol_q_bar_1) / sol_p_bar
 
 		pred_mean = torch.mm(chol_solver_k.t(), chol_solver_y) + sol_k_bar * sol_y_bar + self.model.mean(pred_x)
-		pred_var = self.model.kernel.forward_on_identical() - (chol_solver_k ** 2).sum(0).view(-1, 1) - sol_k_bar ** 2 - sol_k_tilde ** 2
+		pred_var = kernel_max - (chol_solver_k ** 2).sum(0).view(-1, 1) - sol_k_bar ** 2 - sol_k_tilde ** 2
 
 		if not (pred_var.data >= 0).all():
 			neg_mask = pred_var.data < 0

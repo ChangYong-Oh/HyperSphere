@@ -3,21 +3,17 @@ import sampyl as smp
 import torch
 from torch.autograd import Variable
 from torch.nn.parameter import Parameter
+from HyperSphere.GP.kernels.modules.kernel import Kernel
 from HyperSphere.GP.modules.gp_modules import GPModule, log_lower_bnd, log_upper_bnd
-from HyperSphere.feature_map.functionals import id_transform
 
 
-class SphereRadialKernel(GPModule):
+class SphereRadialKernel(Kernel):
 
-	def __init__(self, max_power, input_map=None):
-		super(SphereRadialKernel, self).__init__()
+	def __init__(self, max_power, input_map=None, trainable_amp=True):
+		super(SphereRadialKernel, self).__init__(input_map=input_map, trainable_amp=trainable_amp)
 		self.max_power = max_power
 		self.log_amp_const = Parameter(torch.FloatTensor(1))
 		self.log_amp_power = Parameter(torch.FloatTensor(max_power))
-		if input_map is not None:
-			self.input_map = input_map
-		else:
-			self.input_map = id_transform
 
 	def reset_parameters(self):
 		self.log_amp_const.data.normal_()
@@ -78,7 +74,10 @@ class SphereRadialKernel(GPModule):
 		gram_mat = (torch.exp(self.log_amp_const) / sum_exp) + (torch.exp(self.log_amp_power[0]) / sum_exp) * inner_prod
 		for p in range(1, self.max_power):
 			gram_mat += (torch.exp(self.log_amp_power[p]) / sum_exp) * inner_prod ** (p + 1)
-		return gram_mat + stabilizer
+		return (gram_mat + stabilizer) * self.kernel_amp()
+
+	def forward_on_identical(self):
+		return torch.exp(self.log_amp)
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (max_power=' + str(self.max_power) + ')'

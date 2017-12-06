@@ -15,7 +15,8 @@ class ShadowInference(Inference):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
-		n_pred = pred_x.size(0)
+		kernel_max = self.model.kernel.forward_on_identical().data[0]
+		n_pred, n_dim = pred_x.size()
 		pred_x_radius = torch.sqrt(torch.sum(pred_x ** 2, 1, keepdim=True))
 		assert (pred_x_radius.data > 0).all()
 		satellite = pred_x / pred_x_radius * pred_x.size(1) ** 0.5
@@ -28,7 +29,7 @@ class ShadowInference(Inference):
 		chol_solve_y = chol_solver[:, n_pred:n_pred + 1]
 		chol_solve_s = chol_solver[:, n_pred + 1:]
 		pred_mean = torch.mm(chol_solve_k.t(), chol_solve_y) + self.model.mean(pred_x)
-		pred_var = self.model.kernel.forward_on_identical() - (chol_solve_k ** 2).sum(0).view(-1, 1)
+		pred_var = kernel_max - (chol_solve_k ** 2).sum(0).view(-1, 1)
 
 		if not (pred_var.data >= 0).all():
 			neg_pred_var_mask = pred_var.data < 0
@@ -46,9 +47,10 @@ class ShadowInference(Inference):
 			assert (pred_var.data >= 0).all()
 		numerically_stable = (pred_var.data >= 0).all()
 
-		k_satellite_pred_diag = torch.cat([self.model.kernel(pred_x[i:i + 1], satellite[i:i + 1]) for i in range(pred_x.size(0))], 0)
-		reduction_numer = ((chol_solve_k * chol_solve_s).sum(0).view(-1, 1) - k_satellite_pred_diag) ** 2
-		satellite_pred_var = self.model.kernel.forward_on_identical() - (chol_solve_s ** 2).sum(0).view(-1, 1)
+		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
+		K_sat_pre_diag = self.model.kernel.radius_kernel(pred_x_radius, one_radius * n_dim ** 0.5)
+		reduction_numer = ((chol_solve_k * chol_solve_s).sum(0).view(-1, 1) - K_sat_pre_diag) ** 2
+		satellite_pred_var = kernel_max - (chol_solve_s ** 2).sum(0).view(-1, 1)
 
 		# By adding jitter, result is the same as using inference but reduction effect becomes very small
 		# TODO : the effect of maintaining jitter, having it is reasonable, if not more drastic effect in variance reduction
