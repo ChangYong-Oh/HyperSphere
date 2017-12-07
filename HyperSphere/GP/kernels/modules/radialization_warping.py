@@ -47,7 +47,8 @@ class RadializationWarpingKernel(GPModule):
 		self.log_amp_sphere.data.fill_(amp / 3.0).log_()
 		self.radius_kernel.init_parameters()
 		self.sphere_kernel.init_parameters()
-		# self.radius_kernel.log_ls.data.fill_(self.search_radius).log_()
+		self.radius_kernel.log_ls.data.fill_(self.search_radius).log_()
+		self.product_kernel_radius.log_ls.data.fill_(self.search_radius).log_()
 
 	def kernel_amp(self):
 		return torch.sum(torch.exp(torch.cat([self.log_amp_prod, self.log_amp_radius, self.log_amp_sphere])))
