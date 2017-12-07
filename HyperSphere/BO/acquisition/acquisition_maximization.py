@@ -155,9 +155,9 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
 
-	x0_spray_cube = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
-	x0_spray_sphere = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) * (1 + input.data.new(N_SPRAY).unsqueeze(1).normal_() * 0.001 * ndim ** 0.5)
-	x0_spray = torch.cat([x0_spray_cube, x0_spray_sphere], 0)
+	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
+	# x0_spray_sphere = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) * (1 + input.data.new(N_SPRAY).unsqueeze(1).normal_() * 0.001 * ndim ** 0.5)
+	# x0_spray = torch.cat([x0_spray_cube, x0_spray_sphere], 0)
 
 	if hasattr(lower_bnd, 'size'):
 		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
