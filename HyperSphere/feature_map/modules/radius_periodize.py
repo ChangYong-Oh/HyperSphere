@@ -36,25 +36,12 @@ class RadiusPeriodize(GPModule):
 	def param_to_vec(self):
 		return torch.FloatTensor(0)
 
-	def vec_to_param(self, vec):
+	def vec_to_param(self, vec=None):
 		pass
 
-	def prior(self, vec):
+	def prior(self, vec=None):
 		return 0
 
 	def forward(self, input):
 		max_value = self.max_input.type_as(input)
-		return max_value * (1 - torch.cos(input / max_value * math.pi))
-
-
-if __name__ == '__main__':
-	from HyperSphere.feature_map.functionals import phi_reflection_lp
-	n = 10
-	dim = 10
-	input = Variable(torch.FloatTensor(n, dim).uniform_(-1, 1))
-	feature_map = Kumaraswamy()
-	feature_map.reset_parameters()
-	print(torch.exp(feature_map.log_p_minus_one.data)[0] + 1)
-	output1 = feature_map(input)
-	output2 = phi_reflection_lp(input, torch.exp(feature_map.log_p_minus_one.data)[0] + 1)
-	print(torch.dist(output1, output2))
+		return max_value * (1 - torch.cos(input / max_value * math.pi)) * 0.5

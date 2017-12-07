@@ -32,8 +32,8 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 		process_running = [False] * n_init
 		process_index = 0
 		while process_started.count(False) > 0:
-			cpu_usage = psutil.cpu_percent(0.2)
-			run_more = (100.0 - cpu_usage) * float(psutil.cpu_count()) > 1600.0
+			cpu_usage = psutil.cpu_percent(1.0)
+			run_more = (100.0 - cpu_usage) * float(psutil.cpu_count()) > 1400.0
 			if run_more:
 				results.append(pool.apply_async(optimize, args=(max_step, x0[process_index], reference, inferences, acquisition_function, bounds)))
 				process_started[process_index] = True

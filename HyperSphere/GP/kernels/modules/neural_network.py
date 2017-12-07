@@ -31,7 +31,7 @@ class NeuralNetworkKernel(Kernel):
 			return super(NeuralNetworkKernel, self).out_of_bounds()
 		else:
 			n_param_super = super(NeuralNetworkKernel, self).n_params()
-			return super(NeuralNetworkKernel, self).out_of_bounds(vec[:n_param_super])
+			return super(NeuralNetworkKernel, self).out_of_bounds(vec[:n_param_super]) if n_param_super > 0 else False
 
 	def n_params(self):
 		return super(NeuralNetworkKernel, self).n_params() + self.sigma_sqrt.numel()
@@ -41,7 +41,8 @@ class NeuralNetworkKernel(Kernel):
 
 	def vec_to_param(self, vec):
 		n_param_super = super(NeuralNetworkKernel, self).n_params()
-		super(NeuralNetworkKernel, self).vec_to_param(vec[:n_param_super])
+		if n_param_super > 0:
+			super(NeuralNetworkKernel, self).vec_to_param(vec[:n_param_super])
 		self.sigma_sqrt.data = vec[n_param_super:]
 
 	def prior(self, vec):
