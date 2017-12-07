@@ -21,8 +21,8 @@ class RadializationWarpingKernel(GPModule):
 		# input_warping = RadiusPeriodize
 		input_warping = KumaraswamyPeriodize
 
-		self.radius_kernel = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius, trainable_amp=False)
-		self.product_kernel_radius = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius, trainable_amp=False)
+		self.radius_kernel = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=False)
+		self.product_kernel_radius = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=False)
 
 		# self.radius_kernel = NeuralNetworkKernel(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), trainable_amp=False)
 		# self.product_kernel_radius = NeuralNetworkKernel(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), trainable_amp=False)
@@ -41,8 +41,8 @@ class RadializationWarpingKernel(GPModule):
 		self.log_amps.data.fill_(amp / self.log_amps.numel()).log_()
 		self.radius_kernel.init_parameters()
 		self.sphere_kernel.init_parameters()
-		self.radius_kernel.log_ls.data.fill_(self.search_radius * 0.5).log_()
-		self.product_kernel_radius.log_ls.data.fill_(self.search_radius * 0.5).log_()
+		self.radius_kernel.log_ls.data.fill_(self.search_radius).log_()
+		self.product_kernel_radius.log_ls.data.fill_(self.search_radius).log_()
 
 	def kernel_amp(self):
 		return torch.sum(torch.exp(self.log_amps))
