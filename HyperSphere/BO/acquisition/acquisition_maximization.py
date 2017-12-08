@@ -151,13 +151,12 @@ def mean_std_var(x, inferences):
 	       torch.cat(varmax_sample_list).mean(0, keepdim=True)
 
 
-def optimization_candidates(input, output, lower_bnd, upper_bnd):
+def optimization_candidates_cube(input, output, lower_bnd, upper_bnd):
+	print('Candidate is suggested in a hypercube')
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
 
 	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
-	# x0_spray_sphere = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) * (1 + input.data.new(N_SPRAY).unsqueeze(1).normal_() * 0.001 * ndim ** 0.5)
-	# x0_spray = torch.cat([x0_spray_cube, x0_spray_sphere], 0)
 
 	if hasattr(lower_bnd, 'size'):
 		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
@@ -170,6 +169,33 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 
 	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
 	x0 = torch.cat([input.data, x0_spray, x0_sobol], 0)
+	nonzero_radius_mask = torch.sum(x0 ** 2, 1) > 0
+	nonzero_radius_ind = torch.sort(nonzero_radius_mask, 0, descending=True)[1][:torch.sum(nonzero_radius_mask)]
+	x0 = x0.index_select(0, nonzero_radius_ind)
+
+	return Variable(x0)
+
+
+def optimization_candidates_ball(input, output, radius):
+	print('Candidate is suggested in a hyperball')
+	ndim = input.size(1)
+	min_ind = torch.min(output.data, 0)[1]
+
+	x0_spray = torch.FloatTensor(N_SPRAY, ndim).normal_()
+	x0_spray /= torch.sum(x0_spray ** 2, dim=1, keepdim=True) ** 0.5
+	x0_spray *= torch.FloatTensor(N_SPRAY, 1).uniform_() ** (1.0 / float(ndim)) * radius * 0.001
+	x0_spray += input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1)
+
+	x0_spray_radius = torch.sum(x0_spray ** 2, dim=1) ** 0.5
+	in_region = x0_spray_radius <= radius
+	in_region_ind = torch.sort(in_region, 0, descending=True)[1][:torch.sum(in_region)]
+	x0_spray = x0_spray.index_select(0, in_region_ind)
+
+	x0_uniform = torch.FloatTensor(N_SOBOL, ndim).normal_()
+	x0_uniform /= torch.sum(x0_uniform ** 2, dim=1, keepdim=True) ** 0.5
+	x0_uniform *= torch.FloatTensor(N_SOBOL, 1).uniform_() ** (1.0 / float(ndim)) * radius
+
+	x0 = torch.cat([input.data, x0_spray, x0_uniform], 0)
 	nonzero_radius_mask = torch.sum(x0 ** 2, 1) > 0
 	nonzero_radius_ind = torch.sort(nonzero_radius_mask, 0, descending=True)[1][:torch.sum(nonzero_radius_mask)]
 	x0 = x0.index_select(0, nonzero_radius_ind)

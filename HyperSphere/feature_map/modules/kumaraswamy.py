@@ -35,9 +35,9 @@ class Kumaraswamy(GPModule):
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
-			return (self.log_a.data > log_upper_bnd).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < 0).any() or (self.log_b.data > log_upper_bnd).any()
+			return (self.log_a.data > log_upper_bnd).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < log_lower_bnd).any() or (self.log_b.data > log_upper_bnd).any()
 		else:
-			return (vec[:1] > log_upper_bnd).any() or (vec[:1] < log_lower_bnd).any() or (vec[1:] < 0).any() or (vec[1:] > log_upper_bnd).any()
+			return (vec[:1] > log_upper_bnd).any() or (vec[:1] < log_lower_bnd).any() or (vec[1:] < log_lower_bnd).any() or (vec[1:] > log_upper_bnd).any()
 
 	def n_params(self):
 		return 2

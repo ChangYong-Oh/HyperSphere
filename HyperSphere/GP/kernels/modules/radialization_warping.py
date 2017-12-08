@@ -22,13 +22,7 @@ class RadializationWarpingKernel(GPModule):
 		input_warping = KumaraswamyPeriodize
 
 		self.radius_kernel = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=False)
-		# self.product_kernel_radius = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=False)
-
-		# self.radius_kernel = NeuralNetworkKernel(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), trainable_amp=False)
-		# self.product_kernel_radius = NeuralNetworkKernel(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), trainable_amp=False)
-
 		self.sphere_kernel = SphereRadialKernel(max_power=max_power, trainable_amp=False)
-		# self.product_kernel_sphere = SphereRadialKernel(max_power=max_power, trainable_amp=False)
 
 		self.log_amps = Parameter(torch.FloatTensor(3))
 
@@ -92,11 +86,7 @@ class RadializationWarpingKernel(GPModule):
 		d2 = radial2[:, 1:]
 		radial_gram = self.radius_kernel(r1, r2)
 		sphere_gram = self.sphere_kernel(d1, d2)
-		# product_gram_radius = self.product_kernel_radius(r1, r2)
-		# product_gram_sphere = self.product_kernel_sphere(d1, d2)
 
-		# return self.combine_kernel(radial_gram=radial_gram, sphere_gram=sphere_gram, prod_gram_radial=product_gram_radius, prod_gram_sphere=product_gram_sphere)\
-		#        + stabilizer * self.kernel_amp()
 		return self.combine_kernel(radial_gram=radial_gram, sphere_gram=sphere_gram) + stabilizer * self.kernel_amp()
 
 	def forward_on_identical(self):

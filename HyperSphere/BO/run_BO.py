@@ -8,7 +8,8 @@ import numpy as np
 
 import torch.multiprocessing as multiprocessing
 
-from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference, N_INIT
+from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_init_points, deepcopy_inference, N_INIT
+from HyperSphere.BO.acquisition.acquisition_maximization import optimization_candidates_cube, optimization_candidates_ball
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.test_functions.benchmarks import *
@@ -42,7 +43,8 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			assert not ard
 			exp_conf_str += 'warping' if warping else ''
 			kernel = RadializationWarpingKernel if warping else RadializationKernel
-			model = GPRegression(kernel=kernel(max_power=9, search_radius=ndim ** 0.5))
+			search_radius = ndim ** 0.5
+			model = GPRegression(kernel=kernel(max_power=9, search_radius=search_radius))
 			inference_method = None
 			if origin and boundary:
 				inference_method = both_ShadowInference
@@ -128,7 +130,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
 		inferences = deepcopy_inference(inference, gp_hyper_params)
 
-		x0_cand = optimization_candidates(x_input, output, -1, 1)
+		x0_cand = optimization_candidates_cube(x_input, output, -1, 1) if geometry == 'cube' else optimization_candidates_ball(x_input, output, search_radius)
 		x0, sample_info = optimization_init_points(x0_cand, reference=reference, inferences=inferences)
 		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd, pool=pool)
 
