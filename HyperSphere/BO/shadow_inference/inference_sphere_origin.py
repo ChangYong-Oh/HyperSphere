@@ -52,19 +52,19 @@ class ShadowInference(Inference):
 		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
 		K_non_ori_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius * 0).repeat(1, pred_x_sphere.size(0))
 		K_non_ori_sphere = self.model.kernel.sphere_kernel(self.train_x_nonorigin_sphere, pred_x_sphere)
-		K_non_ori_product_radius = self.model.kernel.product_kernel_radius(self.train_x_nonorigin_radius, one_radius * 0).repeat(1, pred_x_sphere.size(0))
-		K_non_ori_product_sphere = self.model.kernel.product_kernel_sphere(self.train_x_nonorigin_sphere, pred_x_sphere)
+		# K_non_ori_product_radius = self.model.kernel.product_kernel_radius(self.train_x_nonorigin_radius, one_radius * 0).repeat(1, pred_x_sphere.size(0))
+		# K_non_ori_product_sphere = self.model.kernel.product_kernel_sphere(self.train_x_nonorigin_sphere, pred_x_sphere)
 
-		K_non_ori = self.model.kernel.combine_kernel(radial_gram=K_non_ori_radius, sphere_gram=K_non_ori_sphere,
-		                                             prod_gram_radial=K_non_ori_product_radius, prod_gram_sphere=K_non_ori_product_sphere)
-		# K_non_ori = self.model.kernel.combine_kernel(radial_gram=K_non_ori_radius, sphere_gram=K_non_ori_sphere)
+		# K_non_ori = self.model.kernel.combine_kernel(radial_gram=K_non_ori_radius, sphere_gram=K_non_ori_sphere,
+		#                                              prod_gram_radial=K_non_ori_product_radius, prod_gram_sphere=K_non_ori_product_sphere)
+		K_non_ori = self.model.kernel.combine_kernel(radial_gram=K_non_ori_radius, sphere_gram=K_non_ori_sphere)
 		K_non_pre = self.model.kernel(self.train_x_nonorigin, pred_x)
 
 		K_ori_pre_diag_radius = self.model.kernel.radius_kernel(pred_x_radius, one_radius * 0)
-		K_ori_pre_diag_product_radius = self.model.kernel.product_kernel_radius(pred_x_radius, one_radius * 0)
-		K_ori_pre_diag = self.model.kernel.combine_kernel(radial_gram=K_ori_pre_diag_radius, sphere_gram=self.model.kernel.radius_kernel.forward_on_identical(),
-		                                                  prod_gram_radial=K_ori_pre_diag_product_radius)
-		# K_ori_pre_diag = self.model.kernel.combine_kernel(radial_gram=K_ori_pre_diag_radius, sphere_gram=self.model.kernel.radius_kernel.forward_on_identical())
+		# K_ori_pre_diag_product_radius = self.model.kernel.product_kernel_radius(pred_x_radius, one_radius * 0)
+		# K_ori_pre_diag = self.model.kernel.combine_kernel(radial_gram=K_ori_pre_diag_radius, sphere_gram=self.model.kernel.radius_kernel.forward_on_identical(),
+		#                                                   prod_gram_radial=K_ori_pre_diag_product_radius)
+		K_ori_pre_diag = self.model.kernel.combine_kernel(radial_gram=K_ori_pre_diag_radius, sphere_gram=self.model.kernel.radius_kernel.forward_on_identical())
 
 		chol_solver = torch.gesv(torch.cat([K_non_ori, K_non_pre, self.mean_vec.index_select(0, self.ind_nonorigin)], 1), self.cholesky_nonorigin)[0]
 		chol_solver_q = chol_solver[:, :n_pred]
