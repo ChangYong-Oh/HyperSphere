@@ -176,6 +176,7 @@ def rotatedschwefel(x):
 		x = x.mm(orthogonal_matrix) * 500.0
 
 	output = 418.9829 - torch.mean(x * torch.sin(torch.abs(x) ** 0.5), 1, keepdim=True)
+	output += output.clone().normal_() * 20.0
 	if flat:
 		return output.squeeze(0)
 	else:
