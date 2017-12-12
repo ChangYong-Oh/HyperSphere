@@ -124,7 +124,7 @@ def levy(x):
 	flat = x.dim() == 1
 	if flat:
 		x = x.view(1, -1)
-	x *= 10
+	x = x * 10
 
 	w = (x - 1.0) / 4.0 + 1.0
 	output = ((w[:, :-1] - 1) ** 2 * (1 + 10 * torch.sin(math.pi * w[:, :-1] + 1) ** 2)).sum(1, keepdim=True)
@@ -165,7 +165,7 @@ def qing(x):
 	flat = x.dim() == 1
 	if flat:
 		x = x.view(1, -1)
-	x *= 500
+	x = x * 500
 
 	ndim = x.size(1)
 	indices = torch.arange(1, ndim + 1)
@@ -198,7 +198,7 @@ def schwefel(x):
 	flat = x.dim() == 1
 	if flat:
 		x = x.view(1, -1)
-	x *= 500.0
+	x = x * 500.0
 
 	output = 418.9829 - torch.mean(x * torch.sin(torch.abs(x) ** 0.5), 1, keepdim=True)
 	if flat:
@@ -213,7 +213,7 @@ def styblinskitang(x):
 	flat = x.dim() == 1
 	if flat:
 		x = x.view(1, -1)
-	x *= 5
+	x = x * 5
 
 	output = ((x ** 4).sum(1, keepdim=True) - 16 * (x ** 2).sum(1, keepdim=True) + 5 * x.sum(1, keepdim=True)) / (2.0 * x.size(1))
 	if flat:
