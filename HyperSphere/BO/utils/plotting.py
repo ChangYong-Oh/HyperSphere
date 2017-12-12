@@ -132,9 +132,9 @@ def optimum_plot(func_name, ndim, type='avg'):
 	elif type == 'custom':
 		gs = gridspec.GridSpec(1, 3)
 
-		ax_mean = plt.subplot(gs[0, 0])
-		ax_sample = plt.subplot(gs[0, 2])
-		ax_best = plt.subplot(gs[0, 1])
+		ax_mean = plt.subplot(gs[0])
+		ax_best = plt.subplot(gs[1])
+		ax_sample = plt.subplot(gs[2])
 		for key in sorted(plot_data.keys()):
 			data = plot_data[key]
 			color = algorithm_color(key)
