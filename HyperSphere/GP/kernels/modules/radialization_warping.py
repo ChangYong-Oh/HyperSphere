@@ -21,10 +21,10 @@ class RadializationWarpingKernel(GPModule):
 		# input_warping = RadiusPeriodize
 		# input_warping = KumaraswamyPeriodize
 
-		self.radius_kernel = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=True)
+		self.radius_kernel = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=False)
 		self.sphere_kernel = SphereRadialKernel(max_power=max_power, trainable_amp=False)
 
-		# self.log_amps = Parameter(torch.FloatTensor(1))
+		self.log_amps = Parameter(torch.FloatTensor(1))
 
 	def reset_parameters(self):
 		self.log_amps.data.normal_(std=2.0)
@@ -32,11 +32,10 @@ class RadializationWarpingKernel(GPModule):
 		self.sphere_kernel.reset_parameters()
 
 	def init_parameters(self, amp):
-		# self.log_amps.data.fill_(amp / self.log_amps.numel()).log_()
-		self.radius_kernel.init_parameters(amp)
+		self.log_amps.data.fill_(amp / self.log_amps.numel()).log_()
+		self.radius_kernel.init_parameters()
 		self.sphere_kernel.init_parameters()
 		self.radius_kernel.log_ls.data.fill_(self.search_radius).log_()
-		# self.product_kernel_radius.log_ls.data.fill_(self.search_radius).log_()
 
 	def kernel_amp(self):
 		return torch.sum(torch.exp(self.log_amps))
@@ -44,12 +43,12 @@ class RadializationWarpingKernel(GPModule):
 	def out_of_bounds(self, vec=None):
 		n_own_param = self.log_amps.numel()
 		if vec is None:
-			# if not (log_lower_bnd <= vec[:n_own_param] <= log_upper_bnd).all():
-			# 	return True
+			if not (log_lower_bnd <= vec[:n_own_param] <= log_upper_bnd).all():
+				return True
 			return self.radius_kernel.out_of_bounds() or self.sphere_kernel.out_of_bounds()
 		else:
-			# if not ((log_lower_bnd <= self.log_amps.data[:n_own_param]).all() and (self.log_amps.data[:n_own_param] <= log_upper_bnd).all()):
-			# 	return True
+			if not ((log_lower_bnd <= self.log_amps.data[:n_own_param]).all() and (self.log_amps.data[:n_own_param] <= log_upper_bnd).all()):
+				return True
 			n_param_radial = self.radius_kernel.n_params()
 			return self.radius_kernel.out_of_bounds(vec[n_own_param:n_own_param + n_param_radial]) or self.sphere_kernel.out_of_bounds(vec[n_own_param + n_param_radial:])
 
@@ -62,7 +61,7 @@ class RadializationWarpingKernel(GPModule):
 
 	def vec_to_param(self, vec):
 		n_own_param = self.log_amps.numel()
-		# self.log_amps.data = vec[:n_own_param]
+		self.log_amps.data = vec[:n_own_param]
 		n_param_radial = self.radius_kernel.n_params()
 		self.radius_kernel.vec_to_param(vec[n_own_param:n_own_param + n_param_radial])
 		self.sphere_kernel.vec_to_param(vec[n_own_param + n_param_radial:])
@@ -97,10 +96,9 @@ class RadializationWarpingKernel(GPModule):
 		# 	prod_gram_sphere = sphere_gram
 		# if prod_gram_radial is None:
 		# 	prod_gram_radial = radial_gram
-		# amps = torch.exp(self.log_amps)
+		amps = torch.exp(self.log_amps)
 		# return prod_gram_radial * prod_gram_sphere * amps[0] + radial_gram * amps[1] + sphere_gram * amps[2]
-		# return radial_gram * sphere_gram * amps[0]
-		return radial_gram * sphere_gram
+		return radial_gram * sphere_gram * amps[0]
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (max_power=' + str(self.sphere_kernel.max_power) + ')'

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import matplotlib.gridspec as gridspec
 import numpy as np
 
@@ -148,7 +149,8 @@ def optimum_plot(func_name, ndim, type='avg'):
 		ax_best.set_title('Best run')
 		ax_best.set_ylim(y_min, y_max)
 		ax_mean.legend()
-		ax_sample.grid()
+		ax_sample.xaxis.set_minor_locator(MultipleLocator(25))
+		ax_sample.grid(which='minor')
 
 	plt.subplots_adjust(hspace=0.02)
 
