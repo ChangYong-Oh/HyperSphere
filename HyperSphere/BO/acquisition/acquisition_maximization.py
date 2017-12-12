@@ -205,7 +205,7 @@ def optimization_candidates_ball(input, output, radius):
 	# input_perturb_in_region_ind = torch.sort(input_perturb_in_region, 0, descending=True)[1][:torch.sum(input_perturb_in_region)]
 	# input_perturb = input_perturb.index_select(0, input_perturb_in_region_ind)
 
-	x0 = torch.cat([x0_spray, input.data, x0_uniform_global, x0_uniform_local], 0)
+	x0 = torch.cat([x0_uniform_global, x0_uniform_local, x0_spray, input.data], 0)
 	nonzero_radius_mask = torch.sum(x0 ** 2, 1) > 0
 	nonzero_radius_ind = torch.sort(nonzero_radius_mask, 0, descending=True)[1][:torch.sum(nonzero_radius_mask)]
 	x0 = x0.index_select(0, nonzero_radius_ind)
