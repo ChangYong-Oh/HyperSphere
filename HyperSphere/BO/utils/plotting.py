@@ -148,6 +148,7 @@ def optimum_plot(func_name, ndim, type='avg'):
 		ax_best.set_title('Best run')
 		ax_best.set_ylim(y_min, y_max)
 		ax_mean.legend()
+		ax_sample.grid()
 
 	plt.subplots_adjust(hspace=0.02)
 
@@ -167,9 +168,6 @@ def plot_samples(ax, sample_list, color, title_str=None):
 		ax.plot(np.arange(sample.size), sample, color=color)
 	if title_str is not None:
 		ax.set_ylabel(title_str, rotation=0, fontsize=8)
-	plt.setp([ax.get_xticklabels()], visible=False)
-
-	ax.grid(which='both')
 
 
 if __name__ == '__main__':

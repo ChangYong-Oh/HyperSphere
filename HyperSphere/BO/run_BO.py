@@ -1,4 +1,4 @@
-import os.path
+import os
 import pickle
 import time
 import argparse
@@ -177,6 +177,8 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		f = open(data_config_filename, 'w')
 		pickle.dump(stored_variable, f)
 		f.close()
+
+		os.system('rm /tmp/pymp-* -rf')
 
 	if parallel:
 		pool.close()

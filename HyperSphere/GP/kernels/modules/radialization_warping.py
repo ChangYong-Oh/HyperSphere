@@ -17,9 +17,9 @@ class RadializationWarpingKernel(GPModule):
 		super(RadializationWarpingKernel, self).__init__()
 		self.search_radius = search_radius
 
-		# input_warping = Kumaraswamy
+		input_warping = Kumaraswamy
 		# input_warping = RadiusPeriodize
-		input_warping = KumaraswamyPeriodize
+		# input_warping = KumaraswamyPeriodize
 
 		self.radius_kernel = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=False)
 		self.sphere_kernel = SphereRadialKernel(max_power=max_power, trainable_amp=False)
