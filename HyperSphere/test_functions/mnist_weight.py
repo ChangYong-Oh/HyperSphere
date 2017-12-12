@@ -85,7 +85,7 @@ batch_size = 64
 epoch = 50
 
 
-def mlp_weight(weight_vector):
+def mnist_weight(weight_vector):
 	use_cuda = cuda.is_available()
 	model = Net(n_hid=weight_vector.numel()/10, hid_weight=weight_vector.view(10, -1))
 	for m in model.parameters():
@@ -105,5 +105,5 @@ def mlp_weight(weight_vector):
 
 if __name__ == '__main__':
 	weight_vector = torch.randn(100)
-	print(mlp_weight(weight_vector))
+	print(mnist_weight(weight_vector))
 
