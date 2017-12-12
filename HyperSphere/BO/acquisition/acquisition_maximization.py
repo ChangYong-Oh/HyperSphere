@@ -151,24 +151,17 @@ def mean_std_var(x, inferences):
 	       torch.cat(varmax_sample_list).mean(0, keepdim=True)
 
 
-def optimization_candidates_cube(input, output, lower_bnd, upper_bnd):
+def optimization_candidates_cube(input, output):
 	print('Candidate is suggested in a hypercube')
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
 
-	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
+	x0_spray = (input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * 2).clamp(min=-1, max=1)
 
-	if hasattr(lower_bnd, 'size'):
-		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray < lower_bnd]
-	else:
-		x0_spray[x0_spray < lower_bnd] = 2 * lower_bnd - x0_spray[x0_spray < lower_bnd]
-	if hasattr(upper_bnd, 'size'):
-		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd.view(1, -1).repeat(2 * N_SPRAY, 1) - x0_spray[x0_spray > upper_bnd]
-	else:
-		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd - x0_spray[x0_spray > upper_bnd]
+	input_perturb = (input.data + torch.FloatTensor(input.size()).normal_() * 0.001).clamp(min=-1, max=1)
 
-	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
-	x0 = torch.cat([input.data, x0_spray, x0_sobol], 0)
+	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * 2 - 1
+	x0 = torch.cat([x0_sobol, input_perturb, x0_spray], 0)
 	nonzero_radius_mask = torch.sum(x0 ** 2, 1) > 0
 	nonzero_radius_ind = torch.sort(nonzero_radius_mask, 0, descending=True)[1][:torch.sum(nonzero_radius_mask)]
 	x0 = x0.index_select(0, nonzero_radius_ind)

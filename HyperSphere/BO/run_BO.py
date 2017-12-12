@@ -129,8 +129,8 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		gp_hyper_params = inference.sampling(n_sample=10, n_burnin=0, n_thin=1)
 		inferences = deepcopy_inference(inference, gp_hyper_params)
 
-		x0_cand = optimization_candidates_cube(x_input, output, -1, 1)
-		# x0_cand = optimization_candidates_cube(x_input, output, -1, 1) if geometry == 'cube' else optimization_candidates_ball(x_input, output, search_radius)
+		x0_cand = optimization_candidates_cube(x_input, output)
+		# x0_cand = optimization_candidates_cube(x_input, output) if geometry == 'cube' else optimization_candidates_ball(x_input, output, search_radius)
 		x0, sample_info = optimization_init_points(x0_cand, reference=reference, inferences=inferences)
 		next_x_point, pred_mean, pred_std, pred_var, pred_stdmax, pred_varmax = suggest(x0=x0, reference=reference, inferences=inferences, bounds=bnd, pool=pool)
 
