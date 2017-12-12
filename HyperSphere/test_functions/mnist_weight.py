@@ -2,6 +2,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 import progressbar
+from scipy.io import loadmat
 
 import torch
 import torch.nn as nn
@@ -84,10 +85,9 @@ batch_size = 64
 epoch = 50
 
 
-def mlp_weight(weight):
+def mlp_weight(weight_vector):
 	use_cuda = cuda.is_available()
-	# use_cuda = False
-	model = Net(n_hid=weight.numel()/10, hid_weight=weight.view(10, -1))
+	model = Net(n_hid=weight_vector.numel()/10, hid_weight=weight_vector.view(10, -1))
 	for m in model.parameters():
 		if m.dim() == 2:
 			nn.init.xavier_normal(m.data)
@@ -104,5 +104,6 @@ def mlp_weight(weight):
 
 
 if __name__ == '__main__':
-	weight = torch.FloatTensor(500).normal_()
-	mlp_weight(weight)
+	weight_vector = torch.randn(100)
+	print(mlp_weight(weight_vector))
+

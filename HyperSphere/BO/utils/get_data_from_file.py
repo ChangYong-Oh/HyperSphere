@@ -113,7 +113,7 @@ def get_data_elastic(dir_name, func_name, ndim):
 
 
 def get_data(func_name, ndim):
-	HPOlib_dir_name = '/home/coh1/git_repositories/HPOlib/HPOlib/benchmarks/' + func_name + str(ndim)
+	HPOlib_dir_name = '/home/coh1/git_repositories/HPOlib/HPOlib/benchmarks/' + func_name + '_' + str(ndim)
 	additive_dir_name = '/home/coh1/Experiments/Additive_BO_mat'
 	spearmint_warping_dir_name = '/home/coh1/Experiments/Spearmint_ALL'
 	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat'

@@ -24,7 +24,7 @@ class RadializationWarpingKernel(GPModule):
 		self.radius_kernel = Matern52(ndim=1, input_map=input_warping(ndim=1, max_input=search_radius), max_ls=search_radius * 2.0, trainable_amp=False)
 		self.sphere_kernel = SphereRadialKernel(max_power=max_power, trainable_amp=False)
 
-		self.log_amps = Parameter(torch.FloatTensor(3))
+		self.log_amps = Parameter(torch.FloatTensor(1))
 
 	def reset_parameters(self):
 		self.log_amps.data.normal_(std=2.0)
@@ -93,13 +93,13 @@ class RadializationWarpingKernel(GPModule):
 		return torch.sum(torch.exp(self.log_amps)) * (1 + 1e-6)
 
 	def combine_kernel(self, radial_gram, sphere_gram, prod_gram_radial=None, prod_gram_sphere=None):
-		if prod_gram_sphere is None:
-			prod_gram_sphere = sphere_gram
-		if prod_gram_radial is None:
-			prod_gram_radial = radial_gram
+		# if prod_gram_sphere is None:
+		# 	prod_gram_sphere = sphere_gram
+		# if prod_gram_radial is None:
+		# 	prod_gram_radial = radial_gram
 		amps = torch.exp(self.log_amps)
-		return prod_gram_radial * prod_gram_sphere * amps[0] + radial_gram * amps[1] + sphere_gram * amps[2]
-		# return radial_gram * sphere_gram * amps[0]
+		# return prod_gram_radial * prod_gram_sphere * amps[0] + radial_gram * amps[1] + sphere_gram * amps[2]
+		return radial_gram * sphere_gram * amps[0]
 
 	def __repr__(self):
 		return self.__class__.__name__ + ' (max_power=' + str(self.sphere_kernel.max_power) + ')'
