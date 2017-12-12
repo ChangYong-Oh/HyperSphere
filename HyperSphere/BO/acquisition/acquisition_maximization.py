@@ -181,10 +181,12 @@ def optimization_candidates_ball(input, output, radius):
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
 
-	x0_spray = torch.FloatTensor(N_SPRAY, ndim).normal_()
-	x0_spray /= torch.sum(x0_spray ** 2, dim=1, keepdim=True) ** 0.5
-	x0_spray *= torch.FloatTensor(N_SPRAY, 1).uniform_() ** (1.0 / float(ndim)) * radius * 0.001
-	x0_spray += input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1)
+	# x0_spray = torch.FloatTensor(N_SPRAY, ndim).normal_() * 0.001
+	# x0_spray /= torch.sum(x0_spray ** 2, dim=1, keepdim=True) ** 0.5
+	# x0_spray *= torch.FloatTensor(N_SPRAY, 1).uniform_() ** (1.0 / float(ndim)) * radius * 0.001
+	# x0_spray += input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1)
+
+	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + torch.FloatTensor(N_SPRAY, ndim).normal_() * 0.001
 
 	x0_spray_radius = torch.sum(x0_spray ** 2, dim=1) ** 0.5
 	x0_spray_in_region = x0_spray_radius <= radius
