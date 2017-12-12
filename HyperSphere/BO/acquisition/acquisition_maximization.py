@@ -199,13 +199,13 @@ def optimization_candidates_ball(input, output, radius):
 	x0_uniform_local /= torch.sum(x0_uniform_local ** 2, dim=1, keepdim=True) ** 0.5
 	x0_uniform_local *= torch.FloatTensor(N_SOBOL / 2, 1).uniform_() ** (1.0 / float(ndim))
 
-	input_perturb = input.data + torch.FloatTensor(input.size()).normal_() * 0.001
-	input_perturb_radius = torch.sum(input_perturb ** 2, dim=1) ** 0.5
-	input_perturb_in_region = input_perturb_radius <= radius
-	input_perturb_in_region_ind = torch.sort(input_perturb_in_region, 0, descending=True)[1][:torch.sum(input_perturb_in_region)]
-	input_perturb = input_perturb.index_select(0, input_perturb_in_region_ind)
+	# input_perturb = input.data + torch.FloatTensor(input.size()).normal_() * 0.001
+	# input_perturb_radius = torch.sum(input_perturb ** 2, dim=1) ** 0.5
+	# input_perturb_in_region = input_perturb_radius <= radius
+	# input_perturb_in_region_ind = torch.sort(input_perturb_in_region, 0, descending=True)[1][:torch.sum(input_perturb_in_region)]
+	# input_perturb = input_perturb.index_select(0, input_perturb_in_region_ind)
 
-	x0 = torch.cat([input_perturb, x0_spray, x0_uniform_global, x0_uniform_local], 0)
+	x0 = torch.cat([x0_spray, input.data, x0_uniform_global, x0_uniform_local], 0)
 	nonzero_radius_mask = torch.sum(x0 ** 2, 1) > 0
 	nonzero_radius_ind = torch.sort(nonzero_radius_mask, 0, descending=True)[1][:torch.sum(nonzero_radius_mask)]
 	x0 = x0.index_select(0, nonzero_radius_ind)
