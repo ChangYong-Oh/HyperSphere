@@ -24,9 +24,9 @@ class Kumaraswamy(GPModule):
 		self.max_input = max_input
 		self.log_a = Parameter(torch.FloatTensor(ndim))
 		self.log_b = Parameter(torch.FloatTensor(ndim))
-		self.log_a_lambda = 2.0
-		self.log_b_lambda = 2.0
-		self.param_max = 1.2
+		self.log_a_lambda = 1.5
+		self.log_b_lambda = 1.5
+		self.param_max = 1.0
 
 	def reset_parameters(self):
 		self.log_a.data.exponential_(lambd=self.log_a_lambda).neg_()
