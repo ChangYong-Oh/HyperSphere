@@ -89,7 +89,7 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 			break
 	###--------------------------------------------------###
 	optimum_loc = x.clone()
-	optimum_value = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function)[0].data.squeeze()[0]
+	optimum_value = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function, in_optimization=True)[0].data.squeeze()[0]
 	return optimum_loc, optimum_value
 
 
