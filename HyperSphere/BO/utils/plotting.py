@@ -150,7 +150,7 @@ def optimum_plot(func_name, ndim, type='avg'):
 		ax_best.set_ylim(y_min, y_max)
 		ax_mean.legend()
 		ax_sample.xaxis.set_minor_locator(MultipleLocator(25))
-		ax_sample.yaxis.set_minor_locator(MultipleLocator(0.5))
+		# ax_sample.yaxis.set_minor_locator(MultipleLocator(0.5))
 		ax_sample.grid(which='minor')
 
 	plt.subplots_adjust(hspace=0.02)
@@ -174,7 +174,7 @@ def plot_samples(ax, sample_list, color, title_str=None):
 
 
 if __name__ == '__main__':
-	optimum_plot('levy', 100, type='custom')
+	optimum_plot('rosenbrock', 100, type='custom')
 	# schwefel
 	# rotatedschwefel
 	# michalewicz

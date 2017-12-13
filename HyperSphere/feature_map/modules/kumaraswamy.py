@@ -34,7 +34,7 @@ class Kumaraswamy(GPModule):
 		self.log_b.data.fill_(0)
 
 	def out_of_bounds(self, vec=None):
-		slack = 0.02
+		slack = 0
 		if vec is None:
 			return (self.log_a.data > slack).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < -slack).any() or (self.log_b.data > log_upper_bnd).any()
 		else:
@@ -51,7 +51,8 @@ class Kumaraswamy(GPModule):
 		self.log_b.data = vec[1:]
 
 	def prior(self, vec):
-		return smp.normal(vec[:1], 0.0, 0.25) + smp.normal(vec[1:], 0, 0.25)
+		# return smp.normal(vec[:1], 0.0, 0.25) + smp.normal(vec[1:], 0, 0.25)
+		return np.log(np.log(1 + (0.1 / vec[:1]) ** 2)) + np.log(np.log(1 + (0.1 / vec[1:]) ** 2))
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
