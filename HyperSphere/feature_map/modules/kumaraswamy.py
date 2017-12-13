@@ -26,15 +26,15 @@ class Kumaraswamy(GPModule):
 		self.log_b = Parameter(torch.FloatTensor(ndim))
 
 	def reset_parameters(self):
-		self.log_a.data.normal_(mean=0, std=2.0)
-		self.log_b.data.normal_(mean=0, std=2.0)
+		self.log_a.data.normal_(mean=0, std=0.25)
+		self.log_b.data.normal_(mean=0, std=0.25)
 
 	def init_parameters(self):
 		self.log_a.data.fill_(0)
 		self.log_b.data.fill_(0)
 
 	def out_of_bounds(self, vec=None):
-		slack = 0.1
+		slack = 0.02
 		if vec is None:
 			return (self.log_a.data > slack).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < -slack).any() or (self.log_b.data > log_upper_bnd).any()
 		else:
@@ -51,7 +51,7 @@ class Kumaraswamy(GPModule):
 		self.log_b.data = vec[1:]
 
 	def prior(self, vec):
-		return smp.normal(vec[:1], 0.0, 2.0) + smp.normal(vec[1:], 0, 2.0)
+		return smp.normal(vec[:1], 0.0, 0.25) + smp.normal(vec[1:], 0, 0.25)
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
