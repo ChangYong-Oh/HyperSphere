@@ -30,8 +30,8 @@ class Kumaraswamy(GPModule):
 		self.log_b.data.normal_(mean=0, std=0.25)
 
 	def init_parameters(self):
-		self.log_a.data.fill_(0)
-		self.log_b.data.fill_(0)
+		self.log_a.data.fill_(-0.01)
+		self.log_b.data.fill_(0.01)
 
 	def out_of_bounds(self, vec=None):
 		slack = 0
