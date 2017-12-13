@@ -174,7 +174,7 @@ def plot_samples(ax, sample_list, color, title_str=None):
 
 
 if __name__ == '__main__':
-	optimum_plot('rotatedstyblinskitang', 50, type='custom')
+	optimum_plot('rotatedstyblinskitang', 100, type='custom')
 	# schwefel
 	# rotatedschwefel
 	# michalewicz
