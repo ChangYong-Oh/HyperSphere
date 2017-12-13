@@ -28,7 +28,7 @@ class Kumaraswamy(GPModule):
 
 	def reset_parameters(self):
 		self.log_a.data.normal_(means=0, std=0.5)
-		self.log_b.data.normal_(means=0.5, std=0.5)
+		self.log_b.data.normal_(means=0, std=0.5)
 
 	def init_parameters(self):
 		self.log_a.data.fill_(0.0)
@@ -51,7 +51,7 @@ class Kumaraswamy(GPModule):
 		self.log_b.data = vec[1:]
 
 	def prior(self, vec):
-		return smp.normal(vec[:1], 0.0, 0.5) + smp.normal(vec[1:], 0.5, 0.5)
+		return smp.normal(vec[:1], 0.0, 0.5) + smp.normal(vec[1:], 0.0, 0.5)
 		# return smp.exponential(x=np.abs(vec[:1]), rate=self.log_a_lambda) + smp.exponential(x=np.abs(vec[1:]), rate=self.log_b_lambda)
 
 	def forward(self, input):
