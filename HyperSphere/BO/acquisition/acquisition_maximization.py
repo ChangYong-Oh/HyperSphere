@@ -61,10 +61,6 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 
 
 def optimize(max_step, x0, reference, inferences, acquisition_function=expected_improvement, bounds=None):
-	# p = torch.multiprocessing.current_process()
-	# pname = p.name
-	# pid = p.pid
-	# print('%s process has begun with id %s' % (pname, pid))
 	if bounds is not None:
 		if not hasattr(bounds, '__call__'):
 			def out_of_bounds(x_input):
@@ -79,7 +75,9 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 	optimizer = optim.Adam([x], lr=0.01)
 	for s in range(max_step):
 		optimizer.zero_grad()
-		loss = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function)
+		loss = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function, in_optimization=True)
+		if (loss.data != loss.data).any():
+			break
 		curr_loss = loss.data.squeeze()[0]
 		x.grad = grad([loss], [x], retain_graph=True)[0]
 		ftol = (prev_loss - curr_loss) / max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
@@ -93,8 +91,7 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 			break
 	###--------------------------------------------------###
 	optimum_loc = x.clone()
-	optimum_value = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function).data.squeeze()[0]
-	# print('%s process(id:%s) ended' % (pname, pid))
+	optimum_value = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function)[0].data.squeeze()[0]
 	return optimum_loc, optimum_value
 
 
@@ -108,20 +105,20 @@ def deepcopy_inference(inference, param_samples):
 	return inferences
 
 
-def acquisition(x, reference, inferences, acquisition_function=expected_improvement, stability_check=False):
+def acquisition(x, reference, inferences, acquisition_function=expected_improvement, in_optimization=False):
 	acquisition_sample_list = []
 	numerically_stable_list = []
 	zero_pred_var_list = []
 	for s in range(len(inferences)):
-		pred_dist = inferences[s].predict(x, stability_check=stability_check)
+		pred_dist = inferences[s].predict(x, in_optimization=in_optimization)
 		pred_mean_sample = pred_dist[0]
 		pred_var_sample = pred_dist[1]
 		numerically_stable_list.append(pred_dist[2])
 		zero_pred_var_list.append(pred_dist[3])
 		acquisition_sample_list.append(acquisition_function(pred_mean_sample[:, 0], pred_var_sample[:, 0], reference=reference))
 	sample_info = (np.sum(numerically_stable_list), np.sum(zero_pred_var_list), len(numerically_stable_list))
-	if x.size(0) == 1:
-		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
+	if in_optimization:
+		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True) if numerically_stable_list.count(True) > 0 else Variable(torch.FloatTensor([[np.nan]]))
 	else:
 		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True), sample_info
 

@@ -39,7 +39,7 @@ class ShadowInference(Inference):
 				chol_jitter = gram_mat_nonorigin.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
 		self.jitter = chol_jitter
 
-	def predict(self, pred_x, hyper=None, stability_check=False):
+	def predict(self, pred_x, hyper=None, in_optimization=False):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
@@ -67,48 +67,43 @@ class ShadowInference(Inference):
 		chol_solver_y = chol_solver[:, n_pred * 2:n_pred * 2 + 1]
 		chol_solver_q_bar_0 = chol_solver[:, n_pred * 2 + 1:]
 
+		numerical_error_in_optimization = False
 		sol_p_sqr = kernel_max + self.model.likelihood(pred_x).view(-1, 1) + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
 		if not (sol_p_sqr.data >= 0).all():
-			neg_mask = sol_p_sqr.data < 0
-			neg_val = sol_p_sqr.data[neg_mask]
-			min_neg_val = torch.min(neg_val)
-			max_neg_val = torch.max(neg_val)
-			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('p')
-			print('p')
-			print('p')
-			print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), sol_p_sqr.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
-			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
-			print('jitter %.4E' % self.jitter)
-			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		if stability_check:
-			assert (sol_p_sqr.data >= 0).all()
-		sol_p = torch.sqrt(sol_p_sqr.clamp(min=1e-8))
+			if in_optimization:
+				numerical_error_in_optimization = True
+			else:
+				neg_mask = sol_p_sqr.data < 0
+				neg_val = sol_p_sqr.data[neg_mask]
+				min_neg_val = torch.min(neg_val)
+				max_neg_val = torch.max(neg_val)
+				kernel_max = self.model.kernel.forward_on_identical().data[0]
+				print('p')
+				print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), sol_p_sqr.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
+				print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
+				print('jitter %.4E' % self.jitter)
+				print('-' * 50)
+		sol_p = torch.sqrt(sol_p_sqr.clamp(min=1e-12))
 		sol_k_bar = (K_ori_pre_diag - (chol_solver_q * chol_solver_k).sum(0).view(-1, 1)) / sol_p
 		sol_y_bar = (self.mean_vec.index_select(0, self.ind_origin) - torch.mm(chol_solver_q.t(), chol_solver_y)) / sol_p
 		sol_q_bar_1 = (K_ori_sat_diag - (chol_solver_q * chol_solver_q_bar_0).sum(0).view(-1, 1)) / sol_p
 
 		sol_p_bar_sqr = kernel_max + self.model.likelihood(pred_x).view(-1, 1) + self.jitter - (chol_solver_q_bar_0 ** 2).sum(0).view(-1, 1) - (sol_q_bar_1 ** 2)
 		if not (sol_p_bar_sqr.data >= 0).all():
-			neg_mask = sol_p_bar_sqr.data < 0
-			neg_val = sol_p_bar_sqr.data[neg_mask]
-			min_neg_val = torch.min(neg_val)
-			max_neg_val = torch.max(neg_val)
-			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('p bar')
-			print('p bar')
-			print('p bar')
-			print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), sol_p_bar_sqr.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
-			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
-			print('jitter %.4E' % self.jitter)
-			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		if stability_check:
-			assert (sol_p_bar_sqr.data >= 0).all()
-		sol_p_bar = torch.sqrt(sol_p_bar_sqr.clamp(min=1e-8))
+			if in_optimization:
+				numerical_error_in_optimization = True
+			else:
+				neg_mask = sol_p_bar_sqr.data < 0
+				neg_val = sol_p_bar_sqr.data[neg_mask]
+				min_neg_val = torch.min(neg_val)
+				max_neg_val = torch.max(neg_val)
+				kernel_max = self.model.kernel.forward_on_identical().data[0]
+				print('p bar')
+				print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), sol_p_bar_sqr.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
+				print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
+				print('jitter %.4E' % self.jitter)
+				print('-' * 50)
+		sol_p_bar = torch.sqrt(sol_p_bar_sqr.clamp(min=1e-12))
 
 		sol_k_tilde = (K_sat_pre_diag - (chol_solver_q_bar_0 * chol_solver_k).sum(0).view(-1, 1) - sol_k_bar * sol_q_bar_1) / sol_p_bar
 
@@ -116,28 +111,25 @@ class ShadowInference(Inference):
 		pred_var = self.model.kernel.forward_on_identical() - (chol_solver_k ** 2).sum(0).view(-1, 1) - sol_k_bar ** 2 - sol_k_tilde ** 2
 
 		if not (pred_var.data >= 0).all():
-			neg_mask = pred_var.data < 0
-			neg_val = pred_var.data[neg_mask]
-			min_neg_val = torch.min(neg_val)
-			max_neg_val = torch.max(neg_val)
-			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('predictiva variance')
-			print('predictiva variance')
-			print('predictiva variance')
-			print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), pred_var.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
-			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
-			print('jitter %.4E' % self.jitter)
-			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		if stability_check:
-			assert (pred_var.data >= 0).all()
+			if in_optimization:
+				numerical_error_in_optimization = True
+			else:
+				neg_mask = pred_var.data < 0
+				neg_val = pred_var.data[neg_mask]
+				min_neg_val = torch.min(neg_val)
+				max_neg_val = torch.max(neg_val)
+				kernel_max = self.model.kernel.forward_on_identical().data[0]
+				print('predictive variance')
+				print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), pred_var.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
+				print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
+				print('jitter %.4E' % self.jitter)
+				print('-' * 50)
 		numerically_stable = (pred_var.data >= 0).all()
 		zero_pred_var = (pred_var.data <= 0).all()
 
 		if hyper is not None:
 			self.cholesky_update(param_original)
-		return pred_mean, pred_var.clamp(min=1e-8), numerically_stable, zero_pred_var
+		return pred_mean, pred_var.clamp(min=1e-12) if not numerical_error_in_optimization else None, numerically_stable, zero_pred_var
 
 	def negative_log_likelihood(self, hyper=None):
 		if hyper is not None:
@@ -160,16 +152,12 @@ class ShadowInference(Inference):
 			min_neg_val = torch.min(neg_val)
 			max_neg_val = torch.max(neg_val)
 			kernel_max = self.model.kernel.forward_on_identical().data[0]
-			print('p')
-			print('p')
-			print('p')
+			print('nll p')
 			print('negative %d/%d pred_var range %.4E(%.4E) ~ %.4E(%.4E)' % (torch.sum(neg_mask), sol_p_sqr.numel(), min_neg_val, min_neg_val / kernel_max, max_neg_val, max_neg_val / kernel_max))
 			print('kernel max %.4E / noise variance %.4E' % (kernel_max, torch.exp(self.model.likelihood.log_noise_var.data)[0]))
 			print('jitter %.4E' % self.jitter)
 			print('-' * 50)
-			print('-' * 50)
-			print('-' * 50)
-		sol_p = torch.sqrt(sol_p_sqr.clamp(min=1e-8))
+		sol_p = torch.sqrt(sol_p_sqr.clamp(min=1e-12))
 		sol_y_i = (self.mean_vec.index_select(0, self.ind_origin) - chol_solver_q.t().mm(chol_solver_y)) / sol_p
 
 		nll = 0.5 * (torch.sum(chol_solver_y ** 2) + torch.mean(sol_y_i ** 2)) + torch.sum(torch.log(torch.diag(self.cholesky_nonorigin))) + torch.mean(torch.log(sol_p)) + 0.5 * self.train_y.size(0) * np.log(2 * np.pi)

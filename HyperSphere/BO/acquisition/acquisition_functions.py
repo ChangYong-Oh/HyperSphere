@@ -12,7 +12,7 @@ def norm_pdf(x, mu=0.0, var=1.0):
 def expected_improvement(mean, var, reference):
 	std = torch.sqrt(var)
 	standardized = (-mean + reference) / std
-	return (std * norm_pdf(standardized) + (-mean + reference) * norm_cdf(standardized)).clamp(min=1e-16)
+	return (std * norm_pdf(standardized) + (-mean + reference) * norm_cdf(standardized)).clamp(min=0)
 
 
 if __name__ == '__main__':
