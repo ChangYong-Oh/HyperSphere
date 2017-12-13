@@ -76,8 +76,6 @@ def optimize(max_step, x0, reference, inferences, acquisition_function=expected_
 	for s in range(max_step):
 		optimizer.zero_grad()
 		loss = -acquisition(x, reference=reference, inferences=inferences, acquisition_function=acquisition_function, in_optimization=True)
-		if (loss.data != loss.data).any():
-			break
 		curr_loss = loss.data.squeeze()[0]
 		x.grad = grad([loss], [x], retain_graph=True)[0]
 		ftol = (prev_loss - curr_loss) / max(1, np.abs(prev_loss), np.abs(curr_loss)) if prev_loss is not None else 1
@@ -118,7 +116,7 @@ def acquisition(x, reference, inferences, acquisition_function=expected_improvem
 		acquisition_sample_list.append(acquisition_function(pred_mean_sample[:, 0], pred_var_sample[:, 0], reference=reference))
 	sample_info = (np.sum(numerically_stable_list), np.sum(zero_pred_var_list), len(numerically_stable_list))
 	if in_optimization:
-		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True) if numerically_stable_list.count(True) > 0 else Variable(torch.FloatTensor([[np.nan]]))
+		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True)
 	else:
 		return torch.stack(acquisition_sample_list, 1).sum(1, keepdim=True), sample_info
 
