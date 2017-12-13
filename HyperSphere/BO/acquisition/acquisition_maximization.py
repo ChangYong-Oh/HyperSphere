@@ -151,9 +151,6 @@ def mean_std_var(x, inferences):
 def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	ndim = input.size(1)
 	min_ind = torch.min(output.data, 0)[1]
-	# x0_spray = input.data.new(0, ndim)
-	# for std in [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]:
-	# 	x0_spray = torch.cat([x0_spray, input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * std * (upper_bnd - lower_bnd)])
 
 	x0_spray = input.data[min_ind].view(1, -1).repeat(N_SPRAY, 1) + input.data.new(N_SPRAY, ndim).normal_() * 0.001 * (upper_bnd - lower_bnd)
 

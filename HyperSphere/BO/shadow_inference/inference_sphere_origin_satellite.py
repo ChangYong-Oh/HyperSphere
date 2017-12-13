@@ -70,9 +70,7 @@ class ShadowInference(Inference):
 		numerical_error_in_optimization = False
 		sol_p_sqr = kernel_max + self.model.likelihood(pred_x).view(-1, 1) + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
 		if not (sol_p_sqr.data >= 0).all():
-			if in_optimization:
-				numerical_error_in_optimization = True
-			else:
+			if not in_optimization:
 				neg_mask = sol_p_sqr.data < 0
 				neg_val = sol_p_sqr.data[neg_mask]
 				min_neg_val = torch.min(neg_val)
@@ -90,9 +88,7 @@ class ShadowInference(Inference):
 
 		sol_p_bar_sqr = kernel_max + self.model.likelihood(pred_x).view(-1, 1) + self.jitter - (chol_solver_q_bar_0 ** 2).sum(0).view(-1, 1) - (sol_q_bar_1 ** 2)
 		if not (sol_p_bar_sqr.data >= 0).all():
-			if in_optimization:
-				numerical_error_in_optimization = True
-			else:
+			if not in_optimization:
 				neg_mask = sol_p_bar_sqr.data < 0
 				neg_val = sol_p_bar_sqr.data[neg_mask]
 				min_neg_val = torch.min(neg_val)
@@ -111,9 +107,7 @@ class ShadowInference(Inference):
 		pred_var = self.model.kernel.forward_on_identical() - (chol_solver_k ** 2).sum(0).view(-1, 1) - sol_k_bar ** 2 - sol_k_tilde ** 2
 
 		if not (pred_var.data >= 0).all():
-			if in_optimization:
-				numerical_error_in_optimization = True
-			else:
+			if not in_optimization:
 				neg_mask = pred_var.data < 0
 				neg_val = pred_var.data[neg_mask]
 				min_neg_val = torch.min(neg_val)
@@ -129,7 +123,7 @@ class ShadowInference(Inference):
 
 		if hyper is not None:
 			self.cholesky_update(param_original)
-		return pred_mean, pred_var.clamp(min=1e-12) if not numerical_error_in_optimization else None, numerically_stable, zero_pred_var
+		return pred_mean, pred_var.clamp(min=1e-12), numerically_stable, zero_pred_var
 
 	def negative_log_likelihood(self, hyper=None):
 		if hyper is not None:
