@@ -154,7 +154,7 @@ class ShadowInference(Inference):
 		one_radius = Variable(torch.ones(1, 1)).type_as(self.train_x)
 		K_non_ori_rel_radius = self.model.kernel.radius_kernel(self.train_x_nonorigin_radius, one_radius * 0).repeat(1, n_nonorigin)
 		K_non_ori_rel_sphere = self.model.kernel.sphere_kernel(self.train_x_nonorigin_sphere, self.train_x_nonorigin_sphere)
-		K_non_ori_rel = K_non_ori_rel_radius * K_non_ori_rel_sphere
+		K_non_ori_rel = self.model.kernel.combine_kernel(radial_gram=K_non_ori_rel_radius, sphere_gram=K_non_ori_rel_sphere)
 
 		chol_solver = torch.gesv(torch.cat([self.mean_vec.index_select(0, self.ind_nonorigin), K_non_ori_rel], 1), self.cholesky_nonorigin)[0]
 		chol_solver_y = chol_solver[:, :1]
