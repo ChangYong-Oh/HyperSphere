@@ -24,21 +24,23 @@ class Kumaraswamy(GPModule):
 		self.max_input = max_input
 		self.log_a = Parameter(torch.FloatTensor(ndim))
 		self.log_b = Parameter(torch.FloatTensor(ndim))
+		self.log_a_lambda = 2.0
+		self.log_b_lambda = 2.0
+		self.param_max = 2.0
 
 	def reset_parameters(self):
-		self.log_a.data.exponential_(lambd=1.5).neg_()
-		self.log_b.data.exponential_(lambd=1.5)
+		self.log_a.data.exponential_(lambd=self.log_a_lambda).neg_()
+		self.log_b.data.exponential_(lambd=self.log_b_lambda)
 
 	def init_parameters(self):
 		self.log_a.data.fill_(0.0)
 		self.log_b.data.fill_(0.0)
 
 	def out_of_bounds(self, vec=None):
-		max_param_mag = 1.5
 		if vec is None:
-			return (self.log_a.data > 0).any() or (self.log_a.data < -max_param_mag).any() or (self.log_b.data < 0).any() or (self.log_b.data > max_param_mag).any()
+			return (self.log_a.data > 0).any() or (self.log_a.data < -self.param_max).any() or (self.log_b.data < 0).any() or (self.log_b.data > self.param_max).any()
 		else:
-			return (vec[:1] > 0).any() or (vec[:1] < -max_param_mag).any() or (vec[1:] < 0).any() or (vec[1:] > max_param_mag).any()
+			return (vec[:1] > 0).any() or (vec[:1] < -self.param_max).any() or (vec[1:] < 0).any() or (vec[1:] > self.param_max).any()
 
 	def n_params(self):
 		return 2
@@ -52,7 +54,7 @@ class Kumaraswamy(GPModule):
 
 	def prior(self, vec):
 		# return smp.normal(vec[:1], 0.0, 0.25) + smp.normal(vec[1:], 0, 0.25)
-		return smp.exponential(x=-vec[:1], rate=1.5) + smp.exponential(x=vec[1:], rate=1.5)
+		return smp.exponential(x=-vec[:1], rate=self.log_a_lambda) + smp.exponential(x=vec[1:], rate=self.log_b_lambda)
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
