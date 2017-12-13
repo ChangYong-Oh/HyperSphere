@@ -26,26 +26,18 @@ class Kumaraswamy(GPModule):
 		self.log_b = Parameter(torch.FloatTensor(ndim))
 
 	def reset_parameters(self):
-		# self.log_a.data.normal_(mean=np.log(2), std=0.5)
-		# self.log_b.data.normal_(mean=np.log(3), std=0.75)
 		self.log_a.data.normal_(mean=0, std=2.0)
-		self.log_b.data.normal_(mean=0, std=2.0)
+		self.log_b.data.normal_(mean=np.log(3), std=2.0)
 
 	def init_parameters(self):
-		# self.log_a.data.fill_(0)
-		# self.log_b.data.fill_(np.log(3))
-		self.log_a.data.fill_(0.0)
-		self.log_b.data.fill_(0.0)
+		self.log_a.data.fill_(0)
+		self.log_b.data.fill_(np.log(2))
 
 	def out_of_bounds(self, vec=None):
-		# if vec is None:
-		# 	return (self.log_a.data > log_upper_bnd).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < 0).any() or (self.log_b.data > log_upper_bnd).any()
-		# else:
-		# 	return (vec[:1] > log_upper_bnd).any() or (vec[:1] < log_lower_bnd).any() or (vec[1:] < 0).any() or (vec[1:] > log_upper_bnd).any()
 		if vec is None:
-			return (self.log_a.data > log_upper_bnd).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < log_lower_bnd).any() or (self.log_b.data > log_upper_bnd).any()
+			return (self.log_a.data > log_upper_bnd).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < 0).any() or (self.log_b.data > log_upper_bnd).any()
 		else:
-			return (vec[:1] > log_upper_bnd).any() or (vec[:1] < log_lower_bnd).any() or (vec[1:] < log_lower_bnd).any() or (vec[1:] > log_upper_bnd).any()
+			return (vec[:1] > log_upper_bnd).any() or (vec[:1] < log_lower_bnd).any() or (vec[1:] < 0).any() or (vec[1:] > log_upper_bnd).any()
 
 	def n_params(self):
 		return 2
@@ -58,8 +50,7 @@ class Kumaraswamy(GPModule):
 		self.log_b.data = vec[1:]
 
 	def prior(self, vec):
-		# return smp.normal(vec[:1], 0, 0.5) + smp.normal(vec[1:], np.log(3), 0.75)
-		return smp.normal(vec[:1], 0.0, 2.0) + smp.normal(vec[1:], 0.0, 2.0)
+		return smp.normal(vec[:1], 0.0, 2.0) + smp.normal(vec[1:], np.log(2), 2.0)
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
