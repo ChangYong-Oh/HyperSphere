@@ -28,11 +28,11 @@ class Kumaraswamy(GPModule):
 
 	def reset_parameters(self):
 		self.log_a.data.normal_(mean=0, std=0.5)
-		self.log_b.data.normal_(mean=np.log(2), std=0.75)
+		self.log_b.data.normal_(mean=np.log(3), std=0.75)
 
 	def init_parameters(self):
 		self.log_a.data.fill_(0)
-		self.log_b.data.fill_(0)
+		self.log_b.data.fill_(np.log(3))
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
@@ -52,7 +52,7 @@ class Kumaraswamy(GPModule):
 
 	def prior(self, vec):
 		# return smp.normal(vec[:1], 0.0, 0.5) + smp.normal(vec[1:], 0.0, 0.5)
-		return smp.normal(vec[:1], 0, 0.5) + smp.normal(vec[1:], np.log(2), 0.75)
+		return smp.normal(vec[:1], 0, 0.5) + smp.normal(vec[1:], np.log(3), 0.75)
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
