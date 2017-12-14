@@ -27,12 +27,12 @@ class Kumaraswamy(GPModule):
 		self.param_max = np.log(5)
 
 	def reset_parameters(self):
-		self.log_a.data.normal_(means=0, std=0.5)
-		self.log_b.data.normal_(means=0, std=0.5)
-
-	def init_parameters(self):
 		self.log_a.data.normal_(mean=0, std=0.5)
 		self.log_b.data.normal_(mean=np.log(2), std=0.75)
+
+	def init_parameters(self):
+		self.log_a.data.fill_(0)
+		self.log_b.data.fill_(0)
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
