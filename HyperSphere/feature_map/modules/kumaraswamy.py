@@ -31,14 +31,14 @@ class Kumaraswamy(GPModule):
 		self.log_b.data.normal_(means=0, std=0.5)
 
 	def init_parameters(self):
-		self.log_a.data.fill_(-0.0001)
-		self.log_b.data.fill_(0.0001)
+		self.log_a.data.normal_(mean=0, std=0.5)
+		self.log_b.data.normal_(mean=np.log(2), std=0.75)
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
-			return (self.log_a.data > 0).any() or (self.log_a.data < -self.param_max).any() or (self.log_b.data < 0).any() or (self.log_b.data > self.param_max).any()
+			return (self.log_a.data > log_upper_bnd).any() or (self.log_a.data < log_lower_bnd).any() or (self.log_b.data < 0).any() or (self.log_b.data > log_upper_bnd).any()
 		else:
-			return (vec[:1] > 0).any() or (vec[:1] < -self.param_max).any() or (vec[1:] < 0).any() or (vec[1:] > self.param_max).any()
+			return (vec[:1] > log_upper_bnd).any() or (vec[:1] < log_lower_bnd).any() or (vec[1:] < 0).any() or (vec[1:] > log_upper_bnd).any()
 
 	def n_params(self):
 		return 2
@@ -52,7 +52,7 @@ class Kumaraswamy(GPModule):
 
 	def prior(self, vec):
 		# return smp.normal(vec[:1], 0.0, 0.5) + smp.normal(vec[1:], 0.0, 0.5)
-		return np.log(np.log(1.0 + 4.0 / vec[:1] ** 2)) + np.log(np.log(1.0 + 4.0 / vec[1:] ** 2))
+		return smp.normal(vec[:1], 0, 0.5) + smp.normal(vec[1:], np.log(2), 0.75)
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
