@@ -27,8 +27,8 @@ class Kumaraswamy(GPModule):
 		self.param_max = np.log(5)
 
 	def reset_parameters(self):
-		self.log_a.data.normal_(mean=0, std=0.5)
-		self.log_b.data.normal_(mean=0, std=0.5).abs_()
+		self.log_a.data.normal_(mean=0, std=0.25)
+		self.log_b.data.normal_(mean=0, std=0.25).abs_()
 
 	def init_parameters(self):
 		self.log_a.data.fill_(0)
@@ -51,7 +51,7 @@ class Kumaraswamy(GPModule):
 		self.log_b.data = vec[1:]
 
 	def prior(self, vec):
-		return smp.normal(vec[:1], 0, 0.5) + smp.normal(vec[1:], 0, 0.5)
+		return smp.normal(vec[:1], 0, 0.25) + smp.normal(vec[1:], 0, 0.25)
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
