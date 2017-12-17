@@ -1,5 +1,5 @@
 import numpy as np
-import sampyl as smp
+from scipy import stats
 
 import torch
 from torch.autograd import Variable
@@ -24,11 +24,16 @@ class Kumaraswamy(GPModule):
 		self.max_input = max_input
 		self.log_a = Parameter(torch.FloatTensor(ndim))
 		self.log_b = Parameter(torch.FloatTensor(ndim))
-		self.param_max = np.log(5)
 
 	def reset_parameters(self):
-		self.log_a.data.normal_(mean=0, std=0.25)
-		self.log_b.data.normal_(mean=0, std=0.25).abs_()
+		if np.random.uniform() > 0.5:
+			self.log_a.data.normal_(mean=0, std=0.01)
+		else:
+			self.log_a.data.normal_(mean=0, std=10.0)
+		if np.random.uniform() > 0.5:
+			self.log_b.data.normal_(mean=0, std=0.01).abs_()
+		else:
+			self.log_b.data.normal_(mean=0, std=10.0).abs_()
 
 	def init_parameters(self):
 		self.log_a.data.fill_(0)
@@ -51,7 +56,8 @@ class Kumaraswamy(GPModule):
 		self.log_b.data = vec[1:]
 
 	def prior(self, vec):
-		return smp.normal(vec[:1], 0, 0.25) + smp.normal(vec[1:], 0, 0.25)
+		# return smp.normal(vec[:1], 0, 0.25) + smp.normal(vec[1:], 0, 0.25)
+		return np.sum(np.log(stats.norm.pdf(vec, 0, 0.01) + stats.norm.pdf(vec, 0, 10.0)))
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
