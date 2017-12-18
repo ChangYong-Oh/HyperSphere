@@ -10,6 +10,7 @@ from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimiz
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.test_functions.benchmarks import *
+from HyperSphere.test_functions.mnist_weight import mnist_weight
 
 # Kernels
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
