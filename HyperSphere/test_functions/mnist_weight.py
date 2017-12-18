@@ -18,11 +18,12 @@ class Net(nn.Module):
 	def __init__(self, n_hid, hid_weight=None):
 		super(Net, self).__init__()
 		self.fc1 = nn.Linear(784, n_hid)
-		self.hid_weight = hid_weight if hasattr(hid_weight, 'data') else Variable(hid_weight)
 		if hid_weight is None:
+			self.hid_weight = None
 			self.fc2 = nn.Linear(n_hid, 10)
 		else:
-			self.bias = Parameter(torch.Tensor(10))
+			self.hid_weight = hid_weight if hasattr(hid_weight, 'data') else Variable(hid_weight)
+			self.hid_bias = Parameter(torch.Tensor(10))
 
 	def forward(self, x):
 		x = x.view(-1, 784)
@@ -32,7 +33,7 @@ class Net(nn.Module):
 		else:
 			if x.is_cuda:
 				self.hid_weight = self.hid_weight.cuda()
-			x = F.linear(x, self.hid_weight, self.bias)
+			x = F.linear(x, self.hid_weight, self.hid_bias)
 		return F.log_softmax(x)
 
 
@@ -82,12 +83,15 @@ def test(test_loader, model, use_cuda):
 	return test_loss, test_accuracy
 
 batch_size = 64
-epoch = 50
+epoch = 20
 
 
-def mnist_weight(weight_vector):
+def mnist_weight(weight_vector, use_BO=True):
 	use_cuda = cuda.is_available()
-	model = Net(n_hid=weight_vector.numel()/10, hid_weight=weight_vector.view(10, -1))
+	if use_BO:
+		model = Net(n_hid=weight_vector.numel() / 10, hid_weight=weight_vector.view(10, -1))
+	else:
+		model = Net(n_hid=weight_vector.numel() / 10, hid_weight=None)
 	for m in model.parameters():
 		if m.dim() == 2:
 			nn.init.xavier_normal(m.data)
@@ -99,10 +103,13 @@ def mnist_weight(weight_vector):
 	optimizer = optim.Adam(model.parameters())
 	train(train_loader, model, epoch, optimizer, use_cuda)
 	test_loss, test_accuracy = test(test_loader, model, use_cuda)
+	if not use_BO:
+		print('Entirely with SGD(Adam)')
+		print(model.fc2.weight.data)
 	print('\nLoss : %f / Accuracy : %6.4f' % (test_loss, test_accuracy))
 	return test_loss
 
 
 if __name__ == '__main__':
 	weight_vector = torch.randn(100)
-	print(mnist_weight(weight_vector))
+	print(mnist_weight(weight_vector, use_BO=False))
