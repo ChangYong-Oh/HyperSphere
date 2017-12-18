@@ -110,6 +110,9 @@ def mnist_weight(weight_vector, use_BO=True):
 	return test_loss
 
 
+mnist_weight.dim = 0
+
+
 if __name__ == '__main__':
 	weight_vector = torch.randn(100)
 	print(mnist_weight(weight_vector, use_BO=False))
