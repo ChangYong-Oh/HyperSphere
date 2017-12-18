@@ -24,16 +24,16 @@ class Kumaraswamy(GPModule):
 		self.max_input = max_input
 		self.log_a = Parameter(torch.FloatTensor(ndim))
 		self.log_b = Parameter(torch.FloatTensor(ndim))
-		self.log_a_max = np.log(1.5)
-		self.log_b_max = np.log(4.0)
+		self.log_a_max = np.log(2.0)
+		self.log_b_max = np.log(2.0)
 
 	def reset_parameters(self):
 		if np.random.uniform() > 0.5:
-			self.log_a.data.normal_(mean=0, std=0.05).clamp(min=-self.log_a_max, max=self.log_a_max)
+			self.log_a.data.normal_(mean=0, std=0.01).clamp(min=-self.log_a_max, max=0)
 		else:
-			self.log_a.data.uniform_(-self.log_a_max, self.log_a_max)
+			self.log_a.data.uniform_(-self.log_a_max, 0)
 		if np.random.uniform() > 0.5:
-			self.log_b.data.normal_(mean=0, std=0.05).abs_().clamp(min=0, max=self.log_b_max)
+			self.log_b.data.normal_(mean=0, std=0.01).clamp(min=0, max=self.log_b_max)
 		else:
 			self.log_b.data.uniform_(0, self.log_b_max)
 
@@ -43,9 +43,9 @@ class Kumaraswamy(GPModule):
 
 	def out_of_bounds(self, vec=None):
 		if vec is None:
-			return (self.log_a.data > self.log_a_max).any() or (self.log_a.data < -self.log_a_max).any() or (self.log_b.data < 0).any() or (self.log_b.data > self.log_b_max).any()
+			return (self.log_a.data > 0).any() or (self.log_a.data < -self.log_a_max).any() or (self.log_b.data < 0).any() or (self.log_b.data > self.log_b_max).any()
 		else:
-			return (vec[:1] > self.log_a_max).any() or (vec[:1] < -self.log_a_max).any() or (vec[1:] < 0).any() or (vec[1:] > self.log_b_max).any()
+			return (vec[:1] > 0).any() or (vec[:1] < -self.log_a_max).any() or (vec[1:] < 0).any() or (vec[1:] > self.log_b_max).any()
 
 	def n_params(self):
 		return 2
@@ -59,7 +59,7 @@ class Kumaraswamy(GPModule):
 
 	def prior(self, vec):
 		# return smp.normal(vec[:1], 0, 0.25) + smp.normal(vec[1:], 0, 0.25)
-		return np.sum(np.log(stats.norm.pdf(vec[:1], 0, 0.05) + 0.5 / self.log_a_max)) + np.sum(np.log(2 * stats.norm.pdf(vec[1:], 0, 0.05) + 1.0 / self.log_b_max))
+		return np.sum(np.log(stats.norm.pdf(vec[:1], 0, 0.01) + 0.5 / self.log_a_max)) + np.sum(np.log(stats.norm.pdf(vec[1:], 0, 0.01) + 0.5 / self.log_b_max))
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
