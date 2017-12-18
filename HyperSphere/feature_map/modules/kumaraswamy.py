@@ -27,11 +27,11 @@ class Kumaraswamy(GPModule):
 
 	def reset_parameters(self):
 		if np.random.uniform() > 0.5:
-			self.log_a.data.normal_(mean=0, std=0.1)
+			self.log_a.data.normal_(mean=0, std=0.05)
 		else:
 			self.log_a.data.normal_(mean=0, std=2.0)
 		if np.random.uniform() > 0.5:
-			self.log_b.data.normal_(mean=0, std=0.1).abs_()
+			self.log_b.data.normal_(mean=0, std=0.05).abs_()
 		else:
 			self.log_b.data.normal_(mean=0, std=2.0).abs_()
 
@@ -57,7 +57,7 @@ class Kumaraswamy(GPModule):
 
 	def prior(self, vec):
 		# return smp.normal(vec[:1], 0, 0.25) + smp.normal(vec[1:], 0, 0.25)
-		return np.sum(np.log(stats.norm.pdf(vec, 0, 0.1) + stats.norm.pdf(vec, 0, 2.0)))
+		return np.sum(np.log(stats.norm.pdf(vec, 0, 0.05) + stats.norm.pdf(vec, 0, 2.0)))
 
 	def forward(self, input):
 		a = torch.exp(self.log_a)
