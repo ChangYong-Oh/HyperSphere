@@ -112,6 +112,15 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 	                          'kernel', 'model', 'inference', 'pool']
 	stored_variable_names = set(locals().keys()).difference(set(ignored_variable_names))
 
+	if path is None:
+		torch.save(model, model_filename)
+		stored_variable = dict()
+		for key in stored_variable_names:
+			stored_variable[key] = locals()[key]
+		f = open(data_config_filename, 'w')
+		pickle.dump(stored_variable, f)
+		f.close()
+
 	print('Experiment based on data in %s' % os.path.split(model_filename)[0])
 
 	# multiprocessing conflicts with pytorch linear algebra operation
