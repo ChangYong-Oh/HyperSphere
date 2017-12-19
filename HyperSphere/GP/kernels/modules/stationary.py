@@ -48,11 +48,6 @@ class Stationary(Kernel):
 		super(Stationary, self).vec_to_param(vec[:n_param_super])
 		self.log_ls.data = vec[n_param_super:]
 
-	def elastic_vec_to_param(self, vec, func):
-		n_param_super = super(Stationary, self).n_params()
-		super(Stationary, self).vec_to_param(vec[:n_param_super])
-		self.log_ls.data = func(vec[n_param_super:])
-
 	def prior(self, vec):
 		n_param_super = super(Stationary, self).n_params()
 		return super(Stationary, self).prior(vec[:n_param_super]) + smp.uniform(np.exp(vec[n_param_super:]), lower=np.exp(log_lower_bnd), upper=np.exp(self.max_log_ls))

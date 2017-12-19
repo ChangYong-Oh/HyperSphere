@@ -72,7 +72,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		model_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'model.pt')
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
-		x_input = Variable(torch.stack([torch.zeros(ndim), torch.ones(ndim)]))
+		x_input = Variable(torch.stack([torch.zeros(ndim), torch.FloatTensor(ndim).uniform_(-1, 1)]))
 		n_init_eval = x_input.size(0)
 		output = Variable(torch.zeros(n_init_eval, 1))
 		for i in range(n_init_eval):
