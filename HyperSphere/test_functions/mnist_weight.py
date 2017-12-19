@@ -107,7 +107,7 @@ def mnist_weight(weight_vector, use_BO=True):
 		print('Entirely with SGD(Adam)')
 		print(model.fc2.weight.data)
 	print('\nLoss : %f / Accuracy : %6.4f' % (test_loss, test_accuracy))
-	return test_loss
+	return torch.FloatTensor([[test_loss]])
 
 
 mnist_weight.dim = 0
