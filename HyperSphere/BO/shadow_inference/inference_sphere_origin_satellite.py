@@ -67,7 +67,6 @@ class ShadowInference(Inference):
 		chol_solver_y = chol_solver[:, n_pred * 2:n_pred * 2 + 1]
 		chol_solver_q_bar_0 = chol_solver[:, n_pred * 2 + 1:]
 
-		numerical_error_in_optimization = False
 		sol_p_sqr = kernel_max + self.model.likelihood(pred_x).view(-1, 1) + self.jitter - (chol_solver_q ** 2).sum(0).view(-1, 1)
 		if not (sol_p_sqr.data >= 0).all():
 			if not in_optimization:

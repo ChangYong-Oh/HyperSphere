@@ -8,10 +8,10 @@ from HyperSphere.feature_map.functionals import x2radial
 
 class RadializationKernel(GPModule):
 
-	def __init__(self, max_power, search_radius):
+	def __init__(self, max_power, search_radius, radius_input_map=None):
 		super(RadializationKernel, self).__init__()
 		self.search_radius = search_radius
-		self.radius_kernel = Matern52(ndim=1, max_ls=2.0 * search_radius)
+		self.radius_kernel = Matern52(ndim=1, max_ls=2.0 * search_radius, input_map=radius_input_map)
 		self.sphere_kernel = SphereRadialKernel(max_power)
 
 	def reset_parameters(self):
@@ -40,13 +40,13 @@ class RadializationKernel(GPModule):
 		return vec
 
 	def vec_to_param(self, vec):
-		n_param_radial = self.radius_kernel.n_params()
-		self.radius_kernel.vec_to_param(vec[:n_param_radial])
-		self.sphere_kernel.vec_to_param(vec[n_param_radial:])
+		n_param_radius = self.radius_kernel.n_params()
+		self.radius_kernel.vec_to_param(vec[:n_param_radius])
+		self.sphere_kernel.vec_to_param(vec[n_param_radius:])
 
 	def prior(self, vec):
-		n_param_super = self.radius_kernel.n_params()
-		return self.radius_kernel.prior(vec[:n_param_super]) + self.sphere_kernel.prior(vec[n_param_super:])
+		n_param_radius = self.radius_kernel.n_params()
+		return self.radius_kernel.prior(vec[:n_param_radius]) + self.sphere_kernel.prior(vec[n_param_radius:])
 
 	def forward_on_identical(self):
 		return torch.exp(self.radius_kernel.log_amp) * (1 + 1e-6)

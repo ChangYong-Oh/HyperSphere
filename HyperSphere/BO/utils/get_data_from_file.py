@@ -12,7 +12,7 @@ def get_data_sphere(dir_name, algorithms, func_name, ndim):
 
 	data_list = []
 	for algorithm in algorithms:
-		result_dir_name_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if '_'.join(elm.split('_')[:3]) == func_name + '_D' + str(ndim) + '_' + algorithm]
+		result_dir_name_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if '_'.join(elm.split('_')[:-1]) == func_name + '_D' + str(ndim) + '_' + algorithm]
 		for result_dir_name in result_dir_name_list:
 			result_file = open(os.path.join(result_dir_name, 'data_config.pkl'))
 			unpickled_data = pickle.load(result_file)
@@ -77,7 +77,7 @@ def get_data_additive(dir_name, func_name, ndim):
 
 def get_data_spearmint(dir_name, func_name, ndim):
 	data_list = []
-	folder_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + str(ndim) == elm[:len(func_name + str(ndim))]]
+	folder_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + '_' + str(ndim) == elm[:len(func_name + str(ndim)) + 1]]
 	for folder in folder_list:
 		df = pd.read_pickle(os.path.join(folder, 'query_eval_data.pkl'))
 		df.sort_index(inplace=True)
@@ -120,9 +120,9 @@ def get_data(func_name, ndim):
 	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL'
 	data_list = []
 	data_list += get_data_HPOlib(HPOlib_dir_name, 'spearmint_april2013_mod')
-	data_list += get_data_HPOlib(HPOlib_dir_name, 'hyperopt_august2013_mod')
-	data_list += get_data_HPOlib(HPOlib_dir_name, 'smac_2_10_00-dev')
-	data_list += get_data_additive(additive_dir_name, func_name, ndim)
+	# data_list += get_data_HPOlib(HPOlib_dir_name, 'hyperopt_august2013_mod')
+	# data_list += get_data_HPOlib(HPOlib_dir_name, 'smac_2_10_00-dev')
+	# data_list += get_data_additive(additive_dir_name, func_name, ndim)
 	data_list += get_data_spearmint(spearmint_warping_dir_name, func_name, ndim)
 	# data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
 	data_list += get_data_sphere(sphere_dir_name, ['cube', 'cubeard', 'sphereboth', 'sphereorigin', 'spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)

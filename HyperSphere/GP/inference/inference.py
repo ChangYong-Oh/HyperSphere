@@ -61,7 +61,7 @@ class Inference(nn.Module):
 				chol_jitter = self.gram_mat.data[0, 0] * 1e-6 if chol_jitter == 0 else chol_jitter * 10
 		self.jitter = chol_jitter
 
-	def predict(self, pred_x, hyper=None, stability_check=False):
+	def predict(self, pred_x, hyper=None, in_optimization=False):
 		if hyper is not None:
 			param_original = self.model.param_to_vec()
 			self.cholesky_update(hyper)
@@ -76,8 +76,6 @@ class Inference(nn.Module):
 		pred_quad = (chol_solve_k ** 2).sum(0).view(-1, 1)
 		pred_var = kernel_max - pred_quad
 
-		if stability_check:
-			assert (pred_var.data >= 0).all()
 		numerically_stable = (pred_var.data >= 0).all()
 		zero_pred_var = (pred_var.data <= 0).all()
 

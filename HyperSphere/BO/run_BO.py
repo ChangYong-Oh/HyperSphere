@@ -14,7 +14,6 @@ from HyperSphere.test_functions.mnist_weight import mnist_weight
 
 # Kernels
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
-from HyperSphere.GP.kernels.modules.radialization_warping import RadializationWarpingKernel
 from HyperSphere.GP.kernels.modules.radialization import RadializationKernel
 
 # Inferences
@@ -22,6 +21,9 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.BO.shadow_inference.inference_sphere_satellite import ShadowInference as satellite_ShadowInference
 from HyperSphere.BO.shadow_inference.inference_sphere_origin import ShadowInference as origin_ShadowInference
 from HyperSphere.BO.shadow_inference.inference_sphere_origin_satellite import ShadowInference as both_ShadowInference
+
+# feature_map
+from HyperSphere.feature_map.modules.kumaraswamy import Kumaraswamy
 
 # boundary conditions
 from HyperSphere.feature_map.functionals import sphere_bound
@@ -40,8 +42,8 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		if geometry == 'sphere':
 			assert not ard
 			exp_conf_str += 'warping' if warping else ''
-			kernel = RadializationWarpingKernel if warping else RadializationKernel
-			model = GPRegression(kernel=kernel(max_power=3, search_radius=ndim ** 0.5))
+			radius_input_map = Kumaraswamy(ndim=1, max_input=ndim ** 0.5) if warping else None
+			model = GPRegression(kernel=RadializationKernel(max_power=3, search_radius=ndim ** 0.5, radius_input_map=radius_input_map))
 			inference_method = None
 			if origin and boundary:
 				inference_method = both_ShadowInference
