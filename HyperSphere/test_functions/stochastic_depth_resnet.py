@@ -39,16 +39,23 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	cmd_str += ' --data ' + data_type
 	cmd_str += ' --arch resnet --depth 110 --death-mode chosen --death-rate-filename ' + probability_filename
 	cmd_str += ' --save ' + save_dir
-	cmd_str += ' --batch-size 256 --epoch 500'
-	subprocess_stdout = subprocess.check_output(cmd_str, shell=True)
-	if subprocess_stdout[-1] == '\n':
-		subprocess_stdout = subprocess_stdout[:-1]
-	output = torch.FloatTensor([[float(subprocess_stdout.split('\n')[-1])]])
-	print(output)
+	cmd_str += ' --batch-size 256 --epoch 1'
+	process = subprocess.Popen(cmd_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	lastline = ''
+	while True:
+		nextline = process.stdout.readline()
+		if nextline == '':
+			if process.poll() is not None:
+				break
+		else:
+			lastline = nextline
+		sys.stdout.write(nextline)
+		sys.stdout.flush()
+	return torch.FloatTensor([[float(lastline)]])
 
 
 if __name__ == '__main__':
-	_stochastic_depth_resnet(torch.rand(54), 'cifar100+')
+	print('Return value : ', _stochastic_depth_resnet(torch.rand(54), 'cifar100+'))
 
 
 
