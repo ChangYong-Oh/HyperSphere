@@ -13,9 +13,13 @@ import torch
 def stochastic_depth_resnet_cifar10(probability_tensor):
 	return _stochastic_depth_resnet(probability_tensor, 'cifar10+')
 
+stochastic_depth_resnet_cifar10.dim = 54
+
 
 def stochastic_depth_resnet_cifar100(probability_tensor):
 	return _stochastic_depth_resnet(probability_tensor, 'cifar100+')
+
+stochastic_depth_resnet_cifar100.dim = 54
 
 
 def _stochastic_depth_resnet(probability_tensor, data_type):
