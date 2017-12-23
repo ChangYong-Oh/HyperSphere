@@ -26,7 +26,8 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	time_tag = time.strftime('%H:%M:%S', time.gmtime())
 	probability_filename = '/tmp/stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl'
 	probability_file = open(probability_filename, 'w')
-	pickle.dump(list(probability_tensor), probability_file)
+	probability_list = 1.0 / (1.0 + torch.exp(-4.0 * probability_tensor))
+	pickle.dump(list(probability_list), probability_file)
 	probability_file.close()
 
 	stochastic_depth_dir = os.path.join(os.path.abspath(os.path.join(os.path.split(__file__)[0], '../../../')), 'img_classification_pk_pytorch')
