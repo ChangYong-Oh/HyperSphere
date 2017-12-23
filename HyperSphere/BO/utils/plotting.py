@@ -43,7 +43,7 @@ def optimum_plot(func_name, ndim, type='avg'):
 
 	y_min = np.inf
 	y_max = np.min([data['optimum'][1] for data in data_list])
-	norm_z = 1.0
+	norm_z = 1
 	plot_data = {}
 	for algorithm in algorithms:
 		plot_data[algorithm] = {}
@@ -130,28 +130,35 @@ def optimum_plot(func_name, ndim, type='avg'):
 		ax_best.set_title('Best run')
 		ax_best.set_ylim(y_min, y_max)
 		ax_mean.legend()
-	elif type == 'custom':
+	elif type[:6] == 'custom':
 		gs = gridspec.GridSpec(1, 3)
 
 		ax_mean = plt.subplot(gs[0])
 		ax_best = plt.subplot(gs[1])
-		ax_sample = plt.subplot(gs[2])
+		ax_3rd = plt.subplot(gs[2])
 		for key in sorted(plot_data.keys()):
 			data = plot_data[key]
 			color = algorithm_color(key)
 			ax_mean.plot(data['plot_x'], data['mean'], color=color, label=key + '(' + str(data['n_samples']) + ')')
-			plot_samples(ax_sample, plot_data[key]['sample'], color)
+			if type[7:] == 'avg':
+				ax_3rd.plot(data['plot_x'], data['mean'], color=color, label=key + '(' + str(data['n_samples']) + ')')
+				ax_3rd.fill_between(data['plot_x'], data['mean'] - norm_z * data['std'], data['mean'] + norm_z * data['std'], color=color, alpha=0.25)
+			elif type[7:] == 'sample':
+				plot_samples(ax_3rd, plot_data[key]['sample'], color)
 			ax_best.plot(data['plot_x'], data['best'], color=color, label=key + '(' + str(data['n_samples']) + ')')
 		ax_mean.set_title('Mean')
 		ax_mean.set_ylim(y_min, y_max)
-		ax_sample.set_title('Samples')
-		ax_sample.set_ylim(y_min, y_max)
+		if type[7:] == 'avg':
+			ax_3rd.set_title('Average')
+		elif type[7:] == 'sample':
+			ax_3rd.set_title('Samples')
+		ax_3rd.set_ylim(y_min, y_max)
 		ax_best.set_title('Best run')
 		ax_best.set_ylim(y_min, y_max)
 		ax_mean.legend()
-		ax_sample.xaxis.set_minor_locator(MultipleLocator(25))
+		ax_3rd.xaxis.set_minor_locator(MultipleLocator(25))
 		# ax_sample.yaxis.set_minor_locator(MultipleLocator(0.5))
-		ax_sample.grid(which='minor')
+		ax_3rd.grid(which='minor')
 
 	plt.subplots_adjust(hspace=0.02)
 
@@ -174,7 +181,7 @@ def plot_samples(ax, sample_list, color, title_str=None):
 
 
 if __name__ == '__main__':
-	optimum_plot('mnist_weight', 100, type='custom')
+	optimum_plot('mnist_weight', 200, type='custom_sample')
 	# schwefel
 	# rotatedschwefel
 	# michalewicz

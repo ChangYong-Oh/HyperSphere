@@ -114,5 +114,26 @@ mnist_weight.dim = 0
 
 
 if __name__ == '__main__':
-	weight_vector = torch.randn(100)
+	weight_vector = torch.randn(500)
 	print(mnist_weight(weight_vector, use_BO=False))
+# 10 by 10 case
+# Loss : 0.242009 / Accuracy : 0.9322
+# Loss : 0.230133 / Accuracy : 0.9349
+# Loss : 0.216998 / Accuracy : 0.9388
+# Loss : 0.222007 / Accuracy : 0.9406
+# Loss : 0.242975 / Accuracy : 0.9321
+
+# 10 by 20 case
+# Loss : 0.145960 / Accuracy : 0.9585
+# Loss : 0.159507 / Accuracy : 0.9559
+# Loss : 0.140117 / Accuracy : 0.9605
+# Loss : 0.140135 / Accuracy : 0.9619
+# Loss : 0.165476 / Accuracy : 0.9545
+
+# 10 by 50 case
+# Loss : 0.118356 / Accuracy : 0.9726
+# Loss : 0.132987 / Accuracy : 0.9729
+# Loss : 0.122135 / Accuracy : 0.9732
+# Loss : 0.132618 / Accuracy : 0.9728
+# Loss : 0.121591 / Accuracy : 0.9729
+
