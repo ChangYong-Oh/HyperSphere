@@ -2,7 +2,6 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 import progressbar
-from scipy.io import loadmat
 
 import torch
 import torch.nn as nn
@@ -17,7 +16,8 @@ DIM_LIST = [0, 1930, 4978, 9618]
 
 class Net(nn.Module):
 	def __init__(self, weight_vector):
-		assert not hasattr(weight_vector, 'data')
+		if hasattr(weight_vector, 'data'):
+			weight_vector = weight_vector.data.clone()
 		self.weight_dim = weight_vector.numel()
 
 		assert self.weight_dim in DIM_LIST
@@ -154,7 +154,7 @@ def cifar10_weight(weight_vector, train_result=False):
 	if use_cuda:
 		model.cuda()
 	train_loader, test_loader = load_cifar10(batch_size, use_cuda)
-	optimizer = optim.Adam(model.parameters())
+	optimizer = optim.Adam(model.parameters(), weight_decay=0.001)
 	train(train_loader, model, epoch, optimizer, use_cuda)
 	if train_result:
 		train_loss, train_accuracy = test(train_loader, model, use_cuda)
