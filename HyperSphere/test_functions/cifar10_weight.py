@@ -147,7 +147,7 @@ def cifar10_weight(weight_vector, train_result=False):
 	use_cuda = cuda.is_available()
 	model = Net(weight_vector=weight_vector)
 	for m in model.parameters():
-		if m.dim() == 2:
+		if m.dim() >= 2:
 			nn.init.xavier_normal(m.data)
 		else:
 			m.data.normal_()
