@@ -143,7 +143,7 @@ batch_size = 64
 epoch = 20
 
 
-def cifar10_weight(weight_vector):
+def cifar10_weight(weight_vector, train_result=False):
 	use_cuda = cuda.is_available()
 	model = Net(weight_vector=weight_vector)
 	for m in model.parameters():
@@ -156,8 +156,11 @@ def cifar10_weight(weight_vector):
 	train_loader, test_loader = load_cifar10(batch_size, use_cuda)
 	optimizer = optim.Adam(model.parameters())
 	train(train_loader, model, epoch, optimizer, use_cuda)
+	if train_result:
+		train_loss, train_accuracy = test(train_loader, model, use_cuda)
+		print('\nTRAIN - Loss : %f / Accuracy : %6.4f' % (train_loss, train_accuracy))
 	test_loss, test_accuracy = test(test_loader, model, use_cuda)
-	print('\nLoss : %f / Accuracy : %6.4f' % (test_loss, test_accuracy))
+	print('\nTEST  - Loss : %f / Accuracy : %6.4f' % (test_loss, test_accuracy))
 	return torch.FloatTensor([[test_loss]])
 
 
@@ -211,4 +214,4 @@ if __name__ == '__main__':
 	if torch.cuda.is_available():
 		weight_vector = weight_vector.cuda()
 	print('%d parameters are given by BO\n%d parameters are trained by SGD' % (n_BO_select, 12386 - n_BO_select))
-	cifar10_weight(weight_vector)
+	cifar10_weight(weight_vector, train_result=True)
