@@ -139,8 +139,8 @@ def test(test_loader, model, use_cuda):
 	test_accuracy = correct / float(len(test_loader.dataset))
 	return test_loss, test_accuracy
 
-batch_size = 64
-epoch = 20
+batch_size = 128
+epoch = 50
 
 
 def cifar10_weight(weight_vector, train_result=False):
