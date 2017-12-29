@@ -4,6 +4,7 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 
 from HyperSphere.BO.utils.get_data_from_file import get_data
+from HyperSphere.test_functions.mnist_weight import mnist_weight_baseline
 
 color_list = ['b', 'g', 'r', 'tab:brown', 'm', 'fuchsia', 'k', 'w']
 
@@ -136,6 +137,13 @@ def optimum_plot(func_name, ndim, type='avg'):
 		ax_mean = plt.subplot(gs[0])
 		ax_best = plt.subplot(gs[1])
 		ax_3rd = plt.subplot(gs[2])
+		if func_name == 'mnist_weight':
+			baseline_sample = mnist_weight_baseline(ndim=ndim)
+			baseline_mean = np.mean(baseline_sample)
+			baseline_std = np.std(baseline_sample)
+			z_value = 1.96
+			ax_mean.axhline(baseline_mean, c='k', label='SGD baseline (' + str(len(baseline_sample)) + ')')
+			ax_mean.axhspan(baseline_mean - z_value * baseline_std, baseline_mean + z_value * baseline_std, facecolor='gray', alpha=0.5)
 		for key in sorted(plot_data.keys()):
 			data = plot_data[key]
 			color = algorithm_color(key)
@@ -181,7 +189,7 @@ def plot_samples(ax, sample_list, color, title_str=None):
 
 
 if __name__ == '__main__':
-	optimum_plot('mnist_weight', 200, type='custom_sample')
+	optimum_plot('mnist_weight', 500, type='custom_sample')
 	# schwefel
 	# rotatedschwefel
 	# michalewicz

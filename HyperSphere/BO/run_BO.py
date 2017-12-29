@@ -11,6 +11,7 @@ from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.test_functions.benchmarks import *
 from HyperSphere.test_functions.mnist_weight import mnist_weight
+from HyperSphere.test_functions.cifar10_weight import cifar10_weight
 from HyperSphere.test_functions.stochastic_depth_resnet import stochastic_depth_resnet_cifar10, stochastic_depth_resnet_cifar100
 
 # Kernels

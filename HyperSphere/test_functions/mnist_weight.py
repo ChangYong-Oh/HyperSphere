@@ -24,6 +24,8 @@ class Net(nn.Module):
 		else:
 			self.hid_weight = hid_weight if hasattr(hid_weight, 'data') else Variable(hid_weight)
 			self.hid_bias = Parameter(torch.Tensor(10))
+			# hid_bias is also optimized by SGD
+			# this is just for making problem 100, 200, 500 not 110, 210, 510
 
 	def forward(self, x):
 		x = x.view(-1, 784)
@@ -112,6 +114,23 @@ def mnist_weight(weight_vector, use_BO=True):
 
 mnist_weight.dim = 0
 
+
+def mnist_weight_baseline(ndim, type='loss'):
+	if ndim == 100:
+		if type == 'loss':
+			return [0.242009, 0.230133, 0.216998, 0.222007, 0.242975]
+		elif type == 'accuracy':
+			return [0.9322, 0.9349, 0.9388, 0.9406, 0.9321]
+	elif ndim == 200:
+		if type == 'loss':
+			return [0.145960, 0.159507, 0.140117, 0.140135, 0.165476]
+		elif type == 'accuracy':
+			return [0.9585, 0.9559, 0.9605, 0.9619, 0.9545]
+	elif ndim == 500:
+		if type == 'loss':
+			return [0.118356, 0.132987, 0.122135, 0.132618, 0.121591]
+		elif type == 'accuracy':
+			return [0.9726, 0.9729, 0.9732, 0.9728, 0.9729]
 
 if __name__ == '__main__':
 	weight_vector = torch.randn(500)
