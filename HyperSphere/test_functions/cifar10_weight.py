@@ -150,7 +150,7 @@ def cifar10_weight(weight_vector, train_result=False):
 		if m.dim() >= 2:
 			nn.init.xavier_normal(m.data)
 		else:
-			m.data.normal_()
+			m.data.zero_()
 	if use_cuda:
 		model.cuda()
 	train_loader, test_loader = load_cifar10(batch_size, use_cuda)
