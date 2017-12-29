@@ -205,4 +205,8 @@ def architecture_SGD_trainable_check(n_BO_select):
 	# print(model(input_data).size())
 
 if __name__ == '__main__':
-	architecture_SGD_trainable_check(DIM_LIST[0])
+	# architecture_SGD_trainable_check(DIM_LIST[0])
+	weight_vector = torch.FloatTensor(DIM_LIST[0])
+	if torch.cuda.is_available():
+		weight_vector = weight_vector.cuda()
+	cifar10_weight(weight_vector)
