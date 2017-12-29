@@ -139,7 +139,7 @@ def test(test_loader, model, use_cuda):
 	test_accuracy = correct / float(len(test_loader.dataset))
 	return test_loss, test_accuracy
 
-batch_size = 128
+batch_size = 64
 epoch = 50
 
 
