@@ -10,7 +10,7 @@ from torch.autograd import Variable, grad
 from HyperSphere.BO.acquisition.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
-N_SOBOL = 20000
+N_SPREAD = 20000
 N_SPRAY = 10
 N_INIT = 20
 
@@ -161,8 +161,11 @@ def optimization_candidates(input, output, lower_bnd, upper_bnd):
 	else:
 		x0_spray[x0_spray > upper_bnd] = 2 * upper_bnd - x0_spray[x0_spray > upper_bnd]
 
-	x0_sobol = sobol_generate(ndim, N_SOBOL, np.random.randint(0, N_SOBOL)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
-	x0 = torch.cat([input.data, x0_spray, x0_sobol], 0)
+	if ndim <= 1100:
+		x0_spread = sobol_generate(ndim, N_SPREAD, np.random.randint(0, N_SPREAD)).type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
+	else:
+		x0_spread = torch.FloatTensor(N_SPREAD, ndim).uniform_().type_as(input.data) * (upper_bnd - lower_bnd) + lower_bnd
+	x0 = torch.cat([input.data, x0_spray, x0_spread], 0)
 	nonzero_radius_mask = torch.sum(x0 ** 2, 1) > 0
 	nonzero_radius_ind = torch.sort(nonzero_radius_mask, 0, descending=True)[1][:torch.sum(nonzero_radius_mask)]
 	x0 = x0.index_select(0, nonzero_radius_ind)
