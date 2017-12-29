@@ -206,7 +206,9 @@ def architecture_SGD_trainable_check(n_BO_select):
 
 if __name__ == '__main__':
 	# architecture_SGD_trainable_check(DIM_LIST[0])
-	weight_vector = torch.FloatTensor(DIM_LIST[0])
+	n_BO_select = DIM_LIST[int(sys.argv[1])]
+	weight_vector = torch.FloatTensor(n_BO_select)
 	if torch.cuda.is_available():
 		weight_vector = weight_vector.cuda()
+	print('%d parameters are given by BO\n%d parameters are trained by SGD' % (n_BO_select, 12386 - n_BO_select))
 	cifar10_weight(weight_vector)
