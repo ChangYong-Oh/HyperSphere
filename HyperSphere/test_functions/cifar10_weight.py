@@ -17,7 +17,7 @@ DIM_LIST = [0, 1930, 4978, 9618]
 
 class Net(nn.Module):
 	def __init__(self, weight_vector):
-		assert isinstance(weight_vector, torch.Tensor)
+		assert not hasattr(weight_vector, 'data')
 		self.weight_dim = weight_vector.numel()
 
 		assert self.weight_dim in DIM_LIST
