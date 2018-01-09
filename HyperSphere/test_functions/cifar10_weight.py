@@ -6,12 +6,14 @@ import progressbar
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.parameter import Parameter
 from torch.autograd import Variable
 import torch.cuda as cuda
 import torch.optim as optim
 from torchvision import datasets, transforms
 
-DIM_LIST = [0, 1930, 4978, 9618]
+# DIM_LIST = [0, 1930, 4978, 9618]
+DIM_LIST = [0, 1920, 4944, 9552]
 
 
 class Net(nn.Module):
@@ -35,13 +37,18 @@ class Net(nn.Module):
 		else:
 			begin_ind, end_ind = (n_BO_feed, n_BO_feed + 16 * 16 * 3 * 3)
 			self.block2_conv1_weight = Variable(weight_vector[begin_ind:end_ind].view(16, 16, 3, 3))
-			begin_ind, end_ind = (end_ind, end_ind + 16)
-			self.block2_conv1_bias = Variable(weight_vector[begin_ind:end_ind])
+			# begin_ind, end_ind = (end_ind, end_ind + 16)
+			# self.block2_conv1_bias = Variable(weight_vector[begin_ind:end_ind])
+			self.block2_conv1_bias = Parameter(torch.FloatTensor(16).type_as(weight_vector))
+
 			begin_ind, end_ind = (end_ind, end_ind + 16 * 16 * 3 * 3)
 			self.block2_conv2_weight = Variable(weight_vector[begin_ind:end_ind].view(16, 16, 3, 3))
-			begin_ind, end_ind = (end_ind, end_ind + 16)
-			self.block2_conv2_bias = Variable(weight_vector[begin_ind:end_ind])
-			n_BO_feed += 2320 + 2320
+			# begin_ind, end_ind = (end_ind, end_ind + 16)
+			# self.block2_conv2_bias = Variable(weight_vector[begin_ind:end_ind])
+			self.block2_conv2_bias = Parameter(torch.FloatTensor(16).type_as(weight_vector))
+
+			# n_BO_feed += 2304 + 16 + 2304 + 16
+			n_BO_feed += 2304 + 2304
 		self.block2_pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
 		if self.weight_dim in DIM_LIST[:2]:
@@ -50,13 +57,18 @@ class Net(nn.Module):
 		else:
 			begin_ind, end_ind = (n_BO_feed, n_BO_feed + 16 * 12 * 3 * 3)
 			self.block3_conv1_weight = Variable(weight_vector[begin_ind:end_ind].view(12, 16, 3, 3))
-			begin_ind, end_ind = (end_ind, end_ind + 12)
-			self.block3_conv1_bias = Variable(weight_vector[begin_ind:end_ind])
+			# begin_ind, end_ind = (end_ind, end_ind + 12)
+			# self.block3_conv1_bias = Variable(weight_vector[begin_ind:end_ind])
+			self.block3_conv1_bias = Parameter(torch.FloatTensor(12).type_as(weight_vector))
+
 			begin_ind, end_ind = (end_ind, end_ind + 12 * 12 * 3 * 3)
 			self.block3_conv2_weight = Variable(weight_vector[begin_ind:end_ind].view(12, 12, 3, 3))
-			begin_ind, end_ind = (end_ind, end_ind + 12)
-			self.block3_conv2_bias = Variable(weight_vector[begin_ind:end_ind])
-			n_BO_feed += 1740 + 1308
+			# begin_ind, end_ind = (end_ind, end_ind + 12)
+			# self.block3_conv2_bias = Variable(weight_vector[begin_ind:end_ind])
+			self.block3_conv2_bias = Parameter(torch.FloatTensor(12).type_as(weight_vector))
+
+			n_BO_feed += 1728 + 12 + 1296 + 12
+			n_BO_feed += 1728 + 1296
 		self.block3_pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
 		if self.weight_dim in DIM_LIST[:1]:
@@ -64,8 +76,9 @@ class Net(nn.Module):
 		else:
 			begin_ind, end_ind = (n_BO_feed, n_BO_feed + 10 * 12 * 4 * 4)
 			self.fc_weight = Variable(weight_vector[begin_ind:end_ind].view(10, 12 * 4 * 4))
-			begin_ind, end_ind = (end_ind, end_ind + 10)
-			self.fc_bias = Variable(weight_vector[begin_ind:end_ind])
+			# begin_ind, end_ind = (end_ind, end_ind + 10)
+			# self.fc_bias = Variable(weight_vector[begin_ind:end_ind])
+			self.fc_bias = Parameter(torch.FloatTensor(10).type_as(weight_vector))
 
 	def forward(self, x):
 		using_cuda = x.is_cuda
@@ -182,21 +195,10 @@ cifar10_weight.dim = 0
 
 
 def cifar10_weight_baseline(ndim, type='loss'):
-	if ndim == DIM_LIST[1]:
-		if type == 'loss':
-			return [0]
-		elif type == 'accuracy':
-			return [0]
-	elif ndim == DIM_LIST[2]:
-		if type == 'loss':
-			return [0]
-		elif type == 'accuracy':
-			return [0]
-	elif ndim == DIM_LIST[3]:
-		if type == 'loss':
-			return [0]
-		elif type == 'accuracy':
-			return [0]
+	if type == 'loss':
+		return [0.803153, 0.833086]
+	elif type == 'accuracy':
+		return [0.7269, 0.7215]
 
 
 def architecture_SGD_trainable_check(n_BO_select):
@@ -223,7 +225,8 @@ def architecture_SGD_trainable_check(n_BO_select):
 
 if __name__ == '__main__':
 	# architecture_SGD_trainable_check(DIM_LIST[0])
-	n_BO_select = DIM_LIST[int(sys.argv[1])]
+	argv = 0 if len(sys.argv) == 1 else int(sys.argv[1])
+	n_BO_select = DIM_LIST[argv]
 	weight_vector = torch.FloatTensor(n_BO_select)
 	if torch.cuda.is_available():
 		weight_vector = weight_vector.cuda()

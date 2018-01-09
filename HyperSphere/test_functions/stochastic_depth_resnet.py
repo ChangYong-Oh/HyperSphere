@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime
 import pickle
 import subprocess
 import sys
@@ -23,15 +24,17 @@ stochastic_depth_resnet_cifar100.dim = 54
 
 
 def _stochastic_depth_resnet(probability_tensor, data_type):
-	time_tag = time.strftime('%H:%M:%S', time.gmtime())
-	probability_filename = '/tmp/stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl'
+	time_tag = datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
+
+	stochastic_depth_dir = os.path.join(os.path.abspath(os.path.join(os.path.split(__file__)[0], '../../../')), 'img_classification_pk_pytorch')
+	save_dir = os.path.join(stochastic_depth_dir, 'save', data_type + '_' + time_tag)
+
+	probability_filename = os.path.join(stochastic_depth_dir, 'stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl')
 	probability_file = open(probability_filename, 'w')
 	probability_list = 1.0 / (1.0 + torch.exp(-4.0 * probability_tensor))
 	pickle.dump(list(probability_list.data if hasattr(probability_list, 'data') else probability_list), probability_file)
 	probability_file.close()
 
-	stochastic_depth_dir = os.path.join(os.path.abspath(os.path.join(os.path.split(__file__)[0], '../../../')), 'img_classification_pk_pytorch')
-	save_dir = os.path.join(stochastic_depth_dir, 'save', data_type + '_' + time_tag)
 	gpu_device = str(GPUtil.getFirstAvailable()[0])
 
 	cmd_str = 'cd ' + stochastic_depth_dir + ';'
