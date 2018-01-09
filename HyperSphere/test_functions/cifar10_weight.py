@@ -90,11 +90,9 @@ class Net(nn.Module):
 			x = F.relu(self.block2_conv1(x))
 			x = F.relu(self.block2_conv2(x))
 		else:
-			if using_cuda and not self.block2_conv1_weight.is_cuda:
+			if using_cuda and not self.block2_conv1_weight.is_cuda and isinstance(self.block2_conv1_weight, Variable):
 				self.block2_conv1_weight = self.block2_conv1_weight.cuda()
-				self.block2_conv1_bias = self.block2_conv1_bias.cuda()
 				self.block2_conv2_weight = self.block2_conv2_weight.cuda()
-				self.block2_conv2_bias = self.block2_conv2_bias.cuda()
 			x = F.relu(F.conv2d(input=x, weight=self.block2_conv1_weight, bias=self.block2_conv1_bias, padding=1))
 			x = F.relu(F.conv2d(input=x, weight=self.block2_conv2_weight, bias=self.block2_conv2_bias, padding=1))
 		x = self.block2_pool(x)
@@ -103,11 +101,9 @@ class Net(nn.Module):
 			x = F.relu(self.block3_conv1(x))
 			x = F.relu(self.block3_conv2(x))
 		else:
-			if using_cuda and not self.block3_conv1_weight.is_cuda:
+			if using_cuda and not self.block3_conv1_weight.is_cuda and isinstance(self.block3_conv1_weight, Variable):
 				self.block3_conv1_weight = self.block3_conv1_weight.cuda()
-				self.block3_conv1_bias = self.block3_conv1_bias.cuda()
 				self.block3_conv2_weight = self.block3_conv2_weight.cuda()
-				self.block3_conv2_bias = self.block3_conv2_bias.cuda()
 			x = F.relu(F.conv2d(input=x, weight=self.block3_conv1_weight, bias=self.block3_conv1_bias, padding=1))
 			x = F.relu(F.conv2d(input=x, weight=self.block3_conv2_weight, bias=self.block3_conv2_bias, padding=1))
 		x = self.block3_pool(x)
@@ -115,9 +111,8 @@ class Net(nn.Module):
 		if self.weight_dim in DIM_LIST[:1]:
 			x = self.fc(x.view(-1, 12 * 4 * 4))
 		else:
-			if using_cuda and not self.fc_weight.is_cuda:
+			if using_cuda and not self.fc_weight.is_cuda and isinstance(self.fc_weight, Variable):
 				self.fc_weight = self.fc_weight.cuda()
-				self.fc_bias = self.fc_bias.cuda()
 			x = F.linear(input=x.view(-1, 12 * 4 * 4), weight=self.fc_weight, bias=self.fc_bias)
 
 		x = F.log_softmax(x)
