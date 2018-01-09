@@ -67,7 +67,7 @@ class Net(nn.Module):
 			# self.block3_conv2_bias = Variable(weight_vector[begin_ind:end_ind])
 			self.block3_conv2_bias = Parameter(torch.FloatTensor(12).type_as(weight_vector))
 
-			n_BO_feed += 1728 + 12 + 1296 + 12
+			# n_BO_feed += 1728 + 12 + 1296 + 12
 			n_BO_feed += 1728 + 1296
 		self.block3_pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
@@ -194,7 +194,7 @@ def cifar10_weight(weight_vector, train_result=False):
 cifar10_weight.dim = 0
 
 
-def cifar10_weight_baseline(ndim, type='loss'):
+def cifar10_weight_baseline(type='loss'):
 	if type == 'loss':
 		return [0.803153, 0.833086]
 	elif type == 'accuracy':
@@ -227,7 +227,7 @@ if __name__ == '__main__':
 	# architecture_SGD_trainable_check(DIM_LIST[0])
 	argv = 0 if len(sys.argv) == 1 else int(sys.argv[1])
 	n_BO_select = DIM_LIST[argv]
-	weight_vector = torch.FloatTensor(n_BO_select)
+	weight_vector = torch.FloatTensor(n_BO_select).normal_()
 	if torch.cuda.is_available():
 		weight_vector = weight_vector.cuda()
 	print('%d parameters are given by BO\n%d parameters are trained by SGD' % (n_BO_select, 12386 - n_BO_select))
