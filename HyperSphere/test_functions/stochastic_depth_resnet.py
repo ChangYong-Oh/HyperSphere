@@ -35,7 +35,7 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	pickle.dump(list(probability_list.data if hasattr(probability_list, 'data') else probability_list), probability_file)
 	probability_file.close()
 
-	gpu_device = str(GPUtil.getFirstAvailable()[0])
+	gpu_device = str(GPUtil.getAvailable(order='random', limit=1)[0])
 
 	cmd_str = 'cd ' + stochastic_depth_dir + ';'
 	cmd_str += 'CUDA_VISIBLE_DEVICES=' + gpu_device + ' python main.py'
