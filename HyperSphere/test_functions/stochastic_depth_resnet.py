@@ -1,5 +1,5 @@
 import os
-import time
+import math
 from datetime import datetime
 import pickle
 import subprocess
@@ -31,7 +31,7 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 
 	probability_filename = os.path.join(stochastic_depth_dir, 'stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl')
 	probability_file = open(probability_filename, 'w')
-	probability_list = 1.0 / (1.0 + torch.exp(-4.0 * probability_tensor))
+	probability_list = 1.0 / (1.0 + torch.exp(-4.0 * probability_tensor + math.log(3)))
 	pickle.dump(list(probability_list.data if hasattr(probability_list, 'data') else probability_list), probability_file)
 	probability_file.close()
 
