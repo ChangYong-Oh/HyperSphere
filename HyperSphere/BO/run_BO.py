@@ -45,7 +45,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			assert not ard
 			exp_conf_str += 'warping' if warping else ''
 			radius_input_map = Kumaraswamy(ndim=1, max_input=ndim ** 0.5) if warping else None
-			model = GPRegression(kernel=RadializationKernel(max_power=3, search_radius=ndim ** 0.5, radius_input_map=radius_input_map))
+			model = GPRegression(kernel=RadializationKernel(max_power=9, search_radius=ndim ** 0.5, radius_input_map=radius_input_map))
 			inference_method = None
 			if origin and boundary:
 				inference_method = both_ShadowInference

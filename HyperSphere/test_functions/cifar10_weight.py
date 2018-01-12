@@ -122,7 +122,8 @@ class Net(nn.Module):
 
 def load_cifar10(batch_size, use_cuda):
 	kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-	transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+	# transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
+	transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.4914, 0.4824, 0.4467], std=[0.2471, 0.2435, 0.2616])])
 	train_loader = torch.utils.data.DataLoader(datasets.CIFAR10('../data', train=True, download=True, transform=transform), batch_size=batch_size, shuffle=True, **kwargs)
 	test_loader = torch.utils.data.DataLoader(datasets.CIFAR10('../data', train=False, transform=transform), batch_size=batch_size, shuffle=True, **kwargs)
 	return train_loader, test_loader
@@ -191,9 +192,9 @@ cifar10_weight.dim = 0
 
 def cifar10_weight_baseline(type='loss'):
 	if type == 'loss':
-		return [0.803153, 0.833086]
+		return [0.819928, 0.808393, 0.810892, 0.826280, 0.787948]
 	elif type == 'accuracy':
-		return [0.7269, 0.7215]
+		return [0.7223, 0.7241, 0.7229, 0.7234, 0.7346]
 
 
 def architecture_SGD_trainable_check(n_BO_select):
