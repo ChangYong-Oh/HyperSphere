@@ -67,7 +67,7 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	cmd_str += ' --data ' + data_type
 	cmd_str += ' --arch resnet --depth 110 --death-mode chosen --death-rate-filename ' + probability_filename
 	cmd_str += ' --save ' + save_dir
-	cmd_str += ' --batch-size 128 --epoch 500 --normalized'
+	cmd_str += ' --batch-size 256 --epoch 500 --normalized'
 	print(('=' * 20) + 'COMMAND' + ('=' * 20))
 	print(cmd_str)
 	process = subprocess.Popen(cmd_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
