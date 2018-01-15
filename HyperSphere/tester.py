@@ -7,6 +7,7 @@ import numpy as np
 import scipy as sp
 import scipy.linalg as linalg
 import torch.multiprocessing
+import matplotlib.pyplot as plt
 
 
 def test_speed_inverse_gesv(ndim=10):
@@ -173,5 +174,19 @@ def inversion_time(n_data):
 	print('matrix inversion' + time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time)))
 
 
+def centering_check():
+	x = np.linspace(0, 1, 100)
+	zeros_list = []
+	zeros = []
+	for s in x:
+		poly_zeros = np.roots([-0.25, 0, 0.75, 0.5 - s])
+		zeros_list.append(poly_zeros)
+		assert np.sum(np.imag(poly_zeros)) == 0
+		smallest_abs = np.argmin(np.abs(poly_zeros))
+		zeros.append(poly_zeros[smallest_abs])
+	print(zeros_list)
+	plt.plot(x, zeros)
+	plt.show()
+
 if __name__ == '__main__':
-	multiprocessor_test()
+	centering_check()

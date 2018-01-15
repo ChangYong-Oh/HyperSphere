@@ -7,20 +7,44 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+import numpy as np
 import GPUtil
 import torch
 
+NDIM = 54
 
 def stochastic_depth_resnet_cifar10(probability_tensor):
 	return _stochastic_depth_resnet(probability_tensor, 'cifar10+')
 
-stochastic_depth_resnet_cifar10.dim = 54
+stochastic_depth_resnet_cifar10.dim = NDIM
 
 
 def stochastic_depth_resnet_cifar100(probability_tensor):
 	return _stochastic_depth_resnet(probability_tensor, 'cifar100+')
 
-stochastic_depth_resnet_cifar100.dim = 54
+stochastic_depth_resnet_cifar100.dim = NDIM
+
+
+def transform_with_center(x, center_probability=0.0):
+	if isinstance(center_probability, (float, int)):
+		center_probability = x.clone().fill_(center_probability)
+	assert x.numel() == center_probability.numel()
+
+	shift = []
+	for i in range(center_probability.numel()):
+		poly_d = center_probability.squeeze()[i]
+		if poly_d == 0:
+			shift.append(-1.0)
+		elif poly_d == 1:
+			shift.append(1.0)
+		elif 0 < poly_d < 1:
+			poly_zeros = np.roots([-0.25, 0, 0.75, 0.5 - poly_d])
+			shift.append(poly_zeros[np.argmin(np.abs(poly_zeros))])
+	shift = torch.FloatTensor(shift).type_as(x).resize_as_(x)
+
+	x = ((x + 1 + shift) * 0.5).clamp(min=0, max=1)
+
+	return 3 * x ** 2 - 2 * x ** 3
 
 
 def _stochastic_depth_resnet(probability_tensor, data_type):
@@ -31,7 +55,8 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 
 	probability_filename = os.path.join(stochastic_depth_dir, 'stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl')
 	probability_file = open(probability_filename, 'w')
-	probability_list = 1.0 / (1.0 + torch.exp(-4.0 * probability_tensor + math.log(3)))
+	# Use information given in stochastic resnet paper setting as the center point
+	probability_list = transform_with_center(probability_tensor, torch.linspace(0, 0.5, NDIM + 1)[1:])
 	pickle.dump(list(probability_list.data if hasattr(probability_list, 'data') else probability_list), probability_file)
 	probability_file.close()
 
