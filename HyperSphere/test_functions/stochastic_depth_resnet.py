@@ -41,8 +41,10 @@ def transform_with_center(x, center_probability=0.5):
 		elif 0 < poly_d < 1:
 			poly_zeros = np.roots([-0.25, 0, 0.75, 0.5 - poly_d])
 			shift.append(poly_zeros[np.argmin(np.abs(poly_zeros))])
-	shift = Variable(torch.FloatTensor(shift)).type_as(x) if hasattr(x, 'data') else torch.FloatTensor(shift).type_as(x)
-	shift = shift.resize_as_(x)
+	if hasattr(x, 'data'):
+		shift = Variable(torch.FloatTensor(shift)).type_as(x).resize_as(x)
+	else:
+		shift = torch.FloatTensor(shift).type_as(x).view_as(x)
 
 	x = ((x + 1 + shift) * 0.5).clamp(min=0, max=1)
 
