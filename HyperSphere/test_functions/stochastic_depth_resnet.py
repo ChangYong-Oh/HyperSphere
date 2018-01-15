@@ -10,6 +10,7 @@ sys.setdefaultencoding('utf-8')
 import numpy as np
 import GPUtil
 import torch
+from torch.autograd import Variable
 
 NDIM = 54
 
@@ -40,8 +41,8 @@ def transform_with_center(x, center_probability=0.5):
 		elif 0 < poly_d < 1:
 			poly_zeros = np.roots([-0.25, 0, 0.75, 0.5 - poly_d])
 			shift.append(poly_zeros[np.argmin(np.abs(poly_zeros))])
-	shift = torch.FloatTensor(shift).type_as(x.data if hasattr(x, 'data') else x)
-	shift = shift.resize_as_(x.data if hasattr(x, 'data') else x)
+	shift = Variable(torch.FloatTensor(shift)).type_as(x) if hasattr(x, 'data') else torch.FloatTensor(shift).type_as(x)
+	shift = shift.resize_as_(x)
 
 	x = ((x + 1 + shift) * 0.5).clamp(min=0, max=1)
 
