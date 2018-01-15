@@ -53,7 +53,7 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	stochastic_depth_dir = os.path.join(os.path.abspath(os.path.join(os.path.split(__file__)[0], '../../../')), 'img_classification_pk_pytorch')
 	save_dir = os.path.join(stochastic_depth_dir, 'save', data_type + '_' + time_tag)
 
-	probability_filename = os.path.join(save_dir, 'stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl')
+	probability_filename = os.path.join(stochastic_depth_dir, 'save', 'stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl')
 	probability_file = open(probability_filename, 'w')
 	# Use information given in stochastic resnet paper setting as the center point
 	probability_list = transform_with_center(probability_tensor, torch.linspace(0, 0.5, NDIM + 1)[1:])
