@@ -25,7 +25,7 @@ def stochastic_depth_resnet_cifar100(probability_tensor):
 stochastic_depth_resnet_cifar100.dim = NDIM
 
 
-def transform_with_center(x, center_probability=0.0):
+def transform_with_center(x, center_probability=0.5):
 	if isinstance(center_probability, (float, int)):
 		center_probability = x.clone().fill_(center_probability)
 	assert x.numel() == center_probability.numel()
@@ -40,7 +40,8 @@ def transform_with_center(x, center_probability=0.0):
 		elif 0 < poly_d < 1:
 			poly_zeros = np.roots([-0.25, 0, 0.75, 0.5 - poly_d])
 			shift.append(poly_zeros[np.argmin(np.abs(poly_zeros))])
-	shift = torch.FloatTensor(shift).type_as(x).resize_as_(x)
+	shift = torch.FloatTensor(shift).type_as(x)
+	shift = shift.resize_as_(x)
 
 	x = ((x + 1 + shift) * 0.5).clamp(min=0, max=1)
 
