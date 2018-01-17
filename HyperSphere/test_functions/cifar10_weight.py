@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from torch.autograd import Variable
 import torch.cuda as cuda
 import torch.optim as optim
+from torch.utils.data import DataLoader, sampler
 from torchvision import datasets, transforms
 
 # DIM_LIST = [0, 1930, 4978, 9618]
@@ -120,13 +121,23 @@ class Net(nn.Module):
 		return x
 
 
-def load_cifar10(batch_size, use_cuda):
+def load_cifar10(batch_size, use_cuda, use_validation=True):
 	kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-	# transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
 	transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.4914, 0.4824, 0.4467], std=[0.2471, 0.2435, 0.2616])])
-	train_loader = torch.utils.data.DataLoader(datasets.CIFAR10('../data', train=True, download=True, transform=transform), batch_size=batch_size, shuffle=True, **kwargs)
-	test_loader = torch.utils.data.DataLoader(datasets.CIFAR10('../data', train=False, transform=transform), batch_size=batch_size, shuffle=True, **kwargs)
-	return train_loader, test_loader
+	cifar10_train = datasets.CIFAR10('../data', train=True, download=True, transform=transform)
+	cifar10_test = datasets.CIFAR10('../data', train=False, transform=transform)
+	if use_validation:
+		train_sampler = sampler.SubsetRandomSampler(range(45000))
+		validation_sampler = sampler.SubsetRandomSampler(range(45000, 50000))
+		train_loader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=False, sampler=train_sampler, **kwargs)
+		validation_loader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=False, sampler=validation_sampler, **kwargs)
+	else:
+		train_loader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, **kwargs)
+	test_loader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=True, **kwargs)
+	if use_validation:
+		return train_loader, validation_loader, test_loader
+	else:
+		return train_loader, test_loader
 
 
 def train(train_loader, model, epoch, optimizer, use_cuda):
@@ -166,7 +177,7 @@ batch_size = 64
 epoch = 50
 
 
-def cifar10_weight(weight_vector, train_result=False):
+def cifar10_weight(weight_vector, train_result=False, use_validation=True):
 	use_cuda = cuda.is_available()
 	model = Net(weight_vector=weight_vector)
 	for m in model.parameters():
@@ -176,15 +187,21 @@ def cifar10_weight(weight_vector, train_result=False):
 			m.data.zero_()
 	if use_cuda:
 		model.cuda()
-	train_loader, test_loader = load_cifar10(batch_size, use_cuda)
+	if use_validation:
+		train_loader, validation_loader, test_loader = load_cifar10(batch_size, use_cuda)
+	else:
+		train_loader, test_loader = load_cifar10(batch_size, use_cuda)
 	optimizer = optim.Adam(model.parameters(), weight_decay=0.001)
 	train(train_loader, model, epoch, optimizer, use_cuda)
 	if train_result:
 		train_loss, train_accuracy = test(train_loader, model, use_cuda)
 		print('\nTRAIN - Loss : %f / Accuracy : %6.4f' % (train_loss, train_accuracy))
-	test_loss, test_accuracy = test(test_loader, model, use_cuda)
-	print('\nTEST  - Loss : %f / Accuracy : %6.4f' % (test_loss, test_accuracy))
-	return torch.FloatTensor([[test_loss]])
+	if use_validation:
+		loss, accuracy = test(validation_loader, model, use_cuda)
+	else:
+		loss, accuracy = test(test_loader, model, use_cuda)
+	print('\nTEST  - Loss : %f / Accuracy : %6.4f' % (loss, accuracy))
+	return torch.FloatTensor([[loss]])
 
 
 cifar10_weight.dim = 0

@@ -11,8 +11,8 @@ import numpy as np
 import GPUtil
 import torch
 from torch.autograd import Variable
-
 NDIM = 54
+
 
 def stochastic_depth_resnet_cifar10(probability_tensor):
 	return _stochastic_depth_resnet(probability_tensor, 'cifar10+')
@@ -55,6 +55,8 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	time_tag = datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
 
 	stochastic_depth_dir = os.path.join(os.path.abspath(os.path.join(os.path.split(__file__)[0], '../../../')), 'img_classification_pk_pytorch')
+	pretrain_dir = os.path.join(stochastic_depth_dir, 'save', '')
+
 	save_dir = os.path.join(stochastic_depth_dir, 'save', data_type + '_' + time_tag)
 
 	probability_filename = os.path.join(stochastic_depth_dir, 'save', 'stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl')
@@ -68,10 +70,10 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 
 	cmd_str = 'cd ' + stochastic_depth_dir + ';'
 	cmd_str += 'CUDA_VISIBLE_DEVICES=' + gpu_device + ' python main.py'
-	cmd_str += ' --data ' + data_type
-	cmd_str += ' --arch resnet --depth 110 --death-mode chosen --death-rate-filename ' + probability_filename
-	cmd_str += ' --save ' + save_dir
-	cmd_str += ' --batch-size 256 --epoch 500 --normalized'
+	cmd_str += ' --data ' + data_type + '  --normalized'
+	cmd_str += ' --resume ' + pretrain_dir + ' --save ' + save_dir
+	cmd_str += ' --death-rate-filename ' + probability_filename
+	cmd_str += ' --decay_rate 1.0 --learning-rate 0.01 --epoch 50'
 	print(('=' * 20) + 'COMMAND' + ('=' * 20))
 	print(cmd_str)
 	process = subprocess.Popen(cmd_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
