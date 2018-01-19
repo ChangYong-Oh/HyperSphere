@@ -28,8 +28,10 @@ stochastic_depth_resnet_cifar100.dim = NDIM
 
 def transform_with_center(x, center_probability=0.5):
 	if isinstance(center_probability, (float, int)):
-		center_probability = x.clone().fill_(center_probability)
+		center_probability = (x.clone().fill_(center_probability))
 	assert x.numel() == center_probability.numel()
+	assert torch.sum(center_probability > 1.0) == 0
+	assert torch.sum(center_probability < 0.0) == 0
 
 	shift = []
 	for i in range(center_probability.numel()):
@@ -47,8 +49,9 @@ def transform_with_center(x, center_probability=0.5):
 		shift = torch.FloatTensor(shift).type_as(x).view_as(x)
 
 	x = ((x + 1 + shift) * 0.5).clamp(min=0, max=1)
+	y = 3 * x ** 2 - 2 * x ** 3
 
-	return 3 * x ** 2 - 2 * x ** 3
+	return y
 
 
 def _stochastic_depth_resnet(probability_tensor, data_type):
@@ -62,7 +65,7 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	probability_filename = os.path.join(stochastic_depth_dir, 'save', 'stochastic_depth_death_rate_' + data_type + '_' + time_tag + '.pkl')
 	probability_file = open(probability_filename, 'w')
 	# Use information given in stochastic resnet paper setting as the center point
-	probability_list = transform_with_center(probability_tensor, torch.linspace(0, 0.5, NDIM + 1)[1:])
+	probability_list = transform_with_center(probability_tensor, 0.5)
 	pickle.dump(list(probability_list.data if hasattr(probability_list, 'data') else probability_list), probability_file)
 	probability_file.close()
 
@@ -71,9 +74,9 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	cmd_str = 'cd ' + stochastic_depth_dir + ';'
 	cmd_str += 'CUDA_VISIBLE_DEVICES=' + gpu_device + ' python main.py'
 	cmd_str += ' --data ' + data_type + '  --normalized'
-	cmd_str += ' --resume ' + pretrain_dir + ' --save ' + save_dir
-	cmd_str += ' --death-rate-filename ' + probability_filename
-	cmd_str += ' --decay_rate 1.0 --learning-rate 0.01 --epoch 50'
+	cmd_str += ' --resume ' + os.path.join(pretrain_dir, 'model_best.pth.tar    ') + ' --save ' + save_dir
+	cmd_str += ' --death-mode chosen --death-rate-filename ' + probability_filename
+	cmd_str += ' --decay_rate 0.1 --decay_epoch_ratio 0.5 --learning-rate 0.01 --epoch 100'
 	print(('=' * 20) + 'COMMAND' + ('=' * 20))
 	print(cmd_str)
 	process = subprocess.Popen(cmd_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
