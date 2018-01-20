@@ -28,7 +28,7 @@ stochastic_depth_resnet_cifar100.dim = NDIM
 
 def transform_with_center(x, center_probability=0.5):
 	if isinstance(center_probability, (float, int)):
-		center_probability = (x.clone().fill_(center_probability))
+		center_probability = x.clone() * 0 + center_probability
 	assert x.numel() == center_probability.numel()
 	assert torch.sum(center_probability > 1.0) == 0
 	assert torch.sum(center_probability < 0.0) == 0
