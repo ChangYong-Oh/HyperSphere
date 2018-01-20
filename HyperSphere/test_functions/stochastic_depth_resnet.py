@@ -58,7 +58,7 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	time_tag = datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
 
 	stochastic_depth_dir = os.path.join(os.path.abspath(os.path.join(os.path.split(__file__)[0], '../../../')), 'img_classification_pk_pytorch')
-	pretrain_dir = os.path.join(stochastic_depth_dir, 'save', 'cifar+100_warm-start')
+	pretrain_dir = os.path.join(stochastic_depth_dir, 'save', 'cifar100+_warm-start')
 
 	save_dir = os.path.join(stochastic_depth_dir, 'save', data_type + '_' + time_tag)
 
