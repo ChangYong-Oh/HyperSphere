@@ -76,7 +76,7 @@ def _stochastic_depth_resnet(probability_tensor, data_type):
 	cmd_str += ' --data ' + data_type + '  --normalized'
 	cmd_str += ' --resume ' + os.path.join(pretrain_dir, 'model_best.pth.tar    ') + ' --save ' + save_dir
 	cmd_str += ' --death-mode chosen --death-rate-filename ' + probability_filename
-	cmd_str += ' --decay_rate 0.1 --decay_epoch_ratio 0.5 --learning-rate 0.01 --epoch 100'
+	cmd_str += ' --decay_rate 0.1 --decay_epoch_ratio 0.5 --learning-rate 0.01 --epoch 250'
 	print(('=' * 20) + 'COMMAND' + ('=' * 20))
 	print(cmd_str)
 	process = subprocess.Popen(cmd_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
