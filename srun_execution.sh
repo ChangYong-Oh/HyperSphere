@@ -1,19 +1,22 @@
 #! /bin/bash
 
-#! /bin/bash
-
 ALGORITHM=$1
 
-INIT_COMMAND_ROOT="srun python HyperSphere/BO/run_BO.py --parallel -g sphere --origin"
+INIT_COMMAND_CUBE_ROOT="srun python HyperSphere/BO/run_BO.py --parallel -g cube"
+INIT_COMMAND_SPHERE_ROOT="srun python HyperSphere/BO/run_BO.py --parallel -g sphere --origin"
 
 case "$ALGORITHM" in
-  none) INIT_COMMAND_PREFIX="$INIT_COMMAND_ROOT"
+  cube) INIT_COMMAND_PREFIX="$INIT_COMMAND_CUBE_ROOT"
     ;;
-  boundary) INIT_COMMAND_PREFIX="$INIT_COMMAND_ROOT --boundary"
+  cubeard) INIT_COMMAND_PREFIX="$INIT_COMMAND_CUBE_ROOT --ard"
     ;;
-  warping) INIT_COMMAND_PREFIX="$INIT_COMMAND_ROOT --warping"
+  none) INIT_COMMAND_PREFIX="$INIT_COMMAND_SPHERE_ROOT"
     ;;
-  warpingboundary) INIT_COMMAND_PREFIX="$INIT_COMMAND_ROOT --warping --boundary"
+  boundary) INIT_COMMAND_PREFIX="$INIT_COMMAND_SPHERE_ROOT --boundary"
+    ;;
+  warping) INIT_COMMAND_PREFIX="$INIT_COMMAND_SPHERE_ROOT --warping"
+    ;;
+  warpingboundary) INIT_COMMAND_PREFIX="$INIT_COMMAND_SPHERE_ROOT --warping --boundary"
     ;;
 esac
 
