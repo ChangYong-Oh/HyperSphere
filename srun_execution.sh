@@ -39,8 +39,9 @@ for DIM in 20 50 100; do
     EXPPATH="${EVALSTDOUT##*$'\n'}"
     for ((i=1;i<=$NEVAL;i++)); do
       echo "====================COMMAND===================="
-      echo "srun -C cpunode python HyperSphere/BO/run_BO.py -p $EXPPATH"
-      eval "srun -C cpunode python HyperSphere/BO/run_BO.py -p $EXPPATH"
+      CONTINUED_COMMAND="srun -C cpunode python HyperSphere/BO/run_BO.py -p $EXPPATH"
+      echo "$CONTINUED_COMMAND"
+      eval "$CONTINUED_COMMAND"
     done
   done
 done
