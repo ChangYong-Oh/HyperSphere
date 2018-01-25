@@ -189,7 +189,7 @@ def plot_samples(ax, sample_list, color, title_str=None):
 
 
 if __name__ == '__main__':
-	optimum_plot('mnist_weight', 500, type='custom_sample')
+	optimum_plot('cifar10_weight', 1930, type='custom_sample')
 	# schwefel
 	# rotatedschwefel
 	# michalewicz

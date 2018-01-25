@@ -127,8 +127,10 @@ def levy(x):
 	x = x * 10
 
 	w = (x - 1.0) / 4.0 + 1.0
-	output = ((w[:, :-1] - 1) ** 2 * (1 + 10 * torch.sin(math.pi * w[:, :-1] + 1) ** 2)).sum(1, keepdim=True)
-	output += torch.sin(math.pi * w[:, :1]) ** 2 + ((w[:, -1:] - 1) ** 2 * (1 + torch.sin(2 * math.pi * w[:, -1:]) ** 2))
+	output = torch.sin(math.pi * w[:, :1]) ** 2.0
+	for i in range(w.size(1) - 1):
+		output += (w[:, i:i+1] - 1.0) ** 2 * (1.0 + 10.0 * torch.sin(math.pi * w[:, i:i+1] + 1.0) ** 2.0)
+	output += ((w[:, -1:] - 1.0) ** 2 * (1.0 + torch.sin(2 * math.pi * w[:, -1:]) ** 2.0))
 	if flat:
 		return output.squeeze(0)
 	else:
@@ -146,9 +148,10 @@ def michalewicz(x):
 	indices = torch.arange(1, ndim + 1)
 	if hasattr(x, 'data'):
 		x.data = (x.data + 1) * 0.5 * pi
-		indices = Variable(indices)
+		indices = Variable(indices.type_as(x.data))
 	else:
 		x = (x + 1) * 0.5 * pi
+		indices = indices.type_as(x)
 
 	m = 10
 
@@ -169,6 +172,10 @@ def qing(x):
 
 	ndim = x.size(1)
 	indices = torch.arange(1, ndim + 1)
+	if hasattr(x, 'data'):
+		indices = Variable(indices.type_as(x.data))
+	else:
+		indices = indices.type_as(x)
 	output = ((x ** 2 - indices) ** 2).mean(1, keepdim=True)
 	if flat:
 		return output.squeeze(0)

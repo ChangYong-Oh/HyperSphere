@@ -119,11 +119,11 @@ def get_data(func_name, ndim):
 	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat'
 	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL'
 	data_list = []
-	data_list += get_data_HPOlib(HPOlib_dir_name, 'spearmint_april2013_mod')
+	# data_list += get_data_HPOlib(HPOlib_dir_name, 'spearmint_april2013_mod')
 	# data_list += get_data_HPOlib(HPOlib_dir_name, 'hyperopt_august2013_mod')
 	# data_list += get_data_HPOlib(HPOlib_dir_name, 'smac_2_10_00-dev')
 	# data_list += get_data_additive(additive_dir_name, func_name, ndim)
-	data_list += get_data_spearmint(spearmint_warping_dir_name, func_name, ndim)
+	# data_list += get_data_spearmint(spearmint_warping_dir_name, func_name, ndim)
 	# data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
 	data_list += get_data_sphere(sphere_dir_name, ['cube', 'cubeard', 'sphereboth', 'sphereorigin', 'spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)
 	return data_list
