@@ -1,3 +1,4 @@
+import sys
 import os.path
 import pickle
 import time
@@ -5,6 +6,9 @@ import argparse
 from datetime import datetime
 
 import torch.multiprocessing as multiprocessing
+
+if os.path.realpath(__file__).rsplit('/', 3)[0] not in sys.path:
+	sys.path.append(os.path.realpath(__file__).rsplit('/', 3)[0])
 
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference, N_INIT
 from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
