@@ -6,7 +6,7 @@ HEAD = ""
 HEAD += "#Set job requirements\n"
 HEAD += "#PBS -S /bin/bash\n"
 HEAD += "#PBS -lnodes=1:ppn=16\n"
-HEAD += "#PBS -lwalltime=1:30:00\n"
+HEAD += "#PBS -lwalltime=16:00:00\n"
 HEAD += "\n"
 HEAD += "#Loading modules\n"
 HEAD += "module load python\n"
@@ -52,7 +52,7 @@ def generate_initiating_script(algorithm, func_name, dim, n_eval):
 	script += BODY_INITIATING
 	script += BODY_CONTINUING
 
-	filename = '_'.join(["torque_run", algorithm, func_name, 'D' + str(dim), 'E' + str(n_eval) + '.sh'])
+	filename = '_'.join([algorithm, func_name, 'D' + str(dim), 'E' + str(n_eval) + '.sh'])
 	sh_file = open(filename, 'wt')
 	sh_file.write(script)
 	sh_file.close()
@@ -65,7 +65,7 @@ def generate_continuing_script(pathname, n_eval):
 	script += "\n"
 	script += BODY_CONTINUING
 
-	filename = '_'.join(["torque_run", pathname, 'E' + str(n_eval) + '.sh'])
+	filename = '_'.join([os.path.split(pathname)[1], 'E' + str(n_eval) + '.sh'])
 	sh_file = open(filename, 'wt')
 	sh_file.write(script)
 	sh_file.close()
