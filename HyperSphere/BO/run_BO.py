@@ -63,8 +63,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		elif geometry == 'cube':
 			assert not origin
 			exp_conf_str += ('ard' if ard else '') + ('boundary' if boundary else '')
-			kernel = Matern52
-			model = GPRegression(kernel=kernel(ndim=ndim, ard=ard))
+			model = GPRegression(kernel=Matern52(ndim=ndim, ard=ard))
 			inference_method = satellite_ShadowInference if boundary else Inference
 			bnd = (-1, 1)
 
