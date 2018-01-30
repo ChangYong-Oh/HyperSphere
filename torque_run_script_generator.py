@@ -10,7 +10,7 @@ HEAD += "#PBS -lwalltime=1:30:00\n"
 HEAD += "\n"
 HEAD += "#Loading modules\n"
 HEAD += "module load python\n"
-HEAD += "cd $HOME\git_repositories\HyperSphere\n"
+HEAD += "cd \"$HOME/git_repositories/HyperSphere\"\n"
 HEAD += "\n"
 
 BODY_INITIATING = ""
