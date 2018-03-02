@@ -51,7 +51,7 @@ def HPOlib_params2np(params):
 	return x[sort_ind, 1]
 
 
-def get_data_additive(dir_name, func_name, ndim):
+def get_data_additive(dir_name, func_name, ndim, simpler=False):
 	exp_id = func_name + '_D' + str(ndim)
 	file_pool = [elm for elm in os.listdir(dir_name) if elm[:len(exp_id)] == exp_id]
 	additive_ids = np.unique(['_'.join(elm.split('_')[2:4]) for elm in file_pool])
@@ -66,7 +66,10 @@ def get_data_additive(dir_name, func_name, ndim):
 			data_batch_optimum = loadmat(os.path.join(dir_name, '_'.join([data_id, instance_id, 'optimum.mat'])))['neg_optima']
 			for s in range(data_batch_x.shape[0]):
 				data = {}
-				data['algorithm'] = 'additiveBO_' + additive_id[5:]
+				if simpler:
+					data['algorithm'] = 'additive'
+				else:
+					data['algorithm'] = 'additiveBO_' + additive_id[5:]
 				data['x'] = data_batch_x[s]
 				data['y'] = data_batch_y[s]
 				data['optimum'] = data_batch_optimum[s]
@@ -75,7 +78,7 @@ def get_data_additive(dir_name, func_name, ndim):
 	return data_list
 
 
-def get_data_spearmint(dir_name, func_name, ndim):
+def get_data_warping(dir_name, func_name, ndim):
 	data_list = []
 	folder_list = [os.path.join(dir_name, elm) for elm in os.listdir(dir_name) if func_name + '_' + str(ndim) == elm[:len(func_name + str(ndim)) + 1]]
 	for folder in folder_list:
@@ -103,7 +106,7 @@ def get_data_elastic(dir_name, func_name, ndim):
 	for filename in filename_list:
 		mat_data = loadmat(filename)
 		data = {}
-		data['algorithm'] = 'elasticGP'
+		data['algorithm'] = 'elastic'
 		data['x'] = mat_data['x']
 		data['y'] = -mat_data['y'].flatten()
 		data['optimum'] = -mat_data['ybest'].flatten()
@@ -112,20 +115,43 @@ def get_data_elastic(dir_name, func_name, ndim):
 	return data_list
 
 
-def get_data(func_name, ndim):
-	HPOlib_dir_name = '/home/coh1/git_repositories/HPOlib/HPOlib/benchmarks/' + func_name + '_' + str(ndim)
-	additive_dir_name = '/home/coh1/Experiments/Additive_BO_mat'
-	spearmint_warping_dir_name = '/home/coh1/Experiments/Spearmint_ALL'
-	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat'
-	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL'
+def get_data(func_name, ndim, suffix='_center-random', P_setting='_P=9'):
+	# suffix = '_center-corner'
+	spearmint_dir_name = '/home/coh1/Experiments/spearmint_ALL' + suffix + '/' + func_name + '_' + str(ndim)
+	smac_dir_name = '/home/coh1/Experiments/smac_ALL' + suffix + '/' + func_name + '_' + str(ndim)
+	tpe_dir_name = '/home/coh1/Experiments/tpe_ALL' + suffix + '/' + func_name + '_' + str(ndim)
+	additive_dir_name = '/home/coh1/Experiments/Additive_BO_mat_ALL' + suffix + '/'
+	warping_dir_name = '/home/coh1/Experiments/Warping_ALL' + suffix + '/'
+	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat' + suffix + '/'
+	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL' + suffix + P_setting + '/'
+	cube_dir_name = '/home/coh1/Experiments/Cube_ALL' + suffix + '/'
 	data_list = []
-	# data_list += get_data_HPOlib(HPOlib_dir_name, 'spearmint_april2013_mod')
-	# data_list += get_data_HPOlib(HPOlib_dir_name, 'hyperopt_august2013_mod')
-	# data_list += get_data_HPOlib(HPOlib_dir_name, 'smac_2_10_00-dev')
-	# data_list += get_data_additive(additive_dir_name, func_name, ndim)
-	# data_list += get_data_spearmint(spearmint_warping_dir_name, func_name, ndim)
-	# data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
-	data_list += get_data_sphere(sphere_dir_name, ['cube', 'cubeard', 'sphereboth', 'sphereorigin', 'spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)
+	try:
+		data_list += get_data_HPOlib(spearmint_dir_name, 'spearmint_april2013_mod')
+	except OSError:
+		pass
+	try:
+		data_list += get_data_HPOlib(tpe_dir_name, 'hyperopt_august2013_mod')
+	except OSError:
+		pass
+	try:
+		data_list += get_data_HPOlib(smac_dir_name, 'smac_2_10_00-dev')
+	except OSError:
+		pass
+	try:
+		data_list += get_data_additive(additive_dir_name, func_name, ndim)
+	except OSError:
+		pass
+	try:
+		data_list += get_data_warping(warping_dir_name, func_name, ndim)
+	except OSError:
+		pass
+	try:
+		data_list += get_data_elastic(elastic_dir_name, func_name, ndim)
+	except OSError:
+		pass
+	data_list += get_data_sphere(cube_dir_name, ['cube', 'cubeard'], func_name, ndim)
+	data_list += get_data_sphere(sphere_dir_name, ['sphereboth', 'sphereorigin', 'spherewarpingboth', 'spherewarpingorigin'], func_name, ndim)
 	return data_list
 
 

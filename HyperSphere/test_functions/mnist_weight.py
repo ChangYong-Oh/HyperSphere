@@ -15,6 +15,11 @@ from torch.utils.data import DataLoader, sampler
 from torchvision import datasets, transforms
 
 
+BATCH_SIZE = 64
+EPOCH = 20
+USE_VALIDATION = True
+
+
 class Net(nn.Module):
 	def __init__(self, n_hid, hid_weight=None):
 		super(Net, self).__init__()
@@ -51,7 +56,7 @@ def load_mnist(batch_size, use_cuda, use_validation=True):
 		train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=False, sampler=train_sampler, **kwargs)
 		validation_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=False, sampler=validation_sampler, **kwargs)
 	else:
-		train_loader = DataLoader(mnist_train, batch_size = batch_size, shuffle=True, ** kwargs)
+		train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, **kwargs)
 	test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=False, **kwargs)
 	if use_validation:
 		return train_loader, validation_loader, test_loader
@@ -92,11 +97,8 @@ def test(test_loader, model, use_cuda):
 	test_accuracy = correct / float(len(test_loader.dataset))
 	return test_loss, test_accuracy
 
-batch_size = 64
-epoch = 20
 
-
-def mnist_weight(weight_vector, use_BO=True, use_validation=True):
+def mnist_weight(weight_vector, use_BO=True):
 	use_cuda = cuda.is_available()
 	if use_BO:
 		model = Net(n_hid=weight_vector.numel() / 10, hid_weight=weight_vector.view(10, -1))
@@ -109,20 +111,20 @@ def mnist_weight(weight_vector, use_BO=True, use_validation=True):
 			m.data.normal_()
 	if use_cuda:
 		model.cuda()
-	if use_validation:
-		train_loader, validation_loader, test_loader = load_mnist(batch_size, use_cuda)
+	if USE_VALIDATION:
+		train_loader, validation_loader, test_loader = load_mnist(BATCH_SIZE, use_cuda)
 	else:
-		train_loader, test_loader = load_mnist(batch_size, use_cuda)
+		train_loader, test_loader = load_mnist(BATCH_SIZE, use_cuda)
 	optimizer = optim.Adam(model.parameters())
-	train(train_loader, model, epoch, optimizer, use_cuda)
-	if use_validation:
+	train(train_loader, model, EPOCH, optimizer, use_cuda)
+	if USE_VALIDATION:
 		loss, accuracy = test(validation_loader, model, use_cuda)
 	else:
 		loss, accuracy = test(test_loader, model, use_cuda)
 	if not use_BO:
 		print('Entirely with SGD(Adam)')
 		print(model.fc2.weight.data)
-	print('\n%s loss : %f / Accuracy : %6.4f' % ('Validation' if use_validation else 'Test', loss, accuracy))
+	print('\n%s loss : %f / Accuracy : %6.4f' % ('Validation' if USE_VALIDATION else 'Test', loss, accuracy))
 	return torch.FloatTensor([[loss]])
 
 
@@ -149,6 +151,7 @@ def mnist_weight_baseline(ndim, type='loss'):
 if __name__ == '__main__':
 	weight_vector = torch.randn(500)
 	print(mnist_weight(weight_vector, use_BO=False))
+
 # 10 by 10 case
 # Loss : 0.242009 / Accuracy : 0.9322
 # Loss : 0.230133 / Accuracy : 0.9349

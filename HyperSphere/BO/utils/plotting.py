@@ -11,40 +11,40 @@ color_list = ['b', 'g', 'r', 'tab:brown', 'm', 'fuchsia', 'k', 'w']
 
 def algorithm_color(algorithm):
 	if algorithm == 'hyperopt':
-		return 'rosybrown'
+		return 'r'
 	if algorithm == 'smac':
-		return 'darkkhaki'
+		return 'dodgerblue'
 	if algorithm == 'spearmint':
-		return 'maroon'
+		return 'darkorchid'
 	if algorithm == 'spearmint_warping':
-		return 'gold'
+		return 'indigo'
 	if algorithm == 'cube':
 		return 'salmon'
 	if algorithm == 'cubeard':
-		return 'orange'
+		return 'r'
 	if algorithm[:10] == 'additiveBO':
 		return 'g'
 	if algorithm == 'elasticGP':
-		return 'coral'
+		return 'darkslategray'
 	if algorithm == 'sphereboth':
-		return 'royalblue'
+		return 'green'
 	if algorithm == 'sphereorigin':
-		return 'blueviolet'
+		return 'limegreen'
 	if algorithm == 'spherewarpingboth':
-		return 'fuchsia'
+		return 'lime'
 	if algorithm == 'spherewarpingorigin':
-		return 'red'
+		return 'lime'
 
 
-def optimum_plot(func_name, ndim, type='avg'):
-	data_list = get_data(func_name, ndim)
+def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting='_P=9'):
+	data_list = get_data(func_name, ndim, suffix, P_setting)
 	title = func_name + '_D' + str(ndim)
 	algorithms = np.unique([elm['algorithm'] for elm in data_list])
 	n_algorithms = algorithms.size
 
 	y_min = np.inf
 	y_max = np.min([data['optimum'][1] for data in data_list])
-	norm_z = 1
+	norm_z = 1.0
 	plot_data = {}
 	for algorithm in algorithms:
 		plot_data[algorithm] = {}
@@ -72,6 +72,8 @@ def optimum_plot(func_name, ndim, type='avg'):
 	y_min = y_min - 0.1 * y_rng
 	y_max = y_max + 0.1 * y_rng
 
+	if func_name == 'mnist_weight':
+		plt.figure(figsize=(10, 10))
 	if type == 'avg':
 		gs = gridspec.GridSpec(1, 1)
 
@@ -132,45 +134,91 @@ def optimum_plot(func_name, ndim, type='avg'):
 		ax_best.set_ylim(y_min, y_max)
 		ax_mean.legend()
 	elif type[:6] == 'custom':
-		gs = gridspec.GridSpec(1, 3)
+		gs = gridspec.GridSpec(1, 1)
 
-		ax_mean = plt.subplot(gs[0])
-		ax_best = plt.subplot(gs[1])
-		ax_3rd = plt.subplot(gs[2])
+		# ax_mean = plt.subplot(gs[0])
+		# ax_best = plt.subplot(gs[1])
+		ax_3rd = plt.subplot(gs[0])
 		if func_name == 'mnist_weight':
 			baseline_sample = mnist_weight_baseline(ndim=ndim)
 			baseline_mean = np.mean(baseline_sample)
 			baseline_std = np.std(baseline_sample)
-			z_value = 1.96
-			ax_mean.axhline(baseline_mean, c='k', label='SGD baseline (' + str(len(baseline_sample)) + ')')
-			ax_mean.axhspan(baseline_mean - z_value * baseline_std, baseline_mean + z_value * baseline_std, facecolor='gray', alpha=0.5)
-		for key in sorted(plot_data.keys()):
+			# ax_mean.axhline(baseline_mean, c='k', label='SGD')
+			ax_3rd.axhline(baseline_mean, c='k', label='SGD')
+			ax_3rd.axhspan(baseline_mean - norm_z * baseline_std, baseline_mean + norm_z * baseline_std, facecolor='gray', alpha=0.5)
+			txt_str = 'n mean std\n'
+			dim_eval = {100: 400, 200: 600, 500: 800}
+			for e in range(dim_eval[ndim]):
+				txt_str += ('%d %.4f %.4f\n' % (e + 1, baseline_mean, baseline_std))
+			txt_file = open('/home/coh1/Publications/mnist_result_data/SGD_' + str(ndim) + '.txt', 'wt')
+			txt_file.write(txt_str)
+			txt_file.close()
+		for i, key in enumerate(sorted(plot_data.keys())):
 			data = plot_data[key]
 			color = algorithm_color(key)
-			ax_mean.plot(data['plot_x'], data['mean'], color=color, label=key + '(' + str(data['n_samples']) + ')')
+
+			if key == 'sphereboth':
+				continue
+				label = 'BOCK B'
+			elif key == 'sphereorigin':
+				continue
+				label = 'BOCK-W'
+			elif key == 'spherewarpingboth':
+				continue
+				label = 'BOCK+B'
+			elif key == 'spherewarpingorigin':
+				label = 'BOCK'
+			elif key == 'cube':
+				label = 'Matern'
+			elif key == 'cubeard':
+				continue
+				label = 'MaternARD'
+			elif key == 'spearmint':
+				label = 'Spearmint'
+			elif key == 'spearmint_warping':
+				label = 'Spearmint+'
+			elif 'additiveBO_' in key:
+				if '_3_' in key:
+					label = 'AdditiveBO'
+				else:
+					continue
+			elif 'hyperopt' == key:
+				label = 'TPE'
+			elif 'smac' == key:
+				label = 'SMAC'
+			elif 'elastic' == key:
+				label = 'Elastic BO'
+
+			# ax_mean.plot(data['plot_x'], data['mean'], color=color, label=label)
 			if type[7:] == 'avg':
-				ax_3rd.plot(data['plot_x'], data['mean'], color=color, label=key + '(' + str(data['n_samples']) + ')')
+				ax_3rd.plot(data['plot_x'], data['mean'], color=color, label=label)
 				ax_3rd.fill_between(data['plot_x'], data['mean'] - norm_z * data['std'], data['mean'] + norm_z * data['std'], color=color, alpha=0.25)
+				print(('%-30s $\stackbin[%3d,%1d]{}{%4.2f$\pm$%4.2f}$') % (key, data['mean'].size, len(data['sample']), data['mean'][-1], data['std'][-1]))
 			elif type[7:] == 'sample':
-				plot_samples(ax_3rd, plot_data[key]['sample'], color)
-			ax_best.plot(data['plot_x'], data['best'], color=color, label=key + '(' + str(data['n_samples']) + ')')
-		ax_mean.set_title('Mean')
-		ax_mean.set_ylim(y_min, y_max)
-		if type[7:] == 'avg':
-			ax_3rd.set_title('Average')
-		elif type[7:] == 'sample':
-			ax_3rd.set_title('Samples')
+				plot_samples(ax_3rd, data['sample'], color)
+			# ax_best.plot(data['plot_x'], data['best'], color=color, label=key + '(' + str(data['n_samples']) + ')')
+		# ax_mean.set_title('Mean')
+		# ax_mean.set_ylim(y_min, y_max)
+		# if type[7:] == 'avg':
+			# ax_3rd.set_title('Mean ' + u"\u00B1" + ' {:.2f}'.format(norm_z) + u"\u2022" + 'Std')
+		# elif type[7:] == 'sample':
+		# 	ax_3rd.set_title('Samples')
 		ax_3rd.set_ylim(y_min, y_max)
-		ax_best.set_title('Best run')
-		ax_best.set_ylim(y_min, y_max)
-		ax_mean.legend()
-		ax_3rd.xaxis.set_minor_locator(MultipleLocator(25))
+		# ax_best.set_title('Best run')
+		# ax_best.set_ylim(y_min, y_max)
+		# ax_mean.legend(fontsize=12)
+		ax_3rd.legend(fontsize=10, loc=3)
+		# ax_3rd.xaxis.set_minor_locator(MultipleLocator(50))
 		# ax_sample.yaxis.set_minor_locator(MultipleLocator(0.5))
 		ax_3rd.grid(which='minor')
 
 	plt.subplots_adjust(hspace=0.02)
 
-	plt.suptitle(title)
+	if 'mnist_weight' in title:
+		plt.tick_params(axis='both', which='major', labelsize=36)
+		plt.tight_layout(rect=[0.07, 0.03, 1, 1.0])
+	else:
+		plt.tight_layout()
 	plt.show()
 
 
@@ -189,7 +237,7 @@ def plot_samples(ax, sample_list, color, title_str=None):
 
 
 if __name__ == '__main__':
-	optimum_plot('hartmann6', 20, type='custom_sample')
+	optimum_plot('rosenbrock', 100, type='custom_avg', suffix='_center-random', P_setting='_P=3')
 	# schwefel
 	# rotatedschwefel
 	# michalewicz
@@ -198,3 +246,4 @@ if __name__ == '__main__':
 	# styblinskitang
 	# rotatedstyblinskitang
 	# mnist_weight
+	# cifar10_weight 1930 or 1920

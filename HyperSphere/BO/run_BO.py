@@ -49,7 +49,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			assert not ard
 			exp_conf_str += 'warping' if warping else ''
 			radius_input_map = Kumaraswamy(ndim=1, max_input=ndim ** 0.5) if warping else None
-			model = GPRegression(kernel=RadializationKernel(max_power=9, search_radius=ndim ** 0.5, radius_input_map=radius_input_map))
+			model = GPRegression(kernel=RadializationKernel(max_power=3, search_radius=ndim ** 0.5, radius_input_map=radius_input_map))
 			inference_method = None
 			if origin and boundary:
 				inference_method = both_ShadowInference
@@ -80,6 +80,9 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		data_config_filename = os.path.join(EXPERIMENT_DIR, folder_name, 'data_config.pkl')
 
 		x_input = Variable(torch.stack([torch.zeros(ndim), torch.FloatTensor(ndim).uniform_(-1, 1)]))
+		if func.func_name == 'stochastic_depth_resnet_cifar100':
+			special_init_point = torch.FloatTensor([-0.88672996375809265, -0.83845553984377363, -0.80082455589209434, -0.76868080609344613, -0.74002860499719103, -0.71384507914214379, -0.6895229479156415, -0.66666666534211871, -0.64500158781765049, -0.62432778870160499, -0.60449429448743319, -0.58538383736427368, -0.56690311453886821, -0.54897644926147593, -0.53154137077618735, -0.51454570980003023, -0.49794520561122835, -0.4817019618876005, -0.46578329447738975, -0.45016063464220946, -0.43480887900991927, -0.41970588594137237, -0.40483184457290511, -0.39016909932337462, -0.37570168000845294, -0.36141512736958714, -0.34729635533386094, -0.33333334161175654, -0.31951507564952675, -0.30583136944490208, -0.29227292909996905, -0.27883100126437665, -0.26549747264739709, -0.25226475894331168, -0.23912574658399377, -0.22607369983030123, -0.2131023835975443, -0.20020577167418563, -0.18737817967669568, -0.1746141913340078, -0.16190858934371632, -0.14925649319813961, -0.13665309066289877, -0.12409378040195429, -0.11157411163518405, -0.099089726169870107, -0.086636502479268351, -0.074210299199806373, -0.061807101474520065, -0.049422967019945307, -0.037054013082912562, -0.024696364163967699, -0.012346298973719083, 0])
+			x_input = torch.cat([x_input, Variable(special_init_point)])
 		n_init_eval = x_input.size(0)
 		output = Variable(torch.zeros(n_init_eval, 1))
 		for i in range(n_init_eval):

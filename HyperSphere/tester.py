@@ -188,5 +188,32 @@ def centering_check():
 	plt.plot(x, zeros)
 	plt.show()
 
+
+def inverse_with_center(center_probability=0.5):
+	if isinstance(center_probability, (float, int)):
+		center_probability = torch.zeros(54) + center_probability
+
+	shift = []
+	for i in range(center_probability.numel()):
+		poly_d = center_probability.squeeze()[i]
+		if poly_d == 0:
+			shift.append(-1.0)
+		elif poly_d == 1:
+			shift.append(1.0)
+		elif 0 < poly_d < 1:
+			poly_zeros = np.roots([-0.25, 0, 0.75, 0.5 - poly_d])
+			shift.append(poly_zeros[np.argmin(np.abs(poly_zeros))])
+	shift = torch.FloatTensor(shift)
+
+	target = torch.linspace(0, 0.5, 55)[1:]
+	target_np = target.numpy()
+	zero_list = []
+	for i in range(54):
+		zeros = np.roots([2, -3, 0, target_np[i]])
+		zero = zeros[np.logical_and(zeros >= 0, zeros <= 1)][0] * 2.0 - 1.0 - shift[i]
+		zero_list.append(zero)
+	zero_list[-1] = 0
+	print zero_list
+
 if __name__ == '__main__':
-	centering_check()
+	inverse_with_center()
