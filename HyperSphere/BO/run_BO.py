@@ -119,7 +119,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 
 	ignored_variable_names = ['n_eval', 'path', 'i', 'key', 'value', 'logfile_dir', 'n_init_eval',
 	                          'data_config_file', 'dir_list', 'folder_name', 'model_filename', 'data_config_filename',
-	                          'kernel', 'model', 'inference', 'pool']
+	                          'kernel', 'model', 'inference', 'parallel', 'pool']
 	stored_variable_names = set(locals().keys()).difference(set(ignored_variable_names))
 
 	if path is None:
