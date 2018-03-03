@@ -80,22 +80,24 @@ def train(train_loader, model, epoch, optimizer, use_cuda):
 		progress.update(e)
 
 
-def test(test_loader, model, use_cuda):
+def evaluation(evaluation_loader, model, use_cuda):
 	model.eval()
-	test_loss = 0
+	evaluation_loss = 0
 	correct = 0
-	for data, target in test_loader:
+	n_eval_data = 0
+	for data, target in evaluation_loader:
+		n_eval_data += data.size(0)
 		if use_cuda:
 			data, target = data.cuda(), target.cuda()
 		data, target = Variable(data, volatile=True), Variable(target)
 		output = model(data)
-		test_loss += F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
+		evaluation_loss += F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
 		pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
 		correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
-	test_loss /= len(test_loader.dataset)
-	test_accuracy = correct / float(len(test_loader.dataset))
-	return test_loss, test_accuracy
+	evaluation_loss /= float(n_eval_data)
+	evaluation_accuracy = correct / float(n_eval_data)
+	return evaluation_loss, evaluation_accuracy
 
 
 def mnist_weight(weight_vector, use_BO=True, use_cuda=True):
@@ -118,9 +120,9 @@ def mnist_weight(weight_vector, use_BO=True, use_cuda=True):
 	optimizer = optim.Adam(model.parameters())
 	train(train_loader, model, EPOCH, optimizer, use_cuda)
 	if USE_VALIDATION:
-		loss, accuracy = test(validation_loader, model, use_cuda)
+		loss, accuracy = evaluation(validation_loader, model, use_cuda)
 	else:
-		loss, accuracy = test(test_loader, model, use_cuda)
+		loss, accuracy = evaluation(test_loader, model, use_cuda)
 	if not use_BO:
 		print('Entirely with SGD(Adam)')
 		print(model.fc2.weight.data)
@@ -149,8 +151,8 @@ def mnist_weight_baseline(ndim, type='loss'):
 			return [0.9726, 0.9729, 0.9732, 0.9728, 0.9729]
 
 if __name__ == '__main__':
-	weight_vector = torch.randn(100)
-	print(mnist_weight(weight_vector, use_BO=True, use_cuda=False))
+	weight_vector = torch.randn(500)
+	print(mnist_weight(weight_vector))
 
 # 10 by 10 case
 # Loss : 0.242009 / Accuracy : 0.9322
