@@ -168,11 +168,15 @@ def preditive_distribution_3d_plot(x, train_x, train_y, pred_mean, pred_std, whi
 	plt.tight_layout()
 	plt.show()
 
+	min_train_y = np.min(train_y)
+
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
 	ax.plot(y, plot_data_z[:, which_x], color='cyan')
 	ax.axvline(pred_mean[which_x], label=u"\u03BC" + '(x=' + ('%.2f' % x[which_x]) + '|D)', color='b')
 	ax.axhline(0.2, xmin=0.29, xmax=0.545, label=u"\u03C3\u00B2" + '(x=' + ('%.2f' % x[which_x]) + '|D)', color='g')
+	ax.axvline(min_train_y, label='f_min', color='k', ls='--')
+	ax.fill_between(y[y <= min_train_y], y[y <= min_train_y] * 0, plot_data_z[y <= min_train_y, which_x], color='m')
 	ax.set_xlabel('f(x=' + ('%.2f' % x[which_x]) + ')', fontsize=12)
 	ax.set_ylabel('Density', fontsize=12)
 	plt.tight_layout()
@@ -181,7 +185,6 @@ def preditive_distribution_3d_plot(x, train_x, train_y, pred_mean, pred_std, whi
 
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
-	min_train_y = np.min(train_y)
 	ax.plot(y, plot_data_z[:, which_x], color='b', label='Original pdf')
 	pdf_lower_mean = stats.norm.pdf(y, loc=pred_mean[which_x] - 0.5, scale=pred_std[which_x])
 	pdf_higher_std = stats.norm.pdf(y, loc=pred_mean[which_x], scale=pred_std[which_x] * 2.0)

@@ -178,7 +178,7 @@ def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting
 			elif key == 'spearmint_warping':
 				label = 'Spearmint+'
 			elif 'additiveBO_' in key:
-				if '_3_' in key:
+				if '_5_' in key:
 					label = 'AdditiveBO'
 				else:
 					continue
