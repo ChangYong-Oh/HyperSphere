@@ -8,10 +8,10 @@ from datetime import datetime
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, \
 	optimization_init_points, deepcopy_inference
 from HyperSphere.BO.shadow_inference.inference_slide_origin import ShadowInference
-from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.feature_map.functionals import x2radial, radial_bound
+from HyperSphere.plotting.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.test_functions.benchmarks import *
 
 exp_str = __file__.split('/')[-1].split('_')[0]

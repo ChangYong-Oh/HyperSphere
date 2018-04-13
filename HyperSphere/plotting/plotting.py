@@ -1,9 +1,8 @@
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import numpy as np
 
-from HyperSphere.BO.utils.get_data_from_file import get_data
+from HyperSphere.plotting.get_data_from_file import get_data
 from HyperSphere.test_functions.mnist_weight import mnist_weight_baseline
 
 color_list = ['b', 'g', 'r', 'tab:brown', 'm', 'fuchsia', 'k', 'w']

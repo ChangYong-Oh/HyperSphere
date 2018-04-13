@@ -1,17 +1,15 @@
+import argparse
 import os
 import os.path
-import sys
-import time
 import shutil
-import psutil
-from datetime import datetime
-import argparse
-import multiprocessing
-import subprocess32
+import sys
 import tempfile
-import socket
+import time
+from datetime import datetime
 
-from utils.datafile_utils import EXPERIMENT_DIR
+import subprocess32
+
+from HyperSphere.plotting.datafile_utils import EXPERIMENT_DIR
 
 valid_config_str_list = ['cube', 'cubeard', 'cubeboundary', 'cubeardboundary',
                          'spherenone', 'sphereorigin', 'sphereboundary', 'sphereboth',

@@ -1,8 +1,8 @@
-import sys
+import argparse
 import os.path
 import pickle
+import sys
 import time
-import argparse
 from datetime import datetime
 
 import torch.multiprocessing as multiprocessing
@@ -11,12 +11,9 @@ if os.path.realpath(__file__).rsplit('/', 3)[0] not in sys.path:
 	sys.path.append(os.path.realpath(__file__).rsplit('/', 3)[0])
 
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference, N_INIT
-from HyperSphere.BO.utils.datafile_utils import EXPERIMENT_DIR
+from HyperSphere.plotting.datafile_utils import EXPERIMENT_DIR
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.test_functions.benchmarks import *
-from HyperSphere.test_functions.mnist_weight import mnist_weight
-from HyperSphere.test_functions.cifar10_weight import cifar10_weight
-from HyperSphere.test_functions.stochastic_depth_resnet import stochastic_depth_resnet_cifar10, stochastic_depth_resnet_cifar100
 
 # Kernels
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
