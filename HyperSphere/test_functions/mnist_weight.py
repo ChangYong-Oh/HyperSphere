@@ -45,12 +45,12 @@ class Net(nn.Module):
 		return F.log_softmax(x)
 
 
-def load_mnist(batch_size, use_cuda):
+def load_mnist(batch_size, use_cuda, use_validation):
 	kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 	transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
 	mnist_train = datasets.MNIST('../data', train=True, download=True, transform=transform)
 	mnist_test = datasets.MNIST('../data', train=False, transform=transform)
-	if USE_VALIDATION:
+	if use_validation:
 		train_sampler = sampler.SubsetRandomSampler(range(45000))
 		validation_sampler = sampler.SubsetRandomSampler(range(45000, 50000))
 		train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=False, sampler=train_sampler, **kwargs)
@@ -58,7 +58,7 @@ def load_mnist(batch_size, use_cuda):
 	else:
 		train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, **kwargs)
 	test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=False, **kwargs)
-	if USE_VALIDATION:
+	if use_validation:
 		return train_loader, validation_loader, test_loader
 	else:
 		return train_loader, test_loader
@@ -100,7 +100,7 @@ def evaluation(evaluation_loader, model, use_cuda):
 	return evaluation_loss, evaluation_accuracy
 
 
-def mnist_weight(weight_vector, use_BO=True, use_cuda=True):
+def mnist_weight(weight_vector, use_BO=True, use_validation=USE_VALIDATION, use_cuda=True):
 	use_cuda = cuda.is_available() and use_cuda
 	if use_BO:
 		model = Net(n_hid=weight_vector.numel() / 10, hid_weight=weight_vector.view(10, -1))
@@ -113,22 +113,29 @@ def mnist_weight(weight_vector, use_BO=True, use_cuda=True):
 			m.data.normal_()
 	if use_cuda:
 		model.cuda()
-	if USE_VALIDATION:
-		train_loader, validation_loader, test_loader = load_mnist(BATCH_SIZE, use_cuda)
+	if use_validation:
+		train_loader, validation_loader, test_loader = load_mnist(BATCH_SIZE, use_cuda, use_validation)
 	else:
-		train_loader, test_loader = load_mnist(BATCH_SIZE, use_cuda)
-	optimizer = optim.Adam(model.parameters())
+		train_loader, test_loader = load_mnist(BATCH_SIZE, use_cuda, use_validation)
+	if use_BO:
+		optimizer = optim.Adam(model.parameters())
+	else:
+		optimizer = optim.Adam(model.parameters(), weight_decay=0.0001)
 	train(train_loader, model, EPOCH, optimizer, use_cuda)
-	if USE_VALIDATION:
+	if use_validation:
 		loss, accuracy = evaluation(validation_loader, model, use_cuda)
 	else:
 		loss, accuracy = evaluation(test_loader, model, use_cuda)
-	if not use_BO:
-		print('Entirely with SGD(Adam)')
-		print(model.fc2.weight.data)
-	print('\n%s loss : %f / Accuracy : %6.4f' % ('Validation' if USE_VALIDATION else 'Test', loss, accuracy))
-	return torch.FloatTensor([[loss]])
+	# if not use_BO:
+	# 	print('Entirely with SGD(Adam)')
+	# 	print(model.fc2.weight.data)
+	print('\n%s loss : %f / Accuracy : %6.4f' % ('Validation' if use_validation else 'Test', loss, accuracy))
 
+	if use_BO:
+		return torch.FloatTensor([[loss]])
+	if not use_BO:
+		weight_radius = (torch.sum([elm[1] for elm in model.named_parameters() if elm[0]=='fc2.weight'][0] ** 2) ** 0.5).data[0]
+		return torch.FloatTensor([[loss]]), weight_radius
 
 mnist_weight.dim = 0
 
