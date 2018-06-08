@@ -1,14 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
-from HyperSphere.BO.utils.plotting import algorithm_color
+from HyperSphere.plotting.plot_color import algorithm_color
 
 from HyperSphere.plotting.get_data_from_file import get_data_sphere, get_data_HPOlib, get_data_elastic, \
 	get_data_additive, get_data_warping
 from run_time_data import run_time_hyper, run_time_spearmint, run_time_elastic, run_time_additive, run_time_warping, \
 	run_time_smac, run_time_tpe
 
-FUNC_NAME = 'branin'
+FUNC_NAME = 'rosenbrock'
 
 
 def accuarcy_vs_time(dims, suffix='_center-random', P_setting='_P=3'):
@@ -57,7 +57,7 @@ def accuarcy_vs_time(dims, suffix='_center-random', P_setting='_P=3'):
 	for elm in additive_data:
 		elm['algorithm'] = 'additive'
 	data_list += additive_data
-	data_list += get_data_elastic('/home/coh1/Experiments/elastic_BO_mat/', FUNC_NAME, dims)
+	data_list += get_data_elastic('/home/coh1/Experiments/elastic_BO_mat_center-random/', FUNC_NAME, dims)
 	data_list += get_data_sphere(cube_dir, ['cube', 'cubeard'], FUNC_NAME, dims)
 	data_list += get_data_sphere(sphere_dir, ['sphereboth', 'sphereorigin', 'spherewarpingboth', 'spherewarpingorigin'], FUNC_NAME, dims)
 
@@ -68,6 +68,9 @@ def accuarcy_vs_time(dims, suffix='_center-random', P_setting='_P=3'):
 			optimum_dict[elm['algorithm']] += [elm['optimum'][-1]]
 		except KeyError:
 			optimum_dict[elm['algorithm']] = [elm['optimum'][-1]]
+
+	plt.rc('pdf', fonttype=42)
+	plt.rc('ps', fonttype=42)
 
 	plt.figure()
 	for key in runtime_dict.keys():

@@ -13,6 +13,9 @@ def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting
 	algorithms = np.unique([elm['algorithm'] for elm in data_list])
 	n_algorithms = algorithms.size
 
+	plt.rc('pdf', fonttype=42)
+	plt.rc('ps', fonttype=42)
+
 	y_min = np.inf
 	y_max = np.min([data['optimum'][1] for data in data_list])
 	norm_z = 1.0
@@ -44,7 +47,7 @@ def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting
 	y_max = y_max + 0.1 * y_rng
 
 	if func_name == 'mnist_weight':
-		plt.figure(figsize=(10, 10))
+		plt.figure(figsize=(10, 8))
 	if type == 'avg':
 		gs = gridspec.GridSpec(1, 1)
 
@@ -115,15 +118,15 @@ def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting
 			baseline_mean = np.mean(baseline_sample)
 			baseline_std = np.std(baseline_sample)
 			# ax_mean.axhline(baseline_mean, c='k', label='SGD')
-			ax_3rd.axhline(baseline_mean, c='k', label='SGD')
-			ax_3rd.axhspan(baseline_mean - norm_z * baseline_std, baseline_mean + norm_z * baseline_std, facecolor='gray', alpha=0.5)
-			txt_str = 'n mean std\n'
-			dim_eval = {100: 400, 200: 600, 500: 800}
-			for e in range(dim_eval[ndim]):
-				txt_str += ('%d %.4f %.4f\n' % (e + 1, baseline_mean, baseline_std))
-			txt_file = open('/home/coh1/Publications/mnist_result_data/SGD_' + str(ndim) + '.txt', 'wt')
-			txt_file.write(txt_str)
-			txt_file.close()
+			# ax_3rd.axhline(baseline_mean, c='k', label='SGD')
+			# ax_3rd.axhspan(baseline_mean - norm_z * baseline_std, baseline_mean + norm_z * baseline_std, facecolor='gray', alpha=0.5)
+			# txt_str = 'n mean std\n'
+			# dim_eval = {100: 400, 200: 600, 500: 800}
+			# for e in range(dim_eval[ndim]):
+			# 	txt_str += ('%d %.4f %.4f\n' % (e + 1, baseline_mean, baseline_std))
+			# txt_file = open('/home/coh1/Publications/mnist_result_data/SGD_' + str(ndim) + '.txt', 'wt')
+			# txt_file.write(txt_str)
+			# txt_file.close()
 		for i, key in enumerate(sorted(plot_data.keys())):
 			data = plot_data[key]
 			color = algorithm_color(key)
@@ -147,7 +150,7 @@ def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting
 			elif key == 'spearmint':
 				label = 'Spearmint'
 			elif key == 'spearmint_warping':
-				label = 'Spearmint+'
+				label = 'Warping'
 			elif 'additiveBO_' in key:
 				if '_5_' in key:
 					label = 'AdditiveBO'
@@ -178,7 +181,7 @@ def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting
 		# ax_best.set_title('Best run')
 		# ax_best.set_ylim(y_min, y_max)
 		# ax_mean.legend(fontsize=12)
-		ax_3rd.legend(fontsize=10, loc=3)
+		ax_3rd.legend(fontsize=24, loc=3)
 		# ax_3rd.xaxis.set_minor_locator(MultipleLocator(50))
 		# ax_sample.yaxis.set_minor_locator(MultipleLocator(0.5))
 		ax_3rd.grid(which='minor')
@@ -187,7 +190,9 @@ def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting
 
 	if 'mnist_weight' in title:
 		plt.tick_params(axis='both', which='major', labelsize=36)
-		plt.tight_layout(rect=[0.07, 0.03, 1, 1.0])
+		# plt.xticks([], [])
+		# plt.yticks([], [])
+		plt.tight_layout(rect=[0.015, 0.015, 1, 1.0])
 	else:
 		plt.tight_layout()
 	plt.show()
@@ -208,7 +213,8 @@ def plot_samples(ax, sample_list, color, title_str=None):
 
 
 if __name__ == '__main__':
-	optimum_plot('rosenbrock', 100, type='custom_avg', suffix='_center-random', P_setting='_P=3')
+	# optimum_plot('mnist_weight', 100, type='custom_avg', suffix='_center-random', P_setting='_P=3')
+	optimum_plot('mnist_weight', 500, type='custom_avg', suffix='_train_valid_test', P_setting='')
 	# schwefel
 	# rotatedschwefel
 	# michalewicz

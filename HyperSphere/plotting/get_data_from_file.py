@@ -117,14 +117,14 @@ def get_data_elastic(dir_name, func_name, ndim):
 
 def get_data(func_name, ndim, suffix='_center-random', P_setting='_P=9'):
 	# suffix = '_center-corner'
-	spearmint_dir_name = '/home/coh1/Experiments/spearmint_ALL' + suffix + '/' + func_name + '_' + str(ndim)
+	spearmint_dir_name = '/home/coh1/Experiments/spearmint_mnist_weight' + suffix + '/' + func_name + '_' + str(ndim)
 	smac_dir_name = '/home/coh1/Experiments/smac_ALL' + suffix + '/' + func_name + '_' + str(ndim)
 	tpe_dir_name = '/home/coh1/Experiments/tpe_ALL' + suffix + '/' + func_name + '_' + str(ndim)
 	additive_dir_name = '/home/coh1/Experiments/Additive_BO_mat_ALL' + suffix + '/'
-	warping_dir_name = '/home/coh1/Experiments/Warping_ALL' + suffix + '/'
+	warping_dir_name = '/home/coh1/Experiments/Warping_ALL' + suffix + '123/'
 	elastic_dir_name = '/home/coh1/Experiments/elastic_BO_mat' + suffix + '/'
-	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_ALL' + suffix + P_setting + '/'
-	cube_dir_name = '/home/coh1/Experiments/Cube_ALL' + suffix + '/'
+	sphere_dir_name = '/home/coh1/Experiments/Hypersphere_mnist_weight' + suffix + P_setting + '/'
+	cube_dir_name = '/home/coh1/Experiments/Cube_mnist_weight' + suffix + '/'
 	data_list = []
 	try:
 		data_list += get_data_HPOlib(spearmint_dir_name, 'spearmint_april2013_mod')

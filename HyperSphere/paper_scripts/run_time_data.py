@@ -156,7 +156,7 @@ def run_time_additive(additive_dir='/home/coh1/Experiments/Additive_BO_mat_ALL_c
 	return result
 
 
-def run_time_elastic(elastic_dir = '/home/coh1/Experiments/elastic_BO_mat'):
+def run_time_elastic(elastic_dir = '/home/coh1/Experiments/elastic_BO_mat_center-random'):
 	result = {}
 	filename_list = [os.path.join(elastic_dir, elm) for elm in os.listdir(elastic_dir) if elm[-3:]=='log']
 	for elm in os.listdir(elastic_dir):
