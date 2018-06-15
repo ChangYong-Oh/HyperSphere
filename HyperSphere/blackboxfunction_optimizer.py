@@ -34,7 +34,7 @@ class BayesianOptimization(BlackBoxFunctionOptimization):
 
 
 class SpearmintTypeBayesianOptimization(BayesianOptimization):
-    def __init__(self, ndim, original2cube=None, cube2original=None):
+    def __init__(self, original2cube=None, cube2original=None):
         """
         Sometimes original search space is not hypercube [-1, 1]^D
         You can specify this and its inverse transformation
@@ -49,7 +49,7 @@ class SpearmintTypeBayesianOptimization(BayesianOptimization):
 
     def save_model(self, model_path):
         """
-        In Spearmint, surrogate model is trained using MCMC sampling, for stability it keep tracks of samples
+        In Spearmint, surrogate model is trained using MCMC sampling, for stability it keeps track of samples
         this is the information that is requires to be saved.
         :param model_path:
         """
@@ -57,7 +57,7 @@ class SpearmintTypeBayesianOptimization(BayesianOptimization):
 
     def restore_model(self, model_path):
         """
-        In Spearmint, surrogate model is trained using MCMC sampling, for stability it keep tracks of samples
+        In Spearmint, surrogate model is trained using MCMC sampling, for stability it keeps track of samples
         this is the information that is requires to be retrieved from the file
         :param model_path:
         """
@@ -86,7 +86,7 @@ class SpearmintTypeBayesianOptimization(BayesianOptimization):
 
 class NonArdSpearmintBayesianOptimization(BayesianOptimization):
     def __init__(self, ndim, original2cube=None, cube2original=None):
-        super(NonArdSpearmintBayesianOptimization, self).__init__(ndim, original2cube, cube2original)
+        super(NonArdSpearmintBayesianOptimization, self).__init__(original2cube, cube2original)
         self.surrogate_model = GPRegression(kernel=Matern52(ndim=ndim, ard=False))
         self.surrogate_inference = Inference
         self.acquisition_function = expected_improvement
@@ -94,7 +94,7 @@ class NonArdSpearmintBayesianOptimization(BayesianOptimization):
 
 class ArdSpearmintBayesianOptimization(BayesianOptimization):
     def __init__(self, ndim, original2cube=None, cube2original=None):
-        super(NonArdSpearmintBayesianOptimization, self).__init__(ndim, original2cube, cube2original)
+        super(NonArdSpearmintBayesianOptimization, self).__init__(original2cube, cube2original)
         self.surrogate_model = GPRegression(kernel=Matern52(ndim=ndim, ard=True))
         self.surrogate_inference = Inference
         self.acquisition_function = expected_improvement
@@ -102,7 +102,7 @@ class ArdSpearmintBayesianOptimization(BayesianOptimization):
 
 class CylindricalKernelBayesianOptimization(BayesianOptimization):
     def __init__(self, ndim, original2cube=None, cube2original=None):
-        super(CylindricalKernelBayesianOptimization, self).__init__(ndim, original2cube, cube2original)
+        super(CylindricalKernelBayesianOptimization, self).__init__(original2cube, cube2original)
         self.radius = ndim ** 0.5
         radius_input_map = Kumaraswamy(ndim=1, max_input=self.radius)
         self.surrogate_model = GPRegression(kernel=RadializationKernel(max_power=3, search_radius=self.radius, radius_input_map=radius_input_map))
