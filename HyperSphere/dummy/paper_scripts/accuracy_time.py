@@ -1,9 +1,8 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
-from HyperSphere.plotting.plot_color import algorithm_color
+from HyperSphere.dummy.plotting.plot_color import algorithm_color
 
-from HyperSphere.plotting.get_data_from_file import get_data_sphere, get_data_HPOlib, get_data_elastic, \
+from HyperSphere.dummy.plotting.get_data_from_file import get_data_sphere, get_data_HPOlib, get_data_elastic, \
 	get_data_additive, get_data_warping
 from run_time_data import run_time_hyper, run_time_spearmint, run_time_elastic, run_time_additive, run_time_warping, \
 	run_time_smac, run_time_tpe

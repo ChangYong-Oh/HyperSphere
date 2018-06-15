@@ -2,9 +2,9 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 
-from HyperSphere.plotting.get_data_from_file import get_data
+from HyperSphere.dummy.plotting.get_data_from_file import get_data
 from HyperSphere.test_functions.mnist_weight import mnist_weight_baseline
-from HyperSphere.plotting.plot_color import algorithm_color
+from HyperSphere.dummy.plotting.plot_color import algorithm_color
 
 
 def optimum_plot(func_name, ndim, type='avg', suffix='_center-random', P_setting='_P=9'):

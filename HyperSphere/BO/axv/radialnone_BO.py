@@ -11,7 +11,7 @@ from HyperSphere.GP.inference.inference import Inference
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.feature_map.functionals import x2radial, radial_bound
-from HyperSphere.plotting.datafile_utils import EXPERIMENT_DIR
+from HyperSphere.dummy.plotting import EXPERIMENT_DIR
 from HyperSphere.test_functions.benchmarks import *
 
 exp_str = __file__.split('/')[-1].split('_')[0]

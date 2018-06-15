@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 import torch
 
-from HyperSphere.plotting.get_data_from_file import get_data_HPOlib, get_data_sphere
+from HyperSphere.dummy.plotting.get_data_from_file import get_data_HPOlib, get_data_sphere
 from HyperSphere.test_functions.mnist_weight import mnist_weight
 
 

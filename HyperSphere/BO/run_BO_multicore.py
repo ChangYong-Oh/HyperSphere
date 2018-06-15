@@ -9,7 +9,7 @@ from datetime import datetime
 
 import subprocess32
 
-from HyperSphere.plotting.datafile_utils import EXPERIMENT_DIR
+from HyperSphere.dummy.plotting import EXPERIMENT_DIR
 
 valid_config_str_list = ['cube', 'cubeard', 'cubeboundary', 'cubeardboundary',
                          'spherenone', 'sphereorigin', 'sphereboundary', 'sphereboth',

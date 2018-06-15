@@ -11,7 +11,7 @@ from HyperSphere.BO.shadow_inference.inference_sphere_satellite import ShadowInf
 from HyperSphere.GP.kernels.modules.matern52 import Matern52
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.feature_map.functionals import id_transform
-from HyperSphere.plotting.datafile_utils import EXPERIMENT_DIR
+from HyperSphere.dummy.plotting import EXPERIMENT_DIR
 from HyperSphere.test_functions.benchmarks import *
 
 exp_str = __file__.split('/')[-1].split('_')[0]
