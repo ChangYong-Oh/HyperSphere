@@ -92,6 +92,14 @@ class NonArdSpearmintBayesianOptimization(BayesianOptimization):
         self.acquisition_function = expected_improvement
 
 
+class ArdSpearmintBayesianOptimization(BayesianOptimization):
+    def __init__(self, ndim, original2cube=None, cube2original=None):
+        super(NonArdSpearmintBayesianOptimization, self).__init__(ndim, original2cube, cube2original)
+        self.surrogate_model = GPRegression(kernel=Matern52(ndim=ndim, ard=True))
+        self.surrogate_inference = Inference
+        self.acquisition_function = expected_improvement
+
+
 class CylindricalKernelBayesianOptimization(BayesianOptimization):
     def __init__(self, ndim, original2cube=None, cube2original=None):
         super(CylindricalKernelBayesianOptimization, self).__init__(ndim, original2cube, cube2original)
