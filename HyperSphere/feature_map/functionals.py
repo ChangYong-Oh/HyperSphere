@@ -13,7 +13,7 @@ id_transform.dim_change = lambda x: x
 def x2radial(x):
 	radius = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
 	normalizer = radius.clone()
-	normalizer[radius == 0] = 1
+	normalizer[(radius == 0).detach()] = 1
 	return torch.cat([radius, x/normalizer], 1)
 
 x2radial.dim_change = lambda x: x + 1

@@ -10,13 +10,15 @@ from torch.autograd import Variable, grad
 from HyperSphere.BO.acquisition.acquisition_functions import expected_improvement
 from HyperSphere.BO.utils.sobol import sobol_generate
 
-N_SPREAD = 20000
-N_SPRAY = 10
-N_INIT = 20
+N_SPREAD = 20000 # Number of sobol sequence points as candidates for good initial points
+N_SPRAY = 10 # Number of random perturbations of current optimum
+N_INIT = 20 # Number of initial points for acquisition function maximization
+N_AVAILABLE_CORE = 8 # When there is this many available cpu cores new optimization is started
+MAX_OPTIMIZATION_STEP = 500
 
 
 def suggest(x0, reference, inferences, acquisition_function=expected_improvement, bounds=None, pool=None):
-	max_step = 500
+	max_step = MAX_OPTIMIZATION_STEP
 	n_init = x0.size(0)
 
 	start_time = time.time()
@@ -33,7 +35,7 @@ def suggest(x0, reference, inferences, acquisition_function=expected_improvement
 		process_index = 0
 		while process_started.count(False) > 0:
 			cpu_usage = psutil.cpu_percent(0.2)
-			run_more = (100.0 - cpu_usage) * float(psutil.cpu_count()) > 800.0
+			run_more = (100.0 - cpu_usage) * float(psutil.cpu_count()) > 100.0 * N_AVAILABLE_CORE
 			if run_more:
 				results.append(pool.apply_async(optimize, args=(max_step, x0[process_index], reference, inferences, acquisition_function, bounds)))
 				process_started[process_index] = True

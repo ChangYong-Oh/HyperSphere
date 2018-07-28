@@ -5,6 +5,8 @@ import sys
 import time
 from datetime import datetime
 
+EXPERIMENT_DIR = '/home/coh1/Experiments/Hypersphere'
+
 import torch
 from torch.autograd import Variable
 import torch.multiprocessing as multiprocessing
@@ -13,7 +15,6 @@ if os.path.realpath(__file__).rsplit('/', 3)[0] not in sys.path:
 	sys.path.append(os.path.realpath(__file__).rsplit('/', 3)[0])
 
 from HyperSphere.BO.acquisition.acquisition_maximization import suggest, optimization_candidates, optimization_init_points, deepcopy_inference, N_INIT
-from HyperSphere.dummy.plotting import EXPERIMENT_DIR
 from HyperSphere.GP.models.gp_regression import GPRegression
 from HyperSphere.test_functions.benchmarks import *
 
@@ -70,6 +71,8 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 			inference_method = satellite_ShadowInference if boundary else Inference
 			bnd = (-1, 1)
 
+		if not os.path.isdir(EXPERIMENT_DIR):
+			raise ValueError('In file : ' + os.path.realpath(__file__) + '\nEXPERIMENT_DIR variable is not properly assigned. Please check it.')
 		dir_list = [elm for elm in os.listdir(EXPERIMENT_DIR) if os.path.isdir(os.path.join(EXPERIMENT_DIR, elm))]
 		folder_name = func.__name__ + '_D' + str(ndim) + '_' + exp_conf_str + '_' + datetime.now().strftime('%Y%m%d-%H:%M:%S:%f')
 		os.makedirs(os.path.join(EXPERIMENT_DIR, folder_name))
@@ -162,7 +165,7 @@ def BO(geometry=None, n_eval=200, path=None, func=None, ndim=None, boundary=Fals
 		sample_info_list.append(sample_info)
 
 		x_input = torch.cat([x_input, next_x_point], 0)
-		output = torch.cat([output, func(x_input[-1])])
+		output = torch.cat([output, func(x_input[-1]).resize(1, 1)])
 
 		min_ind = torch.min(output, 0)[1]
 		min_loc = x_input[min_ind]
