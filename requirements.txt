@@ -1,7 +1,7 @@
--e git+https://github.com/QUVA-Lab/artemis.git@77c1702b5c964d3dc84da65fc5aa1c347e3230c5#egg=artemis_ml
 backports.weakref==1.0rc1
 bleach==1.5.0
 cycler==0.10.0
+dill
 enum34==1.1.6
 funcsigs==1.0.2
 functools32==3.2.3.post2
@@ -16,16 +16,19 @@ pbr==3.1.1
 Pillow==4.1.1
 progressbar2
 protobuf==3.3.0
+psutil
 py==1.4.34
 pyparsing==2.2.0
 pytest==3.1.2
 python-dateutil==2.6.0
 pytz==2017.2
 PyYAML==3.12
--e git+https://github.com/mcleonard/sampyl#egg=sampyl
+sampyl-mcmc
 scipy==0.19.1
 si-prefix==0.4.post10
 six==1.10.0
 subprocess32==3.2.7
+torch==0.3.1
+torchvision
 tabulate==0.7.7
 Werkzeug==0.12.2
